@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Mon Portfolio</title>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body id="body">
+
+    <p class="text" id="infos"><strong>Julien Petit Colboc</strong>Étudiant en deuxième année <br> de cycle préparatoire
+        à CESI Rouen
+        <a href="https://linkedin.com/in/julien-petit-colboc"><img
+                src="https://companieslogo.com/img/orig/LNKD.defunct.2016-d582336a.png?t=1722850217"
+                style="width: 24px; margin-top: 16px; margin-left: 16px;"></a>
+        <a href="https://github.com/SliiZ-code">
+            <img src="https://companieslogo.com/img/orig/github-97592640.png?t=1720244494"
+                style="width: 24px; margin-top: 16px; margin-left: 16px; filter: invert();">
+        </a>
+    </p>
+    <p class="text" id="conway"><strong>Jeu de la vie de Conway</strong>Projet scolaire en C++ avec <br> - Interface
+        graphique
+        <br>
+        - Grille modifiable en temps réel <br> - Ajout d'obstacles <br> - Vitesse modifiable <br> - Import/Export de
+        grilles
+        <a href="https://github.com/Lucacist/jeu-de-Conway-projet"><img
+                src="https://companieslogo.com/img/orig/github-97592640.png?t=1720244494"
+                style="width: 24px; margin-top: 16px; margin-left: 16px;filter: invert();"></a>
+        <a href="https://fr.wikipedia.org/wiki/Jeu_de_la_vie"><img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Wikipedia%27s_W.svg/1024px-Wikipedia%27s_W.svg.png"
+                style="width: 24px; margin-top: 16px; margin-left: 16px;filter: invert();"></a>
+        </a>
+    </p>
+    <p class="text" id="thrive"><strong>Thrive</strong>Application multiplateforme de liste de tâches réalisé avec
+        Flutter <br>En
+        développement
+        <a href="https://flutter.dev/"><img src="https://cdn-images-1.medium.com/max/1200/1*5-aoK8IBmXve5whBQM90GA.png"
+                style="width: 24px; margin-top: 16px; margin-left: 16px"></a>
+    </p>
+    </p>
+    <p class="text" id="station"><strong>Station Météo "Worldwide Weather Watcher"</strong>Projet scolaire Arduino <br>-
+        4
+        Modes d'utilisation <br>- Enregistrement sur carte SD <br>- Capteurs de température/pression/... <br>- Horloge
+        RTC <br>- Gestion d'interruptions
+        <a href="https://github.com/enzogilles/Projet-World-wide-weather-watcher"><img
+                src="https://companieslogo.com/img/orig/github-97592640.png?t=1720244494"
+                style="width: 24px; margin-top: 16px; margin-left: 16px;filter: invert();"></a>
+    </p>
+    <p class="text" id="blink"><strong>Blink</strong>Creation automatisée asynchrone de <br> vidéos courtes
+        verticales en Python<br>- OpenAI <br>- Stable Diffusion <br>- Moviepy <br>- PIL <br>- ...<br>En
+        développement
+        <a href="https://www.python.org/"><img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Python-logo-notext.svg/800px-Python-logo-notext.svg.png"
+                style="width: 24px; margin-top: 16px; margin-left: 16px"></a>
+    </p>
+    <video id="videoConway" src="public/conway.mp4" autoplay loop muted style="display: none;"></video>
+    <video id="videoBlink" src="public/blink.mp4" autoplay loop muted style="display: none;"></video>
+    <img id="imageThrive" src="public/thrive.jpg" style="display: none;">
+    <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+                }
+            }
+            </script>
+    <script type="module" src="/main.js"></script>
+</body>
+
+</html>
