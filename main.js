@@ -315,21 +315,19 @@ function animate() {
 }
 
 
-document.addEventListener('mousedown', function (event) {
-    raycaster.setFromCamera(pointer, camera)
+document.addEventListener('pointerdown', function () {
+    raycaster.setFromCamera(pointer, camera);
 
     const intersects = raycaster.intersectObjects(scene.children, true);
     if (intersects.length > 0) {
-        console.log(intersects[0].object)
+        console.log(intersects[0].object);
         if (INTERSECTED != intersects[0].object) {
             INTERSECTED = intersects[0].object;
             showText(map.get(INTERSECTED.name));
             const targetPosition = INTERSECTED.position;
-            camera.position.set(targetPosition.x * 0.1 + 5, targetPosition.y, targetPosition.z * 0.1 + 5)
+            camera.position.set(targetPosition.x * 0.1 + 5, targetPosition.y, targetPosition.z * 0.1 + 5);
             controls.target.set(targetPosition.x, targetPosition.y, targetPosition.z);
             controls.update();
-
         }
-
     }
 });
