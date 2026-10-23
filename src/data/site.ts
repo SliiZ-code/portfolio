@@ -3,7 +3,7 @@
  * URLs; the site works with relative ones while it is unset.
  */
 export const site = {
-  url: '',
+  url: 'https://sliiz.com',
   cvPdf: {
     fr: '',
     en: '',
