@@ -27,6 +27,20 @@ const fr = {
     themeNight: '[nuit]',
     themePaper: '[papier]',
     minimap: 'mini-carte',
+    pages: {
+      labo: {
+        name: 'Labo',
+        text: 'labo',
+        label: 'expériences · three.js',
+        note: "des expériences qui n'ont\npas de place ailleurs",
+      },
+      story: {
+        name: 'Mon histoire',
+        text: 'mon\nhistoire',
+        label: 'page à écrire',
+        note: 'ce que le CV ne dit pas',
+      },
+    },
   },
   project: {
     back: '← retour au plateau',
@@ -35,6 +49,22 @@ const fr = {
     noCapture: '[pas encore de capture]',
     visit: 'voir le projet ↗',
     backBoard: 'retour au plateau',
+  },
+  lab: {
+    back: '← retour au plateau',
+    stamp: 'laboratoire',
+    title: 'Labo',
+    intro: "Des expériences qui n'ont pas de place ailleurs.",
+    description: "Des expériences qui n'ont pas de place ailleurs : l'Arduino en ASCII, en direct.",
+    loading: 'chargement…',
+    unavailable: "[WebGL indisponible : pas d'expérience ici]",
+  },
+  story: {
+    back: '← retour au plateau',
+    stamp: 'page histoire',
+    title: 'Mon histoire',
+    body: '[placeholder] Mon histoire arrive bientôt.',
+    description: '[placeholder] Mon histoire arrive bientôt.',
   },
   cv: {
     back: '← retour au plateau',

@@ -47,6 +47,16 @@ OO.....OO
 OOOOOO.OO
 OOOOOO.OO`);
 
+export const BEACON = P(`
+OO..
+OO..
+..OO
+..OO`);
+
+export const TOAD = P(`
+.OOO
+OOO.`);
+
 export const GUN = P(`
 ........................O...........
 ......................O.O...........
@@ -71,9 +81,11 @@ export const PATTERNS = {
   penta: PENTA,
   galaxy: GALAXY,
   clock: CLOCK,
+  beacon: BEACON,
+  toad: TOAD,
 } as const;
 
 export type EmblemName = keyof typeof PATTERNS;
 
-/** Deterministic list used for teams/projects that only exist in RxResume. */
+/** Deterministic list used for projects that only exist in RxResume; beacon and toad are reserved for the lab and story pages. */
 export const OSCILLATORS: EmblemName[] = ['clock', 'blinkers', 'penta', 'galaxy', 'pulsar'];

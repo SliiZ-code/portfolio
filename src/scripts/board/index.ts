@@ -71,7 +71,7 @@ export async function initBoard(): Promise<void> {
     box: blank(),
     labelAt: { x: 0, y: 0 },
   };
-  const entities: Entity[] = [name, cv, ...data.projects.map((project) => ({
+  const entities: Entity[] = [name, cv, ...[...data.projects, ...data.pages].map((project) => ({
     id: project.id,
     x: project.x,
     y: project.y,
@@ -81,7 +81,7 @@ export async function initBoard(): Promise<void> {
     pad: project.pad,
     label: project.label,
     note: project.note,
-    media: project.media,
+    media: 'media' in project ? project.media : undefined,
     url: project.url,
     box: blank(),
     labelAt: { x: 0, y: 0 },

@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
-import { getBoardProjects } from '../data/board';
+import { getBoardPages, getBoardProjects } from '../data/board';
 import { site } from '../data/site';
 import { strings } from '../i18n';
 import { getResume, htmlToText, type Lang } from '../lib/resume';
@@ -14,6 +14,7 @@ interface Props {
 const { lang } = Astro.props;
 const resume = getResume(lang);
 const projects = getBoardProjects(resume);
+const pages = getBoardPages(lang);
 const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = site.cvPdf[lang];
@@ -53,6 +54,17 @@ const boardData = {
     media: project.media,
     url: projectHref(project.slug),
   })),
+  pages: pages.map((page) => ({
+    id: page.id,
+    text: page.text,
+    x: page.x,
+    y: page.y,
+    emblem: page.emblem,
+    pad: page.pad,
+    label: page.label,
+    note: { t: page.note.text, r: page.note.r },
+    url: page.url,
+  })),
   nameNote: t.board.nameNote,
 };
 
@@ -65,7 +77,7 @@ const description = htmlToText(resume.summary) || resume.headline;
   <canvas id="board" aria-label={title}></canvas>
 
   <BoardHud lang={lang} t={t} cvHref={cvHref} pdfHref={cvPdf} />
-  <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
+  <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
 
   <noscript>
     <style>

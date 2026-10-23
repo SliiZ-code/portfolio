@@ -29,6 +29,20 @@ const en = {
     themeNight: '[night]',
     themePaper: '[paper]',
     minimap: 'mini-map',
+    pages: {
+      labo: {
+        name: 'Lab',
+        text: 'lab',
+        label: 'experiments · three.js',
+        note: "experiments that don't\nhave a place elsewhere",
+      },
+      story: {
+        name: 'My story',
+        text: 'my\nstory',
+        label: 'page to be written',
+        note: "what the CV doesn't say",
+      },
+    },
   },
   project: {
     back: '← back to the board',
@@ -37,6 +51,22 @@ const en = {
     noCapture: '[no capture yet]',
     visit: 'view the project ↗',
     backBoard: 'back to the board',
+  },
+  lab: {
+    back: '← back to the board',
+    stamp: 'laboratory',
+    title: 'Lab',
+    intro: "Experiments that don't have a place elsewhere.",
+    description: "Experiments that don't have a place elsewhere: the Arduino as live ASCII.",
+    loading: 'loading…',
+    unavailable: '[WebGL unavailable: no experiment here]',
+  },
+  story: {
+    back: '← back to the board',
+    stamp: 'story page',
+    title: 'My story',
+    body: '[placeholder] My story is coming soon.',
+    description: '[placeholder] My story is coming soon.',
   },
   cv: {
     back: '← back to the board',
