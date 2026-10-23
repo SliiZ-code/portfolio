@@ -22,7 +22,8 @@ describe('known project overlay', () => {
     expect(bySlug.thrive).toMatchObject({ x: 104, y: 186, emblem: 'penta', pad: 4 });
     expect(bySlug['worldwide-weather-watcher']).toMatchObject({ x: 318, y: 184, emblem: 'galaxy', pad: 2 });
     expect(bySlug['jeu-de-la-vie'].note?.text).toBe('un pulsar. forcément.');
-    expect(bySlug['worldwide-weather-watcher'].displayName).toBe('Weather Watcher');
+    expect(bySlug['worldwide-weather-watcher'].text).toBe('Weather\nWatcher');
+    expect(bySlug['worldwide-weather-watcher'].displayName).toBe('Worldwide Weather Watcher');
   });
 
   it('ignores overlay entries that are not in the resume', () => {
@@ -129,5 +130,14 @@ describe('auto placement', () => {
     expect(spot.y + size.h).toBeLessThanOrEqual(WORLD.h);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('truncates only the raster text; displayName keeps the full name', () => {
+    const base = getResume('fr');
+    const name = 'Supercalifragilisticexpialidocious Implementation';
+    const extra: Project = { id: 'x', name, slug: 'x', period: '', description: '', website: { url: '', label: '' } };
+    const auto = getBoardProjects({ ...base, projects: [...base.projects, extra] }).find((project) => project.slug === 'x')!;
+    expect(auto.text.split('\n').every((line) => line.length <= 14)).toBe(true);
+    expect(auto.displayName).toBe(name);
   });
 });

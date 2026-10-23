@@ -90,6 +90,7 @@ export interface BoardNote {
 export interface BoardProject extends Project {
   /** Text rasterised on the board, possibly wrapped or abbreviated by the overlay. */
   text: string;
+  /** Full resume name, for the server-rendered list. */
   displayName: string;
   emblem: EmblemName;
   x: number;
@@ -266,7 +267,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
     const boardProject: BoardProject = {
       ...project,
       text: boardText(project),
-      displayName: boardText(project).replace(/\n/g, ' '),
+      displayName: project.name,
       emblem: overlay.emblem,
       x: overlay.x,
       y: overlay.y,
@@ -289,7 +290,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
     const boardProject: BoardProject = {
       ...project,
       text,
-      displayName: text.replace(/\n/g, ' '),
+      displayName: project.name,
       emblem,
       x: spot.x,
       y: spot.y,
