@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+import DocActions from './DocActions.astro';
+import { getBoardPages, pagePath } from '../data/board';
+import { EXPERIMENTS } from '../data/lab';
+import { strings } from '../i18n';
+import { getResume, type Lang } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const resume = getResume(lang);
+const t = strings(lang);
+const boardHref = lang === 'fr' ? '/' : '/en/';
+const page = getBoardPages(lang).find((entry) => entry.id === 'labo')!;
+const title = `${t.lab.title} — ${resume.name}`;
+---
+
+<Base lang={lang} title={title} description={t.lab.description} alternates={{ fr: pagePath('labo', 'fr'), en: pagePath('labo', 'en') }} zoomable>
+  <article id="page" class="open">
+    <header class="doc-bar">
+      <a class="back" href={`${boardHref}?from=labo`} data-back-board={boardHref} data-slug="labo">{t.lab.back}</a>
+      <DocActions lang={lang} t={t} frHref={pagePath('labo', 'fr')} enHref={pagePath('labo', 'en')} />
+    </header>
+
+    <div class="page-inner">
+      <div class="page-media">
+        {EXPERIMENTS.map((experiment) => (
+          <figure>
+            <div class="ascii-box" data-src={experiment.src} data-kind={experiment.kind}>
+              <span class="ascii-loading">{t.lab.loading}</span>
+              <span class="ascii-error">{t.lab.unavailable}</span>
+            </div>
+            <figcaption>{experiment.title[lang]}</figcaption>
+          </figure>
+        ))}
+      </div>
+
+      <div class="page-text">
+        <span class="stamp">{t.lab.stamp}</span>
+        <h1>{t.lab.title}</h1>
+        <div class="meta">{t.lab.intro}</div>
+        {EXPERIMENTS.map((experiment) => (
+          <section class="experiment">
+            <h2>{experiment.title[lang]}</h2>
+            <p>{experiment.description[lang]}</p>
+          </section>
+        ))}
+        <span class="note">{page.note.text}</span>
+      </div>
+    </div>
+  </article>
+
+  <script>
+    import { initAsciiModel } from '../scripts/lab/ascii';
+    import { initBackLink } from '../scripts/back';
+    document.querySelectorAll<HTMLElement>('.ascii-box[data-kind="ascii-model"]').forEach(initAsciiModel);
+    initBackLink();
+  </script>
+</Base>

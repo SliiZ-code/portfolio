@@ -386,6 +386,65 @@ button {
   text-transform: uppercase;
 }
 
+/* ---- lab and story pages ---- */
+.page-inner.solo {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 980px;
+}
+
+.page-text h2 {
+  font: 28px/1.05 "Geist Pixel";
+  font-weight: 400;
+  margin: 8px 0 12px;
+}
+
+.page-text .experiment+.experiment {
+  margin-top: 28px;
+}
+
+.ascii-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.ascii-box>div {
+  cursor: grab;
+}
+
+.ascii-box table {
+  /* AsciiEffect sizes its table from the box; keep it from reflowing the page */
+  max-width: none;
+}
+
+.ascii-loading,
+.ascii-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--mute);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.ascii-error,
+.ascii-box[data-state="ready"] .ascii-loading,
+.ascii-box[data-state="error"] .ascii-loading {
+  display: none;
+}
+
+.ascii-box[data-state="error"] .ascii-error {
+  display: grid;
+}
+
 /* ---- CV page ---- */
 .doc-bar {
   position: sticky;
