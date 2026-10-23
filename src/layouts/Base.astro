@@ -12,9 +12,10 @@ interface Props {
   title: string;
   description: string;
   alternates: { fr: string; en: string };
+  zoomable?: boolean;
 }
 
-const { lang, title, description, alternates } = Astro.props;
+const { lang, title, description, alternates, zoomable = false } = Astro.props;
 const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
 ---
 
@@ -22,7 +23,7 @@ const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
 <html lang={lang} data-theme="paper">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content={zoomable ? 'width=device-width, initial-scale=1' : 'width=device-width, initial-scale=1, maximum-scale=1'} />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />

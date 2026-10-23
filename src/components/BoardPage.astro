@@ -27,7 +27,7 @@ const boardData = {
   cv: {
     text: 'cv',
     k: 1,
-    label: t.board.cvLabel,
+    label: cvPdf ? t.board.cvLabelPdf : t.board.cvLabel,
     note: { t: t.board.cvNote, r: -0.05 },
     url: cvHref,
   },

@@ -21,7 +21,7 @@ const where = (...parts: (string | false | undefined)[]) => parts.filter(Boolean
 const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index < level);
 ---
 
-<Base lang={lang} title={title} description={resume.headline} alternates={{ fr: '/cv/', en: '/en/cv/' }}>
+<Base lang={lang} title={title} description={resume.headline} alternates={{ fr: '/cv/', en: '/en/cv/' }} zoomable>
   <article id="page" class="open">
     <header class="doc-bar">
       <a class="back" href={boardHref}>{t.cv.back}</a>
@@ -85,7 +85,7 @@ const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index 
               <div class="cv-item">
                 <h3>{[entry.degree, entry.area].filter(Boolean).join(' — ') || entry.school}</h3>
                 <div class="where">
-                  {where(entry.school, entry.location, entry.period, entry.grade && `${t.cv.level} ${entry.grade}`)}
+                  {where(entry.school, entry.location, entry.period, entry.grade && `${t.cv.grade} ${entry.grade}`)}
                   {entry.website.url && (
                     <>
                       {' · '}

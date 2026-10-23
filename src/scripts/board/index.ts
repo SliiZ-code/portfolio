@@ -184,6 +184,13 @@ export async function initBoard(): Promise<void> {
   let dive: Dive | null = null;
   let hover: Entity | null = null;
 
+  const cleanUrl = () => {
+    const url = new URL(location.href);
+    if (!url.searchParams.has('from')) return;
+    url.searchParams.delete('from');
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  };
+
   const from = new URLSearchParams(location.search).get('from');
   if (from) {
     const target = entities.find((entity) => entity.id === from && !['name', 'cv', 'contact'].includes(entity.id));
@@ -194,6 +201,7 @@ export async function initBoard(): Promise<void> {
         // no zoom-out for reduced motion: land on the home view directly
         Object.assign(cam, home);
         Object.assign(camT, home);
+        cleanUrl();
       } else {
         const cx = (target.box.x + target.box.x2) / 2;
         const cy = (target.box.y + target.box.y2) / 2;
@@ -219,8 +227,9 @@ export async function initBoard(): Promise<void> {
     drawMiniFrame();
   };
 
+  const inert = (entity: Entity) => entity.id === 'contact' && !entity.url;
   const entityAt = (wx: number, wy: number): Entity | null =>
-    entities.find((entity) => wx >= entity.box.x && wx <= entity.box.x2 && wy >= entity.box.y && wy <= entity.box.y2) ?? null;
+    entities.find((entity) => !inert(entity) && wx >= entity.box.x && wx <= entity.box.x2 && wy >= entity.box.y && wy <= entity.box.y2) ?? null;
 
   const paint = (wx: number, wy: number) => {
     const x = Math.floor(wx);
@@ -239,13 +248,6 @@ export async function initBoard(): Promise<void> {
       world.cells[idx(WORLD.w, WORLD.h, xx, yy)] = 1;
       world.heat[idx(WORLD.w, WORLD.h, xx, yy)] = 255;
     }));
-  };
-
-  const cleanUrl = () => {
-    const url = new URL(location.href);
-    if (!url.searchParams.has('from')) return;
-    url.searchParams.delete('from');
-    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   };
 
   const activate = (entity: Entity) => {

@@ -1,9 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import DocActions from './DocActions.astro';
-import { BOARD_OVERLAY, boardMedia, boardNote } from '../data/board';
+import { boardMedia, boardNote, findAlternateProject, overlayFor } from '../data/board';
 import { strings, otherLang } from '../i18n';
-import { getProject, getResume, htmlToText, type Lang, type Project } from '../lib/resume';
+import { getResume, htmlToText, type Lang, type Project } from '../lib/resume';
 
 interface Props {
   lang: Lang;
@@ -14,33 +14,29 @@ const { lang, project } = Astro.props;
 const resume = getResume(lang);
 const t = strings(lang);
 const other = otherLang(lang);
-const alt = getProject(other, project.slug);
+const otherResume = getResume(other);
+const alt = findAlternateProject(project, resume.projects, otherResume);
 const boardHref = lang === 'fr' ? '/' : '/en/';
 const projectPath = (language: Lang, slug: string) =>
   language === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`;
-const overlay = BOARD_OVERLAY[project.slug];
+const overlay = overlayFor(project);
 const media = boardMedia(project);
 const note = boardNote(project, lang);
 const meta = [overlay?.label?.[lang], project.period].filter(Boolean).join(' · ');
-const frAlt = getProject('fr', project.slug) ? projectPath('fr', project.slug) : '/';
-const enAlt = getProject('en', project.slug) ? projectPath('en', project.slug) : '/en/';
-const switchHref = alt ? projectPath(other, project.slug) : other === 'fr' ? '/' : '/en/';
+const frProject = lang === 'fr' ? project : alt;
+const enProject = lang === 'en' ? project : alt;
+const frAlt = frProject ? projectPath('fr', frProject.slug) : '/';
+const enAlt = enProject ? projectPath('en', enProject.slug) : '/en/';
 const title = `${project.name} — ${resume.name}`;
 const description = htmlToText(project.description) || meta || resume.headline;
 ---
 
-<Base lang={lang} title={title} description={description} alternates={{ fr: frAlt, en: enAlt }}>
+<Base lang={lang} title={title} description={description} alternates={{ fr: frAlt, en: enAlt }} zoomable>
   <article id="page" class="open">
-    <div class="page-top">
-      <a class="back" href={`${boardHref}?from=${project.slug}`}>{t.project.back}</a>
-      <DocActions
-        lang={lang}
-        t={t}
-        frHref={switchHref}
-        enHref={switchHref}
-        pdfHref={undefined}
-      />
-    </div>
+    <header class="doc-bar">
+      <a class="back" href={`${boardHref}?from=${project.slug}`} data-back-board={boardHref}>{t.project.back}</a>
+      <DocActions lang={lang} t={t} frHref={frAlt} enHref={enAlt} />
+    </header>
 
     <div class="page-inner">
       <figure class="page-media">
@@ -72,5 +68,20 @@ const description = htmlToText(project.description) || meta || resume.headline;
   <script>
     import { initDither } from '../scripts/board/dither';
     initDither();
+
+    const back = document.querySelector<HTMLAnchorElement>('[data-back-board]');
+    back?.addEventListener('click', (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (!document.referrer) return;
+      try {
+        const referrer = new URL(document.referrer);
+        if (referrer.origin === location.origin && referrer.pathname === back.dataset.backBoard) {
+          event.preventDefault();
+          history.back();
+        }
+      } catch {
+        // malformed referrer: follow the link
+      }
+    });
   </script>
 </Base>
