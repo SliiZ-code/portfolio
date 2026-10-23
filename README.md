@@ -15,14 +15,14 @@ Astro site is the port of that prototype.
 - Self-hosted Geist Pixel / Gambarino fonts; Geist Mono and Shantell Sans come
   from `@fontsource`
 
-No three.js, GSAP, Lenis or client-side framework is used.
+three.js is used only by the lab page (loaded on demand); no GSAP, Lenis or client-side framework.
 
 ## Commands
 
 ```bash
 npm install
 npm run dev        # http://localhost:4321
-npm run build      # 12 static pages in dist/
+npm run build      # 16 static pages in dist/
 npm run preview    # serve dist/
 npm run check      # astro check
 npm test           # vitest run
@@ -86,6 +86,8 @@ the name. An overlay entry without a matching RxResume project is ignored
 | `/` | `/en/` |
 | `/projets/<slug>/` | `/en/projects/<slug>/` |
 | `/cv/` | `/en/cv/` |
+| `/labo/` | `/en/lab/` |
+| `/histoire/` | `/en/story/` |
 
 `<html lang>` follows the route. Every page has a canonical URL, `hreflang`
 alternates and its own title/description. The project list is generated at build
@@ -100,6 +102,20 @@ time, not rendered on the client.
 - `cvPdf.fr` / `cvPdf.en`: public paths to PDF CVs. When empty, the HUD CV link
   points to the `/cv/` page and the page offers print instead of a PDF download.
 
+## Lab and story
+
+Two hand-placed structures sit on the board next to the projects: the lab (`labo`, a
+beacon) and "mon histoire" / "my story" (a toad). Their position, emblem and size live in
+`BOARD_PAGES` in `src/data/board.ts`; their text, label and margin note in `src/i18n`.
+They are kept clear of the name, the CV, the gun and its glider lane, and auto-placed
+RxResume projects avoid them too (`tests/board-pages.test.ts`).
+
+- The lab page lists the experiments of `src/data/lab.ts`. The first one renders
+  `public/media/arduino.glb` as live ASCII with three.js `AsciiEffect`; drag to rotate,
+  it turns by itself unless reduced motion is requested, and follows the theme.
+  three.js is imported only once the viewer is on screen.
+- The story page is a placeholder (`[placeholder]` copy) until the real text is written.
+
 ## Board
 
 The engine lives in `src/scripts/board/`:
@@ -112,12 +128,14 @@ The engine lives in `src/scripts/board/`:
 - `render.ts` / `dither.ts`: canvas and project capture rendering;
 - `camera.ts`: zoom/pan clamping;
 - `input.ts`: drag, paint, glider drop, wheel and pinch;
+- `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back;
 - `minimap.ts`: minimap rendering.
 
 Controls: drag to explore, wheel/pinch to zoom, click an empty cell to drop a
 glider, `[✎ dessiner]` to paint, project/CV text to dive. Activating contact goes
 to `mailto:` or the first profile. `?from=<slug>` starts zoomed on that project
-and plays the reverse zoom-out.
+and plays the reverse zoom-out. A browser Back finds the same slug in `sessionStorage`
+(`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back replays it again.
 
 The theme is stored under `jpc-theme` and applied inline before paint so night
 mode does not flash. `prefers-reduced-motion` disables the intro and dives.

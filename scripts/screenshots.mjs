@@ -111,6 +111,33 @@ await visit('/projets/jeu-de-la-vie/', {
 await visit('/projets/blink/', { label: 'project-blink-desktop', viewport: { width: 1440, height: 900 }, settle: 2800 });
 await visit('/projets/blink/', { label: 'project-blink-mobile', viewport: { width: 390, height: 844 }, settle: 2800 });
 
+const asciiReady = async (page) => {
+  await page.waitForSelector('.ascii-box[data-state="ready"]', { timeout: 15000 });
+  await page.waitForTimeout(600);
+};
+
+await visit('/labo/', { label: 'lab-fr', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
+await visit('/labo/', { label: 'lab-night', viewport: { width: 1440, height: 900 }, theme: 'night', settle: 1500, before: asciiReady });
+await visit('/en/lab/', { label: 'lab-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
+await visit('/labo/', { label: 'lab-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
+await visit('/histoire/', { label: 'story-fr', viewport: { width: 1440, height: 900 }, settle: 800 });
+await visit('/en/story/', { label: 'story-en', viewport: { width: 390, height: 844 }, settle: 800 });
+
+// the whole board: zoomed all the way out, to check the placement of every structure
+await visit('/', {
+  label: 'board-full',
+  viewport: { width: 1440, height: 900 },
+  settle: 2600,
+  before: async (page) => {
+    await page.mouse.move(720, 450);
+    for (let i = 0; i < 8; i++) {
+      await page.mouse.wheel(0, 600);
+      await page.waitForTimeout(80);
+    }
+    await page.waitForTimeout(1500);
+  },
+});
+
 await visit('/cv/', { label: 'cv-fr', viewport: { width: 1440, height: 900 }, settle: 800, fullPage: true });
 
 await visit('/', {
