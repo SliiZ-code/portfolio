@@ -1,0 +1,27 @@
+:80 {
+  encode zstd gzip
+
+  try_files {path} {path}/ {path}.html
+
+  file_server
+
+  # Long cache for immutable assets
+  @immutable {
+    path /_astro/*
+    path /fonts/*
+    path /media/*
+  }
+  header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+  # Short cache for HTML
+  @html {
+    path *.html
+  }
+  header @html Cache-Control "public, max-age=3600"
+
+  # Handle errors
+  handle_errors {
+    rewrite * /404.html
+    file_server
+  }
+}
