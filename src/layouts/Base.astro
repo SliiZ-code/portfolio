@@ -31,11 +31,19 @@ const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
     <link rel="alternate" hreflang="fr" href={abs(alternates.fr)} />
     <link rel="alternate" hreflang="en" href={abs(alternates.en)} />
     <link rel="alternate" hreflang="x-default" href={abs(alternates.fr)} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#e8e5dc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131210" media="(prefers-color-scheme: dark)" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={lang === 'fr' ? 'fr_FR' : 'en_US'} />
     <meta property="og:url" content={abs(Astro.url.pathname)} />
+    <meta property="og:image" content={abs('/og.png')} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script is:inline>
       try {
         var theme = localStorage.getItem('jpc-theme');
