@@ -108,6 +108,9 @@ await visit('/projets/jeu-de-la-vie/', {
   settle: 2800,
 });
 
+await visit('/projets/blink/', { label: 'project-blink-desktop', viewport: { width: 1440, height: 900 }, settle: 2800 });
+await visit('/projets/blink/', { label: 'project-blink-mobile', viewport: { width: 390, height: 844 }, settle: 2800 });
+
 await visit('/cv/', { label: 'cv-fr', viewport: { width: 1440, height: 900 }, settle: 800, fullPage: true });
 
 await visit('/', {
