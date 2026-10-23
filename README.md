@@ -155,17 +155,18 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
 
 **Caddyfile** configuration:
 - `encode zstd gzip` for compression
-- `try_files` for HTML routing (supports SPA-like fallbacks)
-- Long immutable cache (`/_astro/*`, `/fonts/*`, `/media/*`: 1 year)
-- Short cache for HTML (1 hour)
+- `try_files` for HTML routing (maps directory URLs to `.html` files)
+- Long immutable cache for `/_astro/*` (1 year)
+- Short revalidation for `/media/*` and `/fonts/*` (1 day, via ETag)
+- Default short cache for HTML (1 hour)
 - `handle_errors` serves `/404.html` with HTTP 404 status
 - Health check via `wget` to `http://127.0.0.1/`
 
 To build and test locally:
 ```bash
 docker build -t portfolio .
-docker run -d --name portfolio -p 127.0.0.1:8000:80 portfolio
-curl http://127.0.0.1:8000/
+docker run -d --name portfolio -p 127.0.0.1:18080:80 portfolio
+curl http://127.0.0.1:18080/
 docker stop portfolio && docker rm portfolio
 ```
 
@@ -190,10 +191,12 @@ The Playwright binary is at `/tmp/shot/node_modules/playwright/index.mjs`
 ### Video compression
 
 The project includes two dithered Game of Life videos:
-- `public/media/conway.mp4` (~1.9 MB)
-- `public/media/blink.mp4` (~321 KB)
+- `public/media/conway.mp4` (~938 KB, 62.93 sec)
+- `public/media/blink.mp4` (~321 KB, 46.55 sec)
 
-To re-encode them (e.g., after changes):
+Both are H.264 at reduced resolution (320px for conway, 480px for blink) and optimized bitrate.
+
+To re-encode from the original (stored on the `redesign` branch):
 1. Download ffmpeg ARM64 static build:
    ```bash
    mkdir /tmp/ffmpeg-dl
@@ -201,13 +204,17 @@ To re-encode them (e.g., after changes):
    curl -sL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz -o ffmpeg.tar.xz
    tar xf ffmpeg.tar.xz
    ```
-2. Re-encode:
+2. Extract the original and re-encode with two-pass ABR:
    ```bash
-   ffmpeg_bin="/tmp/ffmpeg-dl/ffmpeg-*/ffmpeg"
-   "$ffmpeg_bin" -i public/media/conway.mp4 \
-     -vf "scale=480:-2" \
-     -c:v libx264 -crf 30 -preset slow -pix_fmt yuv420p -an -movflags +faststart \
-     -f mp4 conway.tmp.mp4 && mv conway.tmp.mp4 public/media/conway.mp4
+   ffmpeg_bin="./ffmpeg-*/ffmpeg"
+   git show redesign:public/media/conway.mp4 > conway-orig.mp4
+   "$ffmpeg_bin" -y -i conway-orig.mp4 -vf "scale=320:-2,fps=15" -c:v libx264 -b:v 100k -pass 1 -an -f mp4 /dev/null
+   "$ffmpeg_bin" -y -i conway-orig.mp4 -vf "scale=320:-2,fps=15" -c:v libx264 -b:v 100k -pass 2 -an -movflags +faststart -f mp4 conway.tmp.mp4
+   ```
+3. Verify duration and move:
+   ```bash
+   ffmpeg -i conway.tmp.mp4 2>&1 | grep Duration
+   mv conway.tmp.mp4 <path>/public/media/conway.mp4
    ```
 
-The goal is < 1 MB per video with preserved duration and quality.
+The Game of Life simulation steps slowly, so 15 fps preserves the visual effect while reducing file size.
