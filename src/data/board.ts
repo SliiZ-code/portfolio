@@ -21,6 +21,8 @@ export interface BoardOverlay {
   x: number;
   y: number;
   pad: number;
+  /** Other language slugs that resolve to this same project. */
+  aliases?: string[];
   /** Board-only abbreviation; the resume name stays authoritative. */
   text?: string;
   label?: { fr: string; en: string };
@@ -38,6 +40,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     x: 100,
     y: 62,
     pad: 3,
+    aliases: ['game-of-life'],
     label: { fr: 'C++ · projet CESI', en: 'C++ · CESI project' },
     note: { fr: 'un pulsar. forcément.', en: 'a pulsar. obviously.', r: 0.04 },
     media: { video: '/media/conway.mp4' },
@@ -97,15 +100,34 @@ export interface BoardProject extends Project {
   media?: { video?: string; image?: string };
 }
 
+const OVERLAY_KEYS = new Map<string, string>();
+for (const [key, overlay] of Object.entries(BOARD_OVERLAY)) {
+  OVERLAY_KEYS.set(key, key);
+  for (const alias of overlay.aliases ?? []) OVERLAY_KEYS.set(alias, key);
+}
+
+/** The overlay key a project resolves to, whether it uses the key itself or an alias. */
+export const overlayKeyFor = (projectOrSlug: Project | string): string | undefined =>
+  OVERLAY_KEYS.get(typeof projectOrSlug === 'string' ? projectOrSlug : projectOrSlug.slug);
+
+export const overlayFor = (projectOrSlug: Project | string): BoardOverlay | undefined => {
+  const key = overlayKeyFor(projectOrSlug);
+  return key ? BOARD_OVERLAY[key] : undefined;
+};
+
 const hash = (value: string): number => {
   let h = 7;
   for (const char of value) h = (h * 31 + char.charCodeAt(0)) >>> 0;
   return h;
 };
 
-const wrap = (value: string, max = 14): string => {
+const MAX_TEXT_WIDTH = 14;
+
+const wrap = (value: string, max = MAX_TEXT_WIDTH): string => {
   const lines: string[] = [];
-  for (const word of value.trim().split(/\s+/)) {
+  for (const raw of value.trim().split(/\s+/)) {
+    if (!raw) continue;
+    const word = raw.slice(0, max);
     const last = lines.at(-1);
     if (last && `${last} ${word}`.length <= max) lines[lines.length - 1] = `${last} ${word}`;
     else lines.push(word);
@@ -113,22 +135,31 @@ const wrap = (value: string, max = 14): string => {
   return lines.join('\n');
 };
 
-export const boardText = (project: Project): string =>
-  BOARD_OVERLAY[project.slug]?.text ?? wrap(project.name);
+export const boardText = (project: Project): string => overlayFor(project)?.text ?? wrap(project.name);
 
-export const boardDisplayName = (project: Project): string => boardText(project).replace(/\n/g, ' ');
-
-export const boardLabel = (project: Project, lang: Lang): string => {
-  const overlay = BOARD_OVERLAY[project.slug];
-  return overlay?.label?.[lang] ?? project.period;
-};
+export const boardLabel = (project: Project, lang: Lang): string => overlayFor(project)?.label?.[lang] ?? project.period;
 
 export const boardNote = (project: Project, lang: Lang): BoardNote | undefined => {
-  const note = BOARD_OVERLAY[project.slug]?.note;
+  const note = overlayFor(project)?.note;
   return note ? { text: note[lang], r: note.r } : undefined;
 };
 
-export const boardMedia = (project: Project): BoardOverlay['media'] => BOARD_OVERLAY[project.slug]?.media;
+export const boardMedia = (project: Project): BoardOverlay['media'] => overlayFor(project)?.media;
+
+/**
+ * FR and EN resumes are separate documents. Prefer the project whose overlay key
+ * matches, then fall back to the same index when both lists have the same size.
+ */
+export function findAlternateProject(project: Project, projects: Project[], other: Resume): Project | undefined {
+  const key = overlayKeyFor(project);
+  if (key) {
+    const matched = other.projects.find((candidate) => overlayKeyFor(candidate) === key);
+    if (matched) return matched;
+  }
+  const index = projects.findIndex((candidate) => candidate.slug === project.slug);
+  if (index !== -1 && projects.length === other.projects.length) return other.projects[index];
+  return undefined;
+}
 
 interface Size {
   w: number;
@@ -156,7 +187,7 @@ const overlaps = (a: Box, b: Box, margin = 6): boolean =>
  * Finds a free spot on rings around the name. Returns the centre/top anchor.
  * Pure and deterministic so a project outside the overlay always lands somewhere sane.
  */
-export function autoPlace(size: Size, occupied: Box[], index = 0): { x: number; y: number } {
+export function autoPlace(size: Size, occupied: Box[], index = 0, keepClear: Box[] = []): { x: number; y: number } {
   const cx = 210;
   const cy = 140;
   const golden = 2.399963;
@@ -182,7 +213,30 @@ export function autoPlace(size: Size, occupied: Box[], index = 0): { x: number; 
       if (!occupied.some((other) => overlaps(box, other))) return { x: Math.round(x + size.w / 2), y };
     }
   }
-  return { x: cx, y: cy };
+  return crowdedSpot(size, occupied, keepClear, index);
+}
+
+const overlapArea = (a: Box, b: Box): number =>
+  Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y, b.y));
+
+/** Board is full: take the least-overlapping spot on the outermost ring, clamped inside the world. */
+function crowdedSpot(size: Size, occupied: Box[], keepClear: Box[], index: number): { x: number; y: number } {
+  const golden = 2.399963;
+  const radiusX = WORLD.w / 2 - size.w / 2 - 4;
+  const radiusY = WORLD.h / 2 - size.h / 2 - 4;
+  let best = { x: 0, y: 0, cost: Infinity };
+  for (let step = 0; step < 48; step++) {
+    const angle = index * golden + step * (Math.PI * 2 / 48);
+    const centerX = Math.min(WORLD.w - 4 - size.w / 2, Math.max(4 + size.w / 2, WORLD.w / 2 + Math.cos(angle) * radiusX));
+    const top = Math.min(WORLD.h - 4 - size.h, Math.max(4, WORLD.h / 2 + Math.sin(angle) * radiusY - size.h / 2));
+    const box = { x: centerX - size.w / 2, y: top, x2: centerX + size.w / 2, y2: top + size.h };
+    const cost =
+      occupied.reduce((sum, other) => sum + overlapArea(box, other), 0) +
+      keepClear.reduce((sum, other) => sum + overlapArea(box, other) * 1000, 0);
+    if (cost < best.cost) best = { x: Math.round(centerX), y: Math.round(top), cost };
+  }
+  console.warn(`[board] no free spot for a ${size.w}x${size.h} project; placed on the outer ring and it may overlap`);
+  return { x: best.x, y: best.y };
 }
 
 /** Generous fixed boxes for the hand-placed entities, used only by auto-placement. */
@@ -193,9 +247,7 @@ const FIXED_BOXES: Box[] = [
 ];
 
 const boxFor = (project: BoardProject): Box => {
-  const overlay = BOARD_OVERLAY[project.slug];
-  const text = project.text;
-  const size = estimateBoxSize(text, project.emblem, overlay?.pad ?? 2);
+  const size = estimateBoxSize(project.text, project.emblem, project.pad);
   return {
     x: project.x - size.w / 2,
     y: project.y - 2,
@@ -205,7 +257,7 @@ const boxFor = (project: BoardProject): Box => {
 };
 
 export function getBoardProjects(resume: Resume): BoardProject[] {
-  const known = resume.projects.map((project) => ({ project, overlay: BOARD_OVERLAY[project.slug] }));
+  const known = resume.projects.map((project) => ({ project, overlay: overlayFor(project) }));
   const occupied = FIXED_BOXES.map((box) => ({ ...box }));
   const placed = new Map<string, BoardProject>();
 
@@ -213,8 +265,8 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
     if (!overlay) continue;
     const boardProject: BoardProject = {
       ...project,
-      text: overlay.text ?? project.name,
-      displayName: (overlay.text ?? project.name).replace(/\n/g, ' '),
+      text: boardText(project),
+      displayName: boardText(project).replace(/\n/g, ' '),
       emblem: overlay.emblem,
       x: overlay.x,
       y: overlay.y,
@@ -230,10 +282,10 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
   let autoIndex = 0;
   return known.map(({ project, overlay }) => {
     if (overlay) return placed.get(project.slug)!;
-    const text = wrap(project.name);
+    const text = boardText(project);
     const emblem = OSCILLATORS[hash(project.slug) % OSCILLATORS.length];
     const size = estimateBoxSize(text, emblem);
-    const spot = autoPlace(size, occupied, autoIndex++);
+    const spot = autoPlace(size, occupied, autoIndex++, FIXED_BOXES.slice(0, 2));
     const boardProject: BoardProject = {
       ...project,
       text,

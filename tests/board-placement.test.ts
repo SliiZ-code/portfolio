@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { autoPlace, BOARD_OVERLAY, estimateBoxSize, getBoardProjects } from '../src/data/board';
+import { describe, expect, it, vi } from 'vitest';
+import { autoPlace, BOARD_OVERLAY, estimateBoxSize, getBoardProjects, WORLD } from '../src/data/board';
 import { getResume, type Project, type Resume } from '../src/lib/resume';
 import { OSCILLATORS } from '../src/scripts/board/patterns';
 
@@ -88,5 +88,46 @@ describe('auto placement', () => {
         expect(overlap(boxes[i], boxes[j]), `${projects[i].slug} / ${projects[j].slug}`).toBe(false);
       }
     }
+  });
+
+  it('never overlaps the name or CV boxes with many long-named projects', () => {
+    const base = getResume('fr');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const extras: Project[] = Array.from({ length: 10 }, (_, index) => ({
+      id: `long-${index}`,
+      name: `Extraordinarily Long Project Name Number ${index} With Many Words`,
+      slug: `long-${index}`,
+      period: '',
+      description: '',
+      website: { url: '', label: '' },
+    }));
+    const projects = getBoardProjects({ ...base, projects: [...base.projects, ...extras] });
+    const fixed = [
+      { x: 104, y: 114, x2: 316, y2: 160 },
+      { x: 196, y: 158, x2: 226, y2: 180 },
+    ];
+    for (const project of projects.filter((entry) => entry.slug.startsWith('long-'))) {
+      const size = estimateBoxSize(project.text, project.emblem, project.pad);
+      const box = { x: project.x - size.w / 2, y: project.y - 2, x2: project.x + size.w / 2, y2: project.y - 2 + size.h };
+      for (const other of fixed) expect(overlap(box, other), project.slug).toBe(false);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x2).toBeLessThanOrEqual(WORLD.w);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y2).toBeLessThanOrEqual(WORLD.h);
+    }
+    warn.mockRestore();
+  });
+
+  it('autoPlace never returns the board centre on overflow and warns', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const size = { w: 60, h: 40 };
+    const spot = autoPlace(size, [{ x: 0, y: 0, x2: WORLD.w, y2: WORLD.h }], 3);
+    expect(spot).not.toEqual({ x: 210, y: 140 });
+    expect(spot.x - size.w / 2).toBeGreaterThanOrEqual(0);
+    expect(spot.x + size.w / 2).toBeLessThanOrEqual(WORLD.w);
+    expect(spot.y).toBeGreaterThanOrEqual(0);
+    expect(spot.y + size.h).toBeLessThanOrEqual(WORLD.h);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
