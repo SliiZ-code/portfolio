@@ -1,26 +1,35 @@
 :80 {
+  root * /srv
+
   encode zstd gzip
 
   try_files {path} {path}/ {path}.html
 
+  # Long immutable cache for content-hashed Astro assets only
+  route /_astro/* {
+    header Cache-Control "public, max-age=31536000, immutable"
+    file_server
+  }
+
+  # Fixed-name assets: revalidate daily (ETag still works)
+  route /media/* {
+    header Cache-Control "public, max-age=86400"
+    file_server
+  }
+
+  route /fonts/* {
+    header Cache-Control "public, max-age=86400"
+    file_server
+  }
+
+  # Default: short cache for HTML and everything else
+  header Cache-Control "public, max-age=3600"
   file_server
 
-  # Long cache for immutable assets
-  @immutable {
-    path /_astro/*
-    path /fonts/*
-    path /media/*
-  }
-  header @immutable Cache-Control "public, max-age=31536000, immutable"
-
-  # Short cache for HTML
-  @html {
-    path *.html
-  }
-  header @html Cache-Control "public, max-age=3600"
-
-  # Handle errors
+  # Error handling: override cache for error responses
   handle_errors {
+    header Cache-Control "no-cache"
+    encode zstd gzip
     rewrite * /404.html
     file_server
   }
