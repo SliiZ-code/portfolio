@@ -1,0 +1,41 @@
+---
+import Base from '../layouts/Base.astro';
+import DocActions from './DocActions.astro';
+import { getBoardPages, pagePath } from '../data/board';
+import { strings } from '../i18n';
+import { getResume, type Lang } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const resume = getResume(lang);
+const t = strings(lang);
+const boardHref = lang === 'fr' ? '/' : '/en/';
+const page = getBoardPages(lang).find((entry) => entry.id === 'story')!;
+const title = `${t.story.title} — ${resume.name}`;
+---
+
+<Base lang={lang} title={title} description={t.story.description} alternates={{ fr: pagePath('story', 'fr'), en: pagePath('story', 'en') }} zoomable>
+  <article id="page" class="open">
+    <header class="doc-bar">
+      <a class="back" href={`${boardHref}?from=story`} data-back-board={boardHref} data-slug="story">{t.story.back}</a>
+      <DocActions lang={lang} t={t} frHref={pagePath('story', 'fr')} enHref={pagePath('story', 'en')} />
+    </header>
+
+    <div class="page-inner solo">
+      <div class="page-text">
+        <span class="stamp">{t.story.stamp}</span>
+        <h1>{t.story.title}</h1>
+        <p>{t.story.body}</p>
+        <span class="note">{page.note.text}</span>
+      </div>
+    </div>
+  </article>
+
+  <script>
+    import { initBackLink } from '../scripts/back';
+    initBackLink();
+  </script>
+</Base>
