@@ -34,7 +34,7 @@ const description = htmlToText(project.description) || meta || resume.headline;
 <Base lang={lang} title={title} description={description} alternates={{ fr: frAlt, en: enAlt }} zoomable>
   <article id="page" class="open">
     <header class="doc-bar">
-      <a class="back" href={`${boardHref}?from=${project.slug}`} data-back-board={boardHref}>{t.project.back}</a>
+      <a class="back" href={`${boardHref}?from=${project.slug}`} data-back-board={boardHref} data-slug={project.slug}>{t.project.back}</a>
       <DocActions lang={lang} t={t} frHref={frAlt} enHref={enAlt} />
     </header>
 
@@ -77,6 +77,11 @@ const description = htmlToText(project.description) || meta || resume.headline;
         const referrer = new URL(document.referrer);
         if (referrer.origin === location.origin && referrer.pathname === back.dataset.backBoard) {
           event.preventDefault();
+          try {
+            sessionStorage.setItem('jpc-from', back.dataset.slug ?? '');
+          } catch {
+            // private mode: Back lands on the normal board view
+          }
           history.back();
         }
       } catch {

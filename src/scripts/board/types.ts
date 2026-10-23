@@ -55,8 +55,8 @@ export interface BoardConfig {
     x: number;
     y: number;
     gun: boolean;
-    label: string;
-    note: NoteConfig;
+    label?: string;
+    note?: NoteConfig;
     url: string;
   };
   projects: BoardProjectConfig[];

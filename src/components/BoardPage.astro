@@ -37,8 +37,8 @@ const boardData = {
     x: 150,
     y: 22,
     gun: true,
-    label: t.board.contactLabel,
-    note: { t: t.board.contactNote, r: 0.03 },
+    label: contactHref ? t.board.contactLabel : undefined,
+    note: contactHref ? { t: t.board.contactNote, r: 0.03 } : undefined,
     url: contactHref,
   },
   projects: projects.map((project) => ({

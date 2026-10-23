@@ -191,30 +191,65 @@ export async function initBoard(): Promise<void> {
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   };
 
-  const from = new URLSearchParams(location.search).get('from');
-  if (from) {
-    const target = entities.find((entity) => entity.id === from && !['name', 'cv', 'contact'].includes(entity.id));
-    if (target) {
-      intro = 0;
-      introStart = performance.now();
-      if (reduced) {
-        // no zoom-out for reduced motion: land on the home view directly
-        Object.assign(cam, home);
-        Object.assign(camT, home);
-        cleanUrl();
-      } else {
-        const cx = (target.box.x + target.box.x2) / 2;
-        const cy = (target.box.y + target.box.y2) / 2;
-        cam.x = cx;
-        cam.y = cy;
-        cam.z = 70;
-        camT.x = home.x;
-        camT.y = home.y;
-        camT.z = home.z;
-        dive = { entity: target, t0: performance.now(), from: { ...cam }, to: { ...home }, dir: -1 };
+  const FROM_KEY = 'jpc-from';
+  const storage = {
+    get: (): string | null => {
+      try {
+        return sessionStorage.getItem(FROM_KEY);
+      } catch {
+        return null;
       }
+    },
+    set: (value: string) => {
+      try {
+        sessionStorage.setItem(FROM_KEY, value);
+      } catch {
+        // private mode: Back just lands on the normal board view
+      }
+    },
+    clear: () => {
+      try {
+        sessionStorage.removeItem(FROM_KEY);
+      } catch {
+        // ignore
+      }
+    },
+  };
+
+  const replayZoomOut = (slug: string): boolean => {
+    const target = entities.find((entity) => entity.id === slug && !['name', 'cv', 'contact'].includes(entity.id));
+    if (!target) return false;
+    intro = 0;
+    introStart = performance.now();
+    if (reduced) {
+      // no zoom-out for reduced motion: land on the home view directly
+      Object.assign(cam, home);
+      Object.assign(camT, home);
+      dive = null;
+      cleanUrl();
+    } else {
+      cam.x = (target.box.x + target.box.x2) / 2;
+      cam.y = (target.box.y + target.box.y2) / 2;
+      cam.z = 70;
+      Object.assign(camT, home);
+      dive = { entity: target, t0: performance.now(), from: { ...cam }, to: { ...home }, dir: -1 };
     }
-  }
+    return true;
+  };
+
+  // `?from=` comes from the back link; a history Back (reload without bfcache) only has the stored flag
+  const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const stored = storage.get();
+  const from = new URLSearchParams(location.search).get('from') ?? (navigation?.type === 'back_forward' ? stored : null);
+  storage.clear();
+  if (from) replayZoomOut(from);
+
+  addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    const slug = storage.get();
+    storage.clear();
+    if (slug) replayZoomOut(slug);
+  });
 
   const resize = () => {
     const dpr = Math.min(2, devicePixelRatio || 1);
@@ -262,6 +297,7 @@ export async function initBoard(): Promise<void> {
     }
     const cx = (entity.box.x + entity.box.x2) / 2;
     const cy = (entity.box.y + entity.box.y2) / 2;
+    storage.set(entity.id);
     dive = { entity, t0: performance.now(), from: { ...cam }, to: { x: cx, y: cy, z: 70 }, dir: 1 };
   };
 
@@ -273,6 +309,7 @@ export async function initBoard(): Promise<void> {
     clamp: (value) => clampCam(value, viewport, WORLD),
     toWorld: (sx, sy) => toWorld(cam, viewport, sx, sy),
     entityAt,
+    insideEntity: (wx, wy) => inAnyBox(wx, wy, 0),
     paint,
     dropGlider,
     activate,

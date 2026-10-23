@@ -8,6 +8,7 @@ export interface InputDeps {
   clamp: (cam: Cam) => void;
   toWorld: (sx: number, sy: number) => [number, number];
   entityAt: (wx: number, wy: number) => Entity | null;
+  insideEntity: (wx: number, wy: number) => boolean;
   paint: (wx: number, wy: number) => void;
   dropGlider: (x: number, y: number) => void;
   activate: (entity: Entity) => void;
@@ -101,7 +102,7 @@ export function bindInput(deps: InputDeps): void {
       const [wx, wy] = deps.toWorld(event.clientX, event.clientY);
       const hit = deps.entityAt(wx, wy);
       if (hit && hit.id !== 'name') deps.activate(hit);
-      else if (!hit) deps.dropGlider(Math.floor(wx), Math.floor(wy));
+      else if (!hit && !deps.insideEntity(wx, wy)) deps.dropGlider(Math.floor(wx), Math.floor(wy));
     }
     drag = null;
   };
