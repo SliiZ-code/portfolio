@@ -143,5 +143,71 @@ not a project dependency.
 
 ## Deployment
 
-`npm run build` produces a static `dist/`. Any static host works. Set `site.url`
-before deploying if canonical/`hreflang` URLs must be absolute.
+### Docker and Coolify
+
+`npm run build` produces a static `dist/` optimized for the included Docker setup.
+The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
+
+**Docker image** (`Dockerfile`):
+- Multi-stage build: Node.js 24 builder → static site in Caddy 2 (Alpine)
+- No build-time secrets required; all data is committed JSON
+- Runs on port 80
+
+**Caddyfile** configuration:
+- `encode zstd gzip` for compression
+- `try_files` for HTML routing (supports SPA-like fallbacks)
+- Long immutable cache (`/_astro/*`, `/fonts/*`, `/media/*`: 1 year)
+- Short cache for HTML (1 hour)
+- `handle_errors` serves `/404.html` with HTTP 404 status
+- Health check via `wget` to `http://127.0.0.1/`
+
+To build and test locally:
+```bash
+docker build -t portfolio .
+docker run -d --name portfolio -p 127.0.0.1:8000:80 portfolio
+curl http://127.0.0.1:8000/
+docker stop portfolio && docker rm portfolio
+```
+
+### OG image regeneration
+
+To regenerate `public/og.png` (the social share card):
+```bash
+LD_LIBRARY_PATH=/tmp/shot/root/usr/lib/aarch64-linux-gnu node scripts/og.mjs
+```
+
+This script:
+1. Runs `npm run build`
+2. Starts a preview server on port 4411
+3. Opens the home page in headless Chromium at 1200×630
+4. Waits for the intro animation to finish (~4 seconds)
+5. Hides the HUD/minimap
+6. Screenshots the result to `public/og.png`
+
+The Playwright binary is at `/tmp/shot/node_modules/playwright/index.mjs`
+(pre-built, not a project dependency).
+
+### Video compression
+
+The project includes two dithered Game of Life videos:
+- `public/media/conway.mp4` (~1.9 MB)
+- `public/media/blink.mp4` (~321 KB)
+
+To re-encode them (e.g., after changes):
+1. Download ffmpeg ARM64 static build:
+   ```bash
+   mkdir /tmp/ffmpeg-dl
+   cd /tmp/ffmpeg-dl
+   curl -sL https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz -o ffmpeg.tar.xz
+   tar xf ffmpeg.tar.xz
+   ```
+2. Re-encode:
+   ```bash
+   ffmpeg_bin="/tmp/ffmpeg-dl/ffmpeg-*/ffmpeg"
+   "$ffmpeg_bin" -i public/media/conway.mp4 \
+     -vf "scale=480:-2" \
+     -c:v libx264 -crf 30 -preset slow -pix_fmt yuv420p -an -movflags +faststart \
+     -f mp4 conway.tmp.mp4 && mv conway.tmp.mp4 public/media/conway.mp4
+   ```
+
+The goal is < 1 MB per video with preserved duration and quality.
