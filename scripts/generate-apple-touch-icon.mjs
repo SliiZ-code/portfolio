@@ -11,8 +11,8 @@ const html = `
 <head>
   <meta charset="utf-8">
   <style>
-    body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; width: 180px; height: 180px; background: #e8e5dc; }
-    svg { width: 180px; height: 180px; }
+    body { margin: 0; padding: 20px; display: flex; align-items: center; justify-content: center; width: 140px; height: 140px; background: #e8e5dc; }
+    svg { width: 140px; height: 140px; }
     .cell { fill: #1b1a17; }
   </style>
 </head>
