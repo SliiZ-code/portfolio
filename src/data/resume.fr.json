@@ -1,0 +1,247 @@
+{
+  "basics": {
+    "name": "Julien Petit-Colboc",
+    "headline": "Étudiant en deuxième année de cycle préparatoire · CESI Rouen",
+    "email": "",
+    "location": "Rouen, France",
+    "website": {
+      "url": "",
+      "label": ""
+    }
+  },
+  "summary": {
+    "title": "Profil",
+    "content": "<p>Étudiant en informatique à CESI Rouen. C++, Python, Flutter, Arduino.</p>"
+  },
+  "sections": {
+    "profiles": {
+      "title": "Réseaux",
+      "hidden": false,
+      "items": [
+        {
+          "id": "profile-github",
+          "hidden": false,
+          "network": "GitHub",
+          "username": "SliiZ-code",
+          "website": {
+            "url": "https://github.com/SliiZ-code",
+            "label": "",
+            "inlineLink": false
+          }
+        },
+        {
+          "id": "profile-linkedin",
+          "hidden": false,
+          "network": "LinkedIn",
+          "username": "julien-petit-colboc",
+          "website": {
+            "url": "https://linkedin.com/in/julien-petit-colboc",
+            "label": "",
+            "inlineLink": false
+          }
+        }
+      ]
+    },
+    "experience": {
+      "title": "Expérience",
+      "hidden": false,
+      "items": [
+        {
+          "id": "exp-placeholder",
+          "hidden": false,
+          "company": "[placeholder] Entreprise",
+          "position": "[placeholder] Stage — développement",
+          "location": "[placeholder] Rouen",
+          "period": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Description de la mission à remplacer par les données RxResume.</p>",
+          "roles": []
+        }
+      ]
+    },
+    "education": {
+      "title": "Formation",
+      "hidden": false,
+      "items": [
+        {
+          "id": "edu-cesi",
+          "hidden": false,
+          "school": "CESI Rouen",
+          "degree": "Cycle préparatoire",
+          "area": "Informatique",
+          "grade": "",
+          "location": "Rouen, France",
+          "period": "[placeholder] 2024 — aujourd’hui",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Deuxième année du cycle préparatoire à CESI Rouen.</p>"
+        }
+      ]
+    },
+    "projects": {
+      "title": "Projets",
+      "hidden": false,
+      "items": [
+        {
+          "id": "project-conway",
+          "hidden": false,
+          "name": "Jeu de la vie",
+          "period": "[placeholder] 2024",
+          "website": {
+            "url": "https://github.com/Lucacist/jeu-de-Conway-projet",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Projet scolaire en C++ avec interface graphique : grille modifiable en temps réel, ajout d’obstacles, vitesse modifiable, import/export de grilles.</p>"
+        },
+        {
+          "id": "project-blink",
+          "hidden": false,
+          "name": "Blink",
+          "period": "[placeholder] 2025 — en cours",
+          "website": {
+            "url": "https://github.com/SliiZ-code/Blink",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Création automatisée asynchrone de vidéos courtes verticales en Python : OpenAI, Stable Diffusion, MoviePy, PIL. En développement.</p>"
+        },
+        {
+          "id": "project-thrive",
+          "hidden": false,
+          "name": "Thrive",
+          "period": "[placeholder] 2025 — en cours",
+          "website": {
+            "url": "https://github.com/SliiZ-code/Thrive",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Application multiplateforme de liste de tâches réalisée avec Flutter. En développement.</p>"
+        },
+        {
+          "id": "project-www",
+          "hidden": false,
+          "name": "Worldwide Weather Watcher",
+          "period": "[placeholder] 2024",
+          "website": {
+            "url": "https://github.com/enzogilles/Projet-World-wide-weather-watcher",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Projet scolaire Arduino : quatre modes d’utilisation, enregistrement sur carte SD, capteurs de température et de pression, horloge RTC, gestion d’interruptions.</p>"
+        }
+      ]
+    },
+    "skills": {
+      "title": "Compétences",
+      "hidden": false,
+      "items": [
+        {
+          "id": "skill-cpp",
+          "hidden": false,
+          "name": "C++",
+          "proficiency": "[placeholder] avancé",
+          "level": 4,
+          "keywords": [
+            "Jeu de la vie"
+          ]
+        },
+        {
+          "id": "skill-python",
+          "hidden": false,
+          "name": "Python",
+          "proficiency": "[placeholder] avancé",
+          "level": 4,
+          "keywords": [
+            "Blink"
+          ]
+        },
+        {
+          "id": "skill-flutter",
+          "hidden": false,
+          "name": "Flutter",
+          "proficiency": "[placeholder] intermédiaire",
+          "level": 3,
+          "keywords": [
+            "Thrive"
+          ]
+        },
+        {
+          "id": "skill-arduino",
+          "hidden": false,
+          "name": "Arduino",
+          "proficiency": "[placeholder] intermédiaire",
+          "level": 3,
+          "keywords": [
+            "Worldwide Weather Watcher"
+          ]
+        }
+      ]
+    },
+    "languages": {
+      "title": "Langues",
+      "hidden": false,
+      "items": [
+        {
+          "id": "lang-fr",
+          "hidden": false,
+          "language": "Français",
+          "fluency": "[placeholder] langue maternelle",
+          "level": 5
+        },
+        {
+          "id": "lang-en",
+          "hidden": false,
+          "language": "Anglais",
+          "fluency": "[placeholder] intermédiaire",
+          "level": 3
+        }
+      ]
+    },
+    "certifications": {
+      "title": "Certifications",
+      "hidden": false,
+      "items": [
+        {
+          "id": "cert-placeholder",
+          "hidden": false,
+          "title": "[placeholder] Certification",
+          "issuer": "[placeholder] Organisme",
+          "date": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Détail de la certification à remplacer par les données RxResume.</p>"
+        }
+      ]
+    },
+    "awards": {
+      "title": "Distinctions",
+      "hidden": false,
+      "items": [
+        {
+          "id": "award-placeholder",
+          "hidden": false,
+          "title": "[placeholder] Prix",
+          "awarder": "[placeholder] CESI",
+          "date": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Détail de la distinction à remplacer par les données RxResume.</p>"
+        }
+      ]
+    }
+  }
+}

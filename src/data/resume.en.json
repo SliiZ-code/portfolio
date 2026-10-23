@@ -1,0 +1,247 @@
+{
+  "basics": {
+    "name": "Julien Petit-Colboc",
+    "headline": "Second-year student in the preparatory cycle · CESI Rouen",
+    "email": "",
+    "location": "Rouen, France",
+    "website": {
+      "url": "",
+      "label": ""
+    }
+  },
+  "summary": {
+    "title": "Profile",
+    "content": "<p>Computer science student at CESI Rouen. C++, Python, Flutter, Arduino.</p>"
+  },
+  "sections": {
+    "profiles": {
+      "title": "Elsewhere",
+      "hidden": false,
+      "items": [
+        {
+          "id": "profile-github",
+          "hidden": false,
+          "network": "GitHub",
+          "username": "SliiZ-code",
+          "website": {
+            "url": "https://github.com/SliiZ-code",
+            "label": "",
+            "inlineLink": false
+          }
+        },
+        {
+          "id": "profile-linkedin",
+          "hidden": false,
+          "network": "LinkedIn",
+          "username": "julien-petit-colboc",
+          "website": {
+            "url": "https://linkedin.com/in/julien-petit-colboc",
+            "label": "",
+            "inlineLink": false
+          }
+        }
+      ]
+    },
+    "experience": {
+      "title": "Experience",
+      "hidden": false,
+      "items": [
+        {
+          "id": "exp-placeholder",
+          "hidden": false,
+          "company": "[placeholder] Company",
+          "position": "[placeholder] Internship — development",
+          "location": "[placeholder] Rouen",
+          "period": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Mission description, to be replaced by RxResume data.</p>",
+          "roles": []
+        }
+      ]
+    },
+    "education": {
+      "title": "Education",
+      "hidden": false,
+      "items": [
+        {
+          "id": "edu-cesi",
+          "hidden": false,
+          "school": "CESI Rouen",
+          "degree": "Preparatory cycle",
+          "area": "Computer science",
+          "grade": "",
+          "location": "Rouen, France",
+          "period": "[placeholder] 2024 — present",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Second year of the preparatory cycle at CESI Rouen.</p>"
+        }
+      ]
+    },
+    "projects": {
+      "title": "Projects",
+      "hidden": false,
+      "items": [
+        {
+          "id": "project-conway",
+          "hidden": false,
+          "name": "Jeu de la vie",
+          "period": "[placeholder] 2024",
+          "website": {
+            "url": "https://github.com/Lucacist/jeu-de-Conway-projet",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>School project in C++ with a graphical interface: grid editable in real time, obstacles, adjustable speed, grid import/export.</p>"
+        },
+        {
+          "id": "project-blink",
+          "hidden": false,
+          "name": "Blink",
+          "period": "[placeholder] 2025 — ongoing",
+          "website": {
+            "url": "https://github.com/SliiZ-code/Blink",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Asynchronous automated creation of short vertical videos in Python: OpenAI, Stable Diffusion, MoviePy, PIL. In development.</p>"
+        },
+        {
+          "id": "project-thrive",
+          "hidden": false,
+          "name": "Thrive",
+          "period": "[placeholder] 2025 — ongoing",
+          "website": {
+            "url": "https://github.com/SliiZ-code/Thrive",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Cross-platform task list app built with Flutter. In development.</p>"
+        },
+        {
+          "id": "project-www",
+          "hidden": false,
+          "name": "Worldwide Weather Watcher",
+          "period": "[placeholder] 2024",
+          "website": {
+            "url": "https://github.com/enzogilles/Projet-World-wide-weather-watcher",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>School Arduino project: four operating modes, SD card logging, temperature and pressure sensors, RTC clock, interrupt handling.</p>"
+        }
+      ]
+    },
+    "skills": {
+      "title": "Skills",
+      "hidden": false,
+      "items": [
+        {
+          "id": "skill-cpp",
+          "hidden": false,
+          "name": "C++",
+          "proficiency": "[placeholder] advanced",
+          "level": 4,
+          "keywords": [
+            "Jeu de la vie"
+          ]
+        },
+        {
+          "id": "skill-python",
+          "hidden": false,
+          "name": "Python",
+          "proficiency": "[placeholder] advanced",
+          "level": 4,
+          "keywords": [
+            "Blink"
+          ]
+        },
+        {
+          "id": "skill-flutter",
+          "hidden": false,
+          "name": "Flutter",
+          "proficiency": "[placeholder] intermediate",
+          "level": 3,
+          "keywords": [
+            "Thrive"
+          ]
+        },
+        {
+          "id": "skill-arduino",
+          "hidden": false,
+          "name": "Arduino",
+          "proficiency": "[placeholder] intermediate",
+          "level": 3,
+          "keywords": [
+            "Worldwide Weather Watcher"
+          ]
+        }
+      ]
+    },
+    "languages": {
+      "title": "Languages",
+      "hidden": false,
+      "items": [
+        {
+          "id": "lang-fr",
+          "hidden": false,
+          "language": "French",
+          "fluency": "[placeholder] native",
+          "level": 5
+        },
+        {
+          "id": "lang-en",
+          "hidden": false,
+          "language": "English",
+          "fluency": "[placeholder] intermediate",
+          "level": 3
+        }
+      ]
+    },
+    "certifications": {
+      "title": "Certifications",
+      "hidden": false,
+      "items": [
+        {
+          "id": "cert-placeholder",
+          "hidden": false,
+          "title": "[placeholder] Certification",
+          "issuer": "[placeholder] Organisation",
+          "date": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Certification details, to be replaced by RxResume data.</p>"
+        }
+      ]
+    },
+    "awards": {
+      "title": "Awards",
+      "hidden": false,
+      "items": [
+        {
+          "id": "award-placeholder",
+          "hidden": false,
+          "title": "[placeholder] Award",
+          "awarder": "[placeholder] CESI",
+          "date": "[placeholder] 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>[placeholder] Award details, to be replaced by RxResume data.</p>"
+        }
+      ]
+    }
+  }
+}
