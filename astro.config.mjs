@@ -1,9 +1,9 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { site } from './src/data/site.ts';
 
-// No integrations: the board is vanilla canvas, the rest is static HTML.
 export default defineConfig({
-  site: 'https://sliiz.com',
+  site: site.url,
   output: 'static',
   compressHTML: true,
   build: { inlineStylesheets: 'auto' },
