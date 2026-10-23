@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="paper">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Julien Petit-Colboc — sketch « Life »</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Shantell+Sans:wght@400;500&display=swap">
+    <style>
+        @font-face {
+            font-family: "Geist Pixel";
+            src: url("fonts/GeistPixel-Square.woff2") format("woff2");
+        }
+
+        @font-face {
+            font-family: "Geist Pixel Grid";
+            src: url("fonts/GeistPixel-Grid.woff2") format("woff2");
+        }
+
+        [data-theme="paper"] {
+            --paper: #e8e5dc;
+            --ink: #1b1a17;
+            --mute: #75716a;
+            --line: #1b1a1724;
+            --accent: #2433ff;
+        }
+
+        [data-theme="night"] {
+            --paper: #131210;
+            --ink: #e8e5dc;
+            --mute: #8a857c;
+            --line: #e8e5dc1f;
+            --accent: #ff8a3d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        html {
+            background: var(--paper);
+            color: var(--ink);
+            transition: background .4s, color .4s;
+        }
+
+        body {
+            font: 15px/1.5 "Geist Mono", monospace;
+        }
+
+        ::selection {
+            background: var(--accent);
+            color: var(--paper);
+        }
+
+        a {
+            color: inherit;
+        }
+
+        #bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ---- top bar ---- */
+        header {
+            position: fixed;
+            inset: 0 0 auto;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        header nav {
+            display: flex;
+            gap: 22px;
+        }
+
+        header a {
+            text-decoration: none;
+        }
+
+        header a:hover,
+        header button:hover {
+            color: var(--accent);
+        }
+
+        .logo {
+            font: 20px "Geist Pixel";
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        header button {
+            font: inherit;
+            text-transform: inherit;
+            color: inherit;
+            background: none;
+            border: 0;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .on {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        /* ---- hero ---- */
+        .hero {
+            position: relative;
+            min-height: 100svh;
+            padding: 90px 20px 28px;
+            display: grid;
+            grid-template-rows: 1fr auto;
+        }
+
+        #name {
+            width: 100%;
+            align-self: center;
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        .hero-foot {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            align-items: end;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .hero-foot .r {
+            text-align: right;
+        }
+
+        .stat {
+            color: var(--mute);
+        }
+
+        .stat b {
+            color: var(--ink);
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .note {
+            font-family: "Shantell Sans", cursive;
+            color: var(--accent);
+            font-size: 17px;
+            line-height: 1.25;
+            text-transform: none;
+            letter-spacing: 0;
+            transform: rotate(-3deg);
+            display: inline-block;
+        }
+
+        /* ---- sections ---- */
+        section.block {
+            padding: 14vh 20px;
+            border-top: 1px solid var(--line);
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 20px;
+            background: color-mix(in srgb, var(--paper) 82%, transparent);
+        }
+
+        .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--mute);
+        }
+
+        .label span {
+            color: var(--accent);
+        }
+
+        .intro {
+            font-family: "Gambarino", serif;
+            font-size: clamp(28px, 3.6vw, 56px);
+            line-height: 1.08;
+            letter-spacing: -.01em;
+            max-width: 22ch;
+        }
+
+        .intro em {
+            font-family: "Geist Pixel";
+            font-style: normal;
+            font-size: .82em;
+            color: var(--accent);
+        }
+
+        .intro-side {
+            margin-top: 40px;
+            max-width: 52ch;
+            color: var(--mute);
+        }
+
+        /* ---- work index ---- */
+        .works {
+            list-style: none;
+            padding: 0;
+        }
+
+        .works li {
+            position: relative;
+            display: grid;
+            grid-template-columns: 4ch 1fr 16ch 8ch;
+            gap: 16px;
+            align-items: baseline;
+            padding: 18px 0 14px;
+            border-bottom: 1px solid var(--line);
+            cursor: pointer;
+        }
+
+        .works li:first-child {
+            border-top: 1px solid var(--line);
+        }
+
+        .works .t {
+            font: clamp(30px, 4.4vw, 68px)/0.95 "Geist Pixel";
+            transition: color .2s, letter-spacing .3s;
+        }
+
+        .works li:hover .t {
+            color: var(--accent);
+            letter-spacing: .03em;
+        }
+
+        .works .m {
+            color: var(--mute);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .works .note {
+            position: absolute;
+            right: 0;
+            top: -14px;
+            font-size: 15px;
+        }
+
+        #preview {
+            position: fixed;
+            z-index: 4;
+            width: 320px;
+            pointer-events: none;
+            image-rendering: pixelated;
+            opacity: 0;
+            transition: opacity .2s;
+            mix-blend-mode: multiply;
+        }
+
+        [data-theme="night"] #preview {
+            mix-blend-mode: screen;
+        }
+
+        /* ---- lab ---- */
+        .lab {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 20px;
+        }
+
+        .ascii-box {
+            border: 1px solid var(--line);
+            height: 420px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ascii-box table {
+            color: var(--ink) !important;
+            background: transparent !important;
+            font-family: "Geist Mono", monospace !important;
+        }
+
+        .lab .cap {
+            position: absolute;
+            left: 10px;
+            bottom: 8px;
+            font-size: 11px;
+            color: var(--mute);
+            text-transform: uppercase;
+        }
+
+        .lab-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .lab-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .lab-list li span:last-child {
+            color: var(--mute);
+        }
+
+        /* ---- junkyard ---- */
+        .junk {
+            columns: 3 240px;
+            column-gap: 20px;
+        }
+
+        .junk article {
+            break-inside: avoid;
+            margin-bottom: 20px;
+            padding: 16px;
+            border: 1px dashed var(--line);
+        }
+
+        .junk h3 {
+            font: 26px "Geist Pixel Grid";
+            font-weight: 400;
+            text-decoration: line-through;
+            text-decoration-color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .junk p {
+            color: var(--mute);
+            font-size: 13px;
+        }
+
+        /* ---- footer ---- */
+        footer {
+            padding: 16vh 20px 24px;
+            border-top: 1px solid var(--line);
+            background: color-mix(in srgb, var(--paper) 82%, transparent);
+        }
+
+        footer .big {
+            display: block;
+            font: clamp(44px, 9vw, 150px)/0.9 "Geist Pixel";
+            text-decoration: none;
+        }
+
+        footer .big:hover {
+            color: var(--accent);
+        }
+
+        footer .row {
+            margin-top: 12vh;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--mute);
+        }
+
+        @media (max-width: 760px) {
+            header nav a:not(.keep) {
+                display: none;
+            }
+
+            section.block,
+            .lab {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-foot {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-foot .r {
+                text-align: left;
+            }
+
+            .works li {
+                grid-template-columns: 3ch 1fr;
+            }
+
+            .works li .m {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="bg"></canvas>
+    <canvas id="preview" width="160" height="100"></canvas>
+
+    <header>
+        <a href="#" class="logo">jpc</a>
+        <nav>
+            <a href="#travaux">Travaux</a>
+            <a href="#labo">Labo</a>
+            <a href="#casse">Casse</a>
+            <a href="#dossier">Dossier</a>
+            <a href="#" class="keep"><span class="on">FR</span>/EN</a>
+            <button id="theme" class="keep">[nuit]</button>
+        </nav>
+    </header>
+
+    <!-- HERO: the name is a colony of cells. Touch it, it falls apart, then grows back. -->
+    <section class="hero">
+        <canvas id="name"></canvas>
+        <div class="hero-foot">
+            <div class="stat">Génération <b id="gen">0000</b> · <b id="pop">0</b> cellules vivantes</div>
+            <div><span class="note">passe la souris sur mon nom ↑<br>c'est mon jeu de la vie</span></div>
+            <div class="r">Étudiant ingénieur · CESI Rouen<br>Rouen, FR — 49.44°N 1.10°E</div>
+        </div>
+    </section>
+
+    <section class="block">
+        <div class="label"><span>■</span> 00 / Bonjour</div>
+        <div>
+            <p class="intro">J'écris du C++ pour des microcontrôleurs, du Python pour des <em>machines</em> qui montent
+                des vidéos toutes seules, et des sites qui refusent de rester immobiles.</p>
+            <p class="intro-side">[Texte provisoire] Étudiant à CESI Rouen. Je cherche [type de contrat, date]. Ce site tourne sur l'automate de Conway : chaque visite est une nouvelle partie.</p>
+        </div>
+    </section>
+
+    <section class="block" id="travaux">
+        <div class="label"><span>■</span> 01 / Travaux</div>
+        <ol class="works">
+            <li data-video="../public/conway.mp4"><span class="m">01</span><span class="t">Jeu de la vie</span><span
+                    class="m">C++ · SFML</span><span class="m">2024</span>
+                <span class="note">celui-ci fait tourner le site ↓</span>
+            </li>
+            <li data-video="../public/blink.mp4"><span class="m">02</span><span class="t">Blink</span><span
+                    class="m">Python · IA</span><span class="m">2024</span></li>
+            <li data-image="../public/thrive.jpg"><span class="m">03</span><span class="t">Thrive</span><span
+                    class="m">Flutter</span><span class="m">2024</span></li>
+            <li><span class="m">04</span><span class="t">Weather Watcher</span><span class="m">Arduino ·
+                    C</span><span class="m">2024</span></li>
+        </ol>
+    </section>
+
+    <section class="block" id="labo">
+        <div class="label"><span>■</span> 02 / Labo</div>
+        <div class="lab">
+            <div class="ascii-box" id="ascii"><span class="cap">arduino.glb → ascii · glisser pour tourner</span>
+            </div>
+            <ul class="lab-list">
+                <li><span>Arduino en ASCII</span><span>three.js</span></li>
+                <li><span>Tramage de Bayer temps réel</span><span>canvas</span></li>
+                <li><span>Grille peignable</span><span>la page entière</span></li>
+                <li><span>[à venir]</span><span>—</span></li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="block" id="casse">
+        <div class="label"><span>■</span> 03 / Casse</div>
+        <div class="junk">
+            <article>
+                <h3>Projet abandonné</h3>
+                <p>[Placeholder] Ce qui devait arriver, pourquoi ça s'est arrêté, ce que j'en ai appris.</p>
+            </article>
+            <article>
+                <h3>Prototype raté</h3>
+                <p>[Placeholder] Deux semaines sur un moteur physique avant de découvrir Box2D.</p>
+            </article>
+            <article>
+                <h3>Idée de 3h du matin</h3>
+                <p>[Placeholder] Une ligne, un lien vers le dépôt, et c'est tout.</p>
+            </article>
+        </div>
+    </section>
+
+    <footer id="dossier">
+        <div class="label" style="margin-bottom: 24px"><span>■</span> 04 / Écrire</div>
+        <a class="big" href="mailto:[adresse]">Bonjour@<br>jpc ↗</a>
+        <div class="row"><span><a href="https://github.com/SliiZ-code">GitHub</a> · <a
+                    href="https://linkedin.com/in/julien-petit-colboc">LinkedIn</a> · CV.pdf</span><span>Fait main ·
+                aucun gabarit</span></div>
+    </footer>
+
+    <script type="importmap">
+        { "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+        } }
+    </script>
+    <script type="module">
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+        let INK, ACCENT;
+        const readColors = () => { INK = css('--ink'); ACCENT = css('--accent'); };
+        readColors();
+
+        document.getElementById('theme').onclick = (e) => {
+            const html = document.documentElement;
+            const night = html.dataset.theme === 'paper';
+            html.dataset.theme = night ? 'night' : 'paper';
+            e.target.textContent = night ? '[papier]' : '[nuit]';
+            readColors();
+        };
+
+        // ---------- shared Life step (toroidal) ----------
+        function step(cur, next, cols, rows, frozen) {
+            for (let y = 0; y < rows; y++) {
+                const up = ((y - 1 + rows) % rows) * cols, mid = y * cols, dn = ((y + 1) % rows) * cols;
+                for (let x = 0; x < cols; x++) {
+                    const l = (x - 1 + cols) % cols, r = (x + 1) % cols, i = mid + x;
+                    if (frozen && frozen[i]) { next[i] = cur[i]; continue; }
+                    const n = cur[up + l] + cur[up + x] + cur[up + r] + cur[mid + l] + cur[mid + r] + cur[dn + l] + cur[dn + x] + cur[dn + r];
+                    next[i] = n === 3 || (n === 2 && cur[i]) ? 1 : 0;
+                }
+            }
+        }
+
+        // ---------- background: faint page-wide Life, painted by the cursor ----------
+        const bg = document.getElementById('bg'), bctx = bg.getContext('2d');
+        const BC = 9;
+        let bcols, brows, ba, bb, gen = 0, scrollBoost = 0;
+        function bgResize() {
+            bg.width = innerWidth; bg.height = innerHeight;
+            bcols = Math.ceil(innerWidth / BC); brows = Math.ceil(innerHeight / BC);
+            ba = new Uint8Array(bcols * brows); bb = new Uint8Array(bcols * brows);
+            for (let i = 0; i < ba.length; i++) ba[i] = Math.random() < .14 ? 1 : 0;
+        }
+        bgResize();
+        addEventListener('resize', bgResize);
+        addEventListener('pointermove', (e) => {
+            const x = Math.floor(e.clientX / BC), y = Math.floor(e.clientY / BC);
+            for (let k = 0; k < 3; k++) {
+                const xx = x + (Math.random() * 5 | 0) - 2, yy = y + (Math.random() * 5 | 0) - 2;
+                if (xx >= 0 && yy >= 0 && xx < bcols && yy < brows) ba[yy * bcols + xx] = 1;
+            }
+        });
+        let lastY = scrollY;
+        addEventListener('scroll', () => { scrollBoost += Math.abs(scrollY - lastY) / 40; lastY = scrollY; });
+
+        const GLIDER = [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]];
+        function drawBg() {
+            bctx.clearRect(0, 0, bg.width, bg.height);
+            bctx.fillStyle = INK; bctx.globalAlpha = .09;
+            for (let y = 0; y < brows; y++) for (let x = 0; x < bcols; x++)
+                if (ba[y * bcols + x]) bctx.fillRect(x * BC + 1, y * BC + 1, BC - 2, BC - 2);
+            bctx.globalAlpha = 1;
+        }
+
+        // ---------- hero: the name as a colony ----------
+        const nc = document.getElementById('name'), nctx = nc.getContext('2d');
+        let NC, ncols, nrows, na, nb, target, cool;
+        const cursor = { x: -1e3, y: -1e3 };
+        nc.addEventListener('pointermove', (e) => {
+            const r = nc.getBoundingClientRect();
+            cursor.x = (e.clientX - r.left) / r.width * ncols; cursor.y = (e.clientY - r.top) / r.height * nrows;
+        });
+        nc.addEventListener('pointerleave', () => { cursor.x = cursor.y = -1e3; });
+
+        async function buildName() {
+            await document.fonts.load('40px "Geist Pixel"');
+            const w = nc.parentElement.clientWidth - 40;
+            NC = w < 700 ? 4 : 7;
+            ncols = Math.floor(w / NC);
+            const lines = w < 700 ? ['Julien', 'Petit-', 'Colboc'] : ['Julien', 'Petit-Colboc'];
+            // rasterise the text at grid resolution: one font pixel ≈ one cell
+            const off = new OffscreenCanvas(ncols, 10), o = off.getContext('2d');
+            let size = 40;
+            o.font = `${size}px "Geist Pixel"`;
+            size = Math.floor(size * (ncols - 2) / Math.max(...lines.map((l) => o.measureText(l).width)));
+            nrows = Math.ceil(lines.length * size * .92) + 4;
+            off.height = nrows;
+            o.font = `${size}px "Geist Pixel"`; o.textBaseline = 'top'; o.fillStyle = '#000';
+            lines.forEach((l, i) => o.fillText(l, 1, 2 + i * size * .92));
+            const px = o.getImageData(0, 0, ncols, nrows).data;
+            target = new Uint8Array(ncols * nrows);
+            for (let i = 0; i < target.length; i++) target[i] = px[i * 4 + 3] > 110 ? 1 : 0;
+            na = new Uint8Array(target.length); nb = new Uint8Array(target.length);
+            cool = new Uint16Array(target.length).fill(0);
+            // start scattered: each letter cell arrives after a random delay
+            for (let i = 0; i < target.length; i++) if (target[i]) cool[i] = 10 + Math.random() * 90;
+            nc.width = ncols * NC; nc.height = nrows * NC;
+            nc.style.aspectRatio = `${ncols} / ${nrows}`;
+            if (reduced) { na.set(target); cool.fill(0); }
+        }
+
+        function tickName() {
+            // the cursor knocks letter cells loose; loose cells play Life until they settle back
+            const R = NC > 5 ? 5 : 4;
+            for (let y = Math.max(0, cursor.y - R | 0); y < Math.min(nrows, cursor.y + R); y++)
+                for (let x = Math.max(0, cursor.x - R | 0); x < Math.min(ncols, cursor.x + R); x++) {
+                    const i = y * ncols + x;
+                    if ((x - cursor.x) ** 2 + (y - cursor.y) ** 2 > R * R) continue;
+                    if (target[i] && na[i]) { na[i] = 0; cool[i] = 60 + Math.random() * 120; }
+                    if (Math.random() < .25) na[i] = 1;
+                }
+            const frozen = new Uint8Array(target.length);
+            for (let i = 0; i < target.length; i++) frozen[i] = target[i] && !cool[i];
+            step(na, nb, ncols, nrows, frozen);
+            [na, nb] = [nb, na];
+            for (let i = 0; i < target.length; i++) {
+                if (cool[i] && --cool[i] === 0) na[i] = 1;
+                if (target[i] && !cool[i]) na[i] = 1;
+            }
+        }
+
+        function drawName() {
+            nctx.clearRect(0, 0, nc.width, nc.height);
+            let pop = 0;
+            for (let i = 0; i < na.length; i++) {
+                if (!na[i]) continue;
+                pop++;
+                nctx.fillStyle = target[i] && !cool[i] ? INK : ACCENT;
+                nctx.fillRect((i % ncols) * NC, (i / ncols | 0) * NC, NC - 1, NC - 1);
+            }
+            return pop;
+        }
+
+        await buildName();
+        let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(buildName, 200); });
+
+        // ---------- main loop ----------
+        const genEl = document.getElementById('gen'), popEl = document.getElementById('pop');
+        let last = 0;
+        function loop(t) {
+            requestAnimationFrame(loop);
+            if (t - last < 70) return;
+            last = t;
+            const steps = 1 + Math.min(4, scrollBoost | 0);
+            scrollBoost *= .85;
+            for (let s = 0; s < steps; s++) { step(ba, bb, bcols, brows); [ba, bb] = [bb, ba]; gen++; }
+            if (gen % 60 === 0) { // keep the page alive: drop a glider somewhere
+                const ox = Math.random() * (bcols - 3) | 0, oy = Math.random() * (brows - 3) | 0;
+                GLIDER.forEach(([x, y]) => ba[(oy + y) * bcols + ox + x] = 1);
+            }
+            drawBg();
+            tickName();
+            const pop = drawName();
+            genEl.textContent = String(gen).padStart(4, '0');
+            popEl.textContent = pop;
+        }
+        if (reduced) { drawBg(); popEl.textContent = drawName(); } else requestAnimationFrame(loop);
+
+        // ---------- work index: dithered hover preview (ordered Bayer 4×4) ----------
+        const pv = document.getElementById('preview'), pctx = pv.getContext('2d', { willReadFrequently: true });
+        const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + .5) / 16);
+        const media = document.createElement('video');
+        media.muted = media.loop = true; media.playsInline = true;
+        const img = new Image();
+        let source = null, pvRaf;
+        function hex(c) { const n = parseInt(c.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; }
+        function dither() {
+            pvRaf = requestAnimationFrame(dither);
+            if (!source || (source === media && media.readyState < 2)) return;
+            pctx.drawImage(source, 0, 0, pv.width, pv.height);
+            const d = pctx.getImageData(0, 0, pv.width, pv.height), p = d.data;
+            const [r, g, b] = hex(INK);
+            for (let i = 0; i < p.length; i += 4) {
+                const px = (i / 4) % pv.width, py = (i / 4 / pv.width) | 0;
+                const lum = (p[i] * .3 + p[i + 1] * .59 + p[i + 2] * .11) / 255;
+                const on = lum < BAYER[(py % 4) * 4 + px % 4];
+                p[i] = r; p[i + 1] = g; p[i + 2] = b; p[i + 3] = on ? 255 : 0;
+            }
+            pctx.putImageData(d, 0, 0);
+        }
+        document.querySelectorAll('.works li').forEach((li) => {
+            li.addEventListener('mouseenter', () => {
+                if (li.dataset.video) { media.src = li.dataset.video; media.play(); source = media; }
+                else if (li.dataset.image) { img.src = li.dataset.image; source = img; }
+                else return;
+                pv.style.opacity = 1; cancelAnimationFrame(pvRaf); dither();
+            });
+            li.addEventListener('mouseleave', () => { pv.style.opacity = 0; media.pause(); cancelAnimationFrame(pvRaf); source = null; });
+            li.addEventListener('mousemove', (e) => { pv.style.left = e.clientX + 24 + 'px'; pv.style.top = e.clientY - 100 + 'px'; });
+        });
+
+        // ---------- lab: the Arduino rendered as ASCII ----------
+        const box = document.getElementById('ascii');
+        new IntersectionObserver(async ([e], obs) => {
+            if (!e.isIntersecting) return;
+            obs.disconnect();
+            const THREE = await import('three');
+            const { AsciiEffect } = await import('three/addons/effects/AsciiEffect.js');
+            const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+            const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+            const scene = new THREE.Scene();
+            const cam = new THREE.PerspectiveCamera(35, box.clientWidth / box.clientHeight, .01, 100);
+            cam.position.set(0, 1.2, 3);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x222222, 2));
+            const dl = new THREE.DirectionalLight(0xffffff, 3); dl.position.set(2, 3, 2); scene.add(dl);
+            const renderer = new THREE.WebGLRenderer();
+            const fx = new AsciiEffect(renderer, ' .:-+*=%@#', { invert: document.documentElement.dataset.theme === 'paper' });
+            fx.setSize(box.clientWidth, box.clientHeight);
+            box.prepend(fx.domElement);
+            const controls = new OrbitControls(cam, fx.domElement);
+            controls.enableZoom = false; controls.autoRotate = !reduced; controls.autoRotateSpeed = 2;
+            new GLTFLoader().load('../public/arduino.glb', (g) => {
+                const m = g.scene, b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3());
+                m.scale.setScalar(1.8 / Math.max(s.x, s.y, s.z));
+                m.position.sub(b.getCenter(new THREE.Vector3()).multiplyScalar(m.scale.x));
+                scene.add(m);
+            });
+            (function r() { requestAnimationFrame(r); controls.update(); fx.render(scene, cam); })();
+        }).observe(box);
+    </script>
+</body>
+
+</html>

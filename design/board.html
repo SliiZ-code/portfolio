@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="paper">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Julien Petit-Colboc — plateau</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Shantell+Sans:wght@400;500&display=swap">
+    <style>
+        @font-face {
+            font-family: "Geist Pixel";
+            src: url("fonts/GeistPixel-Square.woff2") format("woff2");
+        }
+
+        [data-theme="paper"] {
+            --paper: #e8e5dc;
+            --ink: #1b1a17;
+            --mute: #75716a;
+            --line: #1b1a1724;
+            --accent: #2433ff;
+        }
+
+        [data-theme="night"] {
+            --paper: #131210;
+            --ink: #e8e5dc;
+            --mute: #8a857c;
+            --line: #e8e5dc1f;
+            --accent: #ff8a3d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--paper);
+            color: var(--ink);
+            font: 12px/1.5 "Geist Mono", monospace;
+            overscroll-behavior: none;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        button {
+            font: inherit;
+            color: inherit;
+            background: none;
+            border: 0;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        #board {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: grab;
+        }
+
+        #board.panning {
+            cursor: grabbing;
+        }
+
+        #board.over {
+            cursor: pointer;
+        }
+
+        #board.draw {
+            cursor: crosshair;
+        }
+
+        /* ---- HUD: four quiet corners ---- */
+        .hud {
+            position: fixed;
+            z-index: 2;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            user-select: none;
+        }
+
+        .hud>*:not(#mini) {
+            background: var(--paper);
+            box-shadow: 0 0 0 4px var(--paper);
+        }
+
+        .hud button:hover,
+        .hud a:hover {
+            color: var(--accent);
+        }
+
+        .tl {
+            top: 14px;
+            left: 16px;
+        }
+
+        .tr {
+            top: 14px;
+            right: 16px;
+        }
+
+        .bl {
+            bottom: 14px;
+            left: 16px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            color: var(--mute);
+        }
+
+        .br {
+            bottom: 14px;
+            right: 16px;
+        }
+
+        .bl b {
+            color: var(--ink);
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .on {
+            color: var(--accent);
+        }
+
+        #list-btn {
+            padding: 5px 9px;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+
+        #list-btn:hover {
+            border-color: var(--accent);
+        }
+
+        #mini {
+            width: 200px;
+            height: 133px;
+            border: 1px solid var(--line);
+            background: var(--paper);
+            cursor: pointer;
+            display: block;
+        }
+
+        /* ---- list view ---- */
+        #list {
+            position: fixed;
+            z-index: 3;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(440px, 100%);
+            background: var(--paper);
+            border-left: 1px solid var(--ink);
+            padding: 56px 28px 28px;
+            overflow: auto;
+            transform: translateX(100%);
+            transition: transform .35s cubic-bezier(.7, 0, .2, 1);
+        }
+
+        #list.open {
+            transform: none;
+        }
+
+        #list h2 {
+            font: 34px/1 "Geist Pixel";
+            font-weight: 400;
+            margin-bottom: 10px;
+        }
+
+        #list p {
+            font-family: "Gambarino", serif;
+            font-size: 19px;
+            line-height: 1.3;
+            margin-bottom: 28px;
+        }
+
+        #list h3 {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--mute);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin: 22px 0 6px;
+        }
+
+        #list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #list li a {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--line);
+            text-decoration: none;
+        }
+
+        #list li a:hover {
+            color: var(--accent);
+        }
+
+        #list li span:last-child {
+            color: var(--mute);
+        }
+
+        #list .close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            text-transform: uppercase;
+        }
+
+        /* ---- project page (reached by diving into a structure) ---- */
+        #page {
+            position: fixed;
+            inset: 0;
+            z-index: 4;
+            background: var(--paper);
+            overflow: auto;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s;
+            background-image:
+                linear-gradient(var(--line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-attachment: local;
+        }
+
+        #page.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #page .back {
+            position: sticky;
+            top: 14px;
+            left: 16px;
+            margin: 14px 16px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            background: var(--paper);
+            padding: 4px 8px;
+            border: 1px solid var(--ink);
+        }
+
+        #page .back:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .page-inner {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+            gap: 48px;
+            padding: 6vh 4vw 12vh;
+        }
+
+        .page-media {
+            position: sticky;
+            top: 70px;
+            align-self: start;
+        }
+
+        #dither {
+            width: 100%;
+            image-rendering: pixelated;
+            display: block;
+            background: var(--paper);
+            border: 1px solid var(--ink);
+        }
+
+        .page-media figcaption {
+            margin-top: 6px;
+            color: var(--mute);
+            text-transform: uppercase;
+        }
+
+        .page-text h1 {
+            font: clamp(48px, 6vw, 96px)/.9 "Geist Pixel";
+            font-weight: 400;
+            margin-bottom: 18px;
+        }
+
+        .page-text .meta {
+            text-transform: uppercase;
+            color: var(--mute);
+            margin-bottom: 36px;
+        }
+
+        .page-text p {
+            font-family: "Gambarino", serif;
+            font-size: 21px;
+            line-height: 1.38;
+            margin-bottom: 20px;
+            max-width: 36ch;
+        }
+
+        .page-text .note {
+            font-family: "Shantell Sans", cursive;
+            color: var(--accent);
+            font-size: 17px;
+            display: inline-block;
+            transform: rotate(-2deg);
+            margin: 6px 0 26px -10px;
+        }
+
+        .stamp {
+            display: inline-block;
+            border: 1px dashed var(--mute);
+            color: var(--mute);
+            padding: 2px 6px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 760px) {
+
+            .hint,
+            #mini {
+                display: none;
+            }
+
+            .page-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .page-media {
+                position: static;
+            }
+
+            #list-btn {
+                font-size: 14px;
+                padding: 8px 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="board"></canvas>
+
+    <div class="hud tl"><button data-go="name">jpc</button></div>
+    <div class="hud tr">
+        <span><span class="on">FR</span>/EN</span>
+        <button id="theme">[nuit]</button>
+        <a href="#" id="cv-link">CV.pdf</a>
+    </div>
+    <div class="hud bl">
+        <span>génération <b id="gen">0000</b> · <b id="pop">0</b> cellules</span>
+        <span class="hint">glisser : explorer · molette : zoom · clic dans le vide : un planeur · <button
+                id="pen">[✎ dessiner]</button></span>
+    </div>
+    <div class="hud br"><button id="list-btn">≡ liste</button><canvas id="mini"></canvas></div>
+
+    <aside id="list" aria-label="Vue liste">
+        <button class="close" id="list-close">fermer ×</button>
+        <h2>Julien<br>Petit-Colboc</h2>
+        <p>[Texte provisoire] Étudiant en informatique à CESI Rouen. C++, Python, Flutter, Arduino.</p>
+        <h3>Projets</h3>
+        <ul id="list-projects"></ul>
+        <h3>Ailleurs</h3>
+        <ul>
+            <li><a href="#">CV (PDF)<span>↓</span></a></li>
+            <li><a href="https://github.com/SliiZ-code">GitHub<span>↗</span></a></li>
+            <li><a href="https://linkedin.com/in/julien-petit-colboc">LinkedIn<span>↗</span></a></li>
+            <li><a href="mailto:[adresse]">E-mail<span>↗</span></a></li>
+        </ul>
+    </aside>
+
+    <article id="page">
+        <button class="back" id="back">← retour au plateau</button>
+        <div class="page-inner">
+            <figure class="page-media"><canvas id="dither" width="240" height="150"></canvas>
+                <figcaption id="page-cap"></figcaption>
+            </figure>
+            <div class="page-text">
+                <span class="stamp">page projet factice</span>
+                <h1 id="page-title"></h1>
+                <div class="meta" id="page-meta"></div>
+                <p>[Placeholder] Le contexte : pourquoi ce projet existe, pour qui, en combien de temps.</p>
+                <span class="note" id="page-note"></span>
+                <p>[Placeholder] Le problème intéressant : la chose qui a résisté, et comment elle a cédé.</p>
+                <p>[Placeholder] Ce que je referais autrement.</p>
+            </div>
+        </div>
+    </article>
+
+    <script type="module">
+        // ================= colours / prefs =================
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+        let C = {};
+        const readColors = () => { C = { paper: css('--paper'), ink: css('--ink'), mute: css('--mute'), accent: css('--accent') }; };
+        readColors();
+        document.getElementById('theme').onclick = (e) => {
+            const html = document.documentElement, night = html.dataset.theme === 'paper';
+            html.dataset.theme = night ? 'night' : 'paper';
+            e.target.textContent = night ? '[papier]' : '[nuit]';
+            readColors();
+        };
+
+        // ================= patterns =================
+        const P = (rows) => rows.trim().split('\n').map((r) => [...r.trim()].map((c) => c === 'O' ? 1 : 0));
+        const PULSAR = P(`
+..OOO...OOO..
+.............
+O....O.O....O
+O....O.O....O
+O....O.O....O
+..OOO...OOO..
+.............
+..OOO...OOO..
+O....O.O....O
+O....O.O....O
+O....O.O....O
+.............
+..OOO...OOO..`);
+        const PENTA = P(`
+..O....O..
+OO.OOOO.OO
+..O....O..`);
+        const BLINKERS = P(`
+OOO...OOO...OOO...OOO`);
+        const CLOCK = P(`
+..O.
+O.O.
+.O.O
+.O..`);
+        const GALAXY = P(`
+OO.OOOOOO
+OO.OOOOOO
+OO.......
+OO.....OO
+OO.....OO
+OO.....OO
+.......OO
+OOOOOO.OO
+OOOOOO.OO`);
+        const GUN = P(`
+........................O...........
+......................O.O...........
+............OO......OO............OO
+...........O...O....OO............OO
+OO........O.....O...OO..............
+OO........O...O.OO....O.O...........
+..........O.....O.......O...........
+...........O...O....................
+............OO......................`);
+        const GLIDERS = [P(`.O.\n..O\nOOO`), P(`.O.\nO..\nOOO`), P(`OOO\n..O\n.O.`), P(`OOO\nO..\n.O.`)];
+
+        // ================= world (free cells) =================
+        const W = 420, H = 280;
+        let world = new Uint8Array(W * H), next = new Uint8Array(W * H);
+        let heat = new Uint8Array(W * H), heatN = new Uint8Array(W * H); // accent trail of debris
+        const idx = (x, y) => ((y + H) % H) * W + ((x + W) % W);
+
+        function stepWorld() {
+            let pop = 0;
+            for (let y = 0; y < H; y++) {
+                const up = ((y - 1 + H) % H) * W, mid = y * W, dn = ((y + 1) % H) * W;
+                for (let x = 0; x < W; x++) {
+                    const l = (x - 1 + W) % W, r = (x + 1) % W, i = mid + x;
+                    const n = world[up + l] + world[up + x] + world[up + r] + world[mid + l] + world[mid + r] + world[dn + l] + world[dn + x] + world[dn + r];
+                    const alive = n === 3 || (n === 2 && world[i]) ? 1 : 0;
+                    next[i] = alive;
+                    if (!alive) { heatN[i] = 0; continue; }
+                    pop++;
+                    if (world[i]) heatN[i] = heat[i] > 6 ? heat[i] - 6 : 0;
+                    else heatN[i] = Math.max(heat[up + l], heat[up + x], heat[up + r], heat[mid + l], heat[mid + r], heat[dn + l], heat[dn + x], heat[dn + r]) * .9;
+                }
+            }
+            [world, next] = [next, world];
+            [heat, heatN] = [heatN, heat];
+            return pop;
+        }
+
+        // bounded step for a structure's private simulation (edges are dead)
+        function stepBox(cur, nxt, w, h) {
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                let n = 0;
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const xx = x + dx, yy = y + dy;
+                    if (xx >= 0 && yy >= 0 && xx < w && yy < h) n += cur[yy * w + xx];
+                }
+                const i = y * w + x;
+                nxt[i] = n === 3 || (n === 2 && cur[i]) ? 1 : 0;
+            }
+        }
+
+        // ================= structures =================
+        // A structure lives in its own box and runs its own private Life, isolated from the
+        // free cells. When free cells wander into its core, nearby structure cells are knocked
+        // loose into the world (they go "hidden") and regrow once the debris has cleared.
+        const structures = [];
+        function addStructure({ cells, x, y, pad = 0, kind, entity, core }) {
+            const h0 = cells.length, w0 = cells[0].length, w = w0 + pad * 2, h = h0 + pad * 2;
+            const cur = new Uint8Array(w * h);
+            cells.forEach((row, j) => row.forEach((v, i) => cur[(j + pad) * w + i + pad] = v));
+            const s = {
+                x: x - pad, y: y - pad, w, h, cur, nxt: new Uint8Array(w * h), hidden: new Uint16Array(w * h),
+                born: new Float32Array(w * h).map(() => Math.random()), kind, entity, core: core ?? { x: 0, y: 0, w, h }, hurt: false, shots: 0,
+            };
+            structures.push(s);
+            return s;
+        }
+
+        // Geist Pixel is drawn on a grid of em/13. Render big, then sample the centre of each
+        // design pixel, so one font pixel becomes exactly k×k cells (no broken glyphs).
+        function rasterize(text, k = 1) {
+            const U = 32, S = U * 13, lines = text.split('\n'), LH = 11 * U;
+            const off = new OffscreenCanvas(10, 10), o = off.getContext('2d');
+            o.font = `${S}px "Geist Pixel"`;
+            off.width = Math.ceil(Math.max(...lines.map((l) => o.measureText(l).width))) + U * 2;
+            off.height = LH * lines.length + U * 2;
+            o.font = `${S}px "Geist Pixel"`; o.textBaseline = 'top'; o.fillStyle = '#000';
+            lines.forEach((l, i) => o.fillText(l, U, U + i * LH));
+            const d = o.getImageData(0, 0, off.width, off.height).data;
+            const on = (x, y) => d[(Math.round(y) * off.width + Math.round(x)) * 4 + 3] > 128;
+            // find the grid phase from the first inked row / column
+            let px = off.width, py = off.height;
+            for (let y = 0; y < off.height; y++) for (let x = 0; x < off.width; x++) if (d[(y * off.width + x) * 4 + 3] > 128) { px = Math.min(px, x); py = Math.min(py, y); }
+            px %= U; py %= U;
+            const cols = Math.floor((off.width - px) / U), rows = Math.floor((off.height - py) / U), out = [];
+            for (let j = 0; j < rows; j++) {
+                const r = [];
+                for (let i = 0; i < cols; i++) r.push(on(px + (i + .5) * U, py + (j + .5) * U) ? 1 : 0);
+                for (let a = 0; a < k; a++) out.push(r.flatMap((v) => Array(k).fill(v)));
+            }
+            while (out.length && !out[0].some(Boolean)) out.shift();
+            while (out.length && !out.at(-1).some(Boolean)) out.pop();
+            let l = Infinity, rr = 0;
+            out.forEach((r) => r.forEach((v, i) => { if (v) { l = Math.min(l, i); rr = Math.max(rr, i); } }));
+            return out.map((r) => r.slice(l, rr + 1));
+        }
+
+        // ================= entities (what you can click) =================
+        const entities = [
+            { id: 'name', x: 210, y: 122, text: 'Julien\nPetit-Colboc', k: 2 },
+            {
+                id: 'cv', x: 0, y: 0, text: 'cv', k: 1, label: 'dossier · pdf ↓',
+                note: { t: 'mon CV, version papier', dx: 0, dy: 0, r: -.05 }
+            },
+            {
+                id: 'conway', x: 100, y: 62, emblem: PULSAR, pad: 3, text: 'Jeu de la vie', k: 1, label: 'C++ · projet CESI',
+                note: { t: 'un pulsar. forcément.', dx: 0, dy: 0, r: .04 }, video: '../public/conway.mp4'
+            },
+            {
+                id: 'blink', x: 322, y: 70, emblem: BLINKERS, pad: 2, text: 'Blink', k: 1, label: 'Python · vidéo générée',
+                note: { t: 'Blink → des clignotants (blinkers)', dx: 0, dy: 0, r: -.04 }, video: '../public/blink.mp4'
+            },
+            {
+                id: 'thrive', x: 104, y: 186, emblem: PENTA, pad: 4, text: 'Thrive', k: 1, label: 'Flutter · multiplateforme',
+                note: { t: 'un pentadécathlon :\nil grandit, il rétrécit, il tient', dx: 0, dy: 0, r: .03 }, image: '../public/thrive.jpg'
+            },
+            {
+                id: 'www', x: 318, y: 184, emblem: GALAXY, pad: 2, text: 'Weather\nWatcher', k: 1, label: 'Arduino · capteurs · RTC',
+                note: { t: 'une galaxie de Kok :\nelle tourne comme une trotteuse', dx: 0, dy: 0, r: -.03 }
+            },
+            {
+                id: 'contact', x: 150, y: 22, gun: true, text: 'contact', k: 1, label: 'écrire ↗',
+                note: { t: 'le canon envoie des planeurs.\nécris-moi, c\'est pareil.', dx: 0, dy: 0, r: .03 }
+            },
+        ];
+        const pages = {
+            conway: { title: 'Jeu de la vie', meta: 'C++ · interface graphique · projet scolaire CESI', note: 'la page tourne sur la même règle que ce projet ↑' },
+            blink: { title: 'Blink', meta: 'Python · OpenAI · Stable Diffusion · MoviePy', note: 'oui, la vidéo de gauche a été montée par une machine' },
+            thrive: { title: 'Thrive', meta: 'Flutter · liste de tâches multiplateforme', note: '[note]' },
+            www: { title: 'Weather Watcher', meta: 'Arduino · carte SD · capteurs · RTC · interruptions', note: '[note]' },
+        };
+
+        await document.fonts.load('32px "Geist Pixel"');
+        {   // the CV sits under the end of the name
+            const nm = rasterize(entities[0].text, entities[0].k);
+            entities[1].x = 210 + nm[0].length / 2 - 8; entities[1].y = entities[0].y + nm.length + 5;
+        }
+        for (const e of entities) {
+            const parts = [];
+            let top = e.y;
+            if (e.emblem) {
+                const ew = e.emblem[0].length, eh = e.emblem.length;
+                parts.push(addStructure({ cells: e.emblem, x: Math.round(e.x - ew / 2), y: e.y, pad: e.pad, kind: 'osc', entity: e }));
+                top = e.y + eh + e.pad + 2;
+            }
+            if (e.gun) {
+                const s = addStructure({ cells: GUN, x: e.x, y: e.y, pad: 0, kind: 'gun', entity: e });
+                // widen the private box so gliders can leave the gun before being handed to the world
+                const w = 52, h = 34, cur = new Uint8Array(w * h);
+                for (let j = 0; j < s.h; j++) for (let i = 0; i < s.w; i++) cur[j * w + i] = s.cur[j * s.w + i];
+                Object.assign(s, { w, h, cur, nxt: new Uint8Array(w * h), hidden: new Uint16Array(w * h), born: new Float32Array(w * h).map(() => Math.random()), core: { x: 0, y: 0, w: 37, h: 10 } });
+                parts.push(s);
+                top = e.y + 11;
+                e.cx = e.x + 18;
+            }
+            const t = rasterize(e.text, e.k);
+            const tx = e.gun ? e.x : Math.round(e.x - t[0].length / 2);
+            parts.push(addStructure({ cells: t, x: tx, y: top, kind: 'text', entity: e }));
+            e.parts = parts;
+            const xs = parts.flatMap((s) => [s.x, s.x + s.w]), ys = parts.flatMap((s) => [s.y, s.y + s.h]);
+            e.box = { x: Math.min(...xs) - 2, y: Math.min(...ys) - 2, x2: Math.max(...xs) + 2, y2: Math.max(...ys) + (e.label ? 5 : 2) };
+            e.labelAt = { x: tx, y: Math.max(...parts.map((s) => s.y + s.h)) + 2 };
+        }
+
+        // a few soups far from everything, so the board starts alive but not chaotic
+        function inAnyBox(x, y, m) {
+            return entities.some((e) => x > e.box.x - m && x < e.box.x2 + m && y > e.box.y - m && y < e.box.y2 + m);
+        }
+        for (let k = 0; k < 26; k++) {
+            const sx = Math.random() * W | 0, sy = Math.random() * H | 0;
+            if (inAnyBox(sx, sy, 22)) continue;
+            for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) if (Math.random() < .35) world[idx(sx + i, sy + j)] = 1;
+        }
+
+        function stepStructures(gen) {
+            for (const s of structures) {
+                if (s.kind === 'osc' || s.kind === 'gun') { stepBox(s.cur, s.nxt, s.w, s.h); [s.cur, s.nxt] = [s.nxt, s.cur]; }
+                if (s.kind === 'gun') emitGliders(s);
+                // intrusion: free cells inside the core knock structure cells loose
+                const c = s.core;
+                for (let j = c.y; j < c.y + c.h; j++) for (let i = c.x; i < c.x + c.w; i++) {
+                    const wi = idx(s.x + i, s.y + j);
+                    if (!world[wi]) continue;
+                    s.hurt = true;
+                    for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) {
+                        const ii = i + di, jj = j + dj;
+                        if (ii < 0 || jj < 0 || ii >= s.w || jj >= s.h) continue;
+                        const k = jj * s.w + ii;
+                        if (s.cur[k] && !s.hidden[k] && Math.random() < .7) {
+                            s.hidden[k] = 25 + Math.random() * 45;
+                            const w2 = idx(s.x + ii, s.y + jj);
+                            world[w2] = 1; heat[w2] = 255;
+                        }
+                    }
+                }
+                // regrow
+                let still = false;
+                for (let k = 0; k < s.hidden.length; k++) if (s.hidden[k]) { s.hidden[k]--; still = true; }
+                // once a wound is old enough, the structure absorbs whatever debris is left in its box
+                if (s.hurt && (!still || gen % 45 === 0)) {
+                    for (let j = 0; j < s.core.h; j++) for (let i = 0; i < s.core.w; i++) world[idx(s.x + i, s.y + j)] = 0;
+                    if (!still) s.hurt = false;
+                }
+            }
+        }
+
+        // the gun's private board hands finished gliders over to the world (one in three, so it doesn't flood)
+        function emitGliders(s) {
+            const seen = new Uint8Array(s.w * s.h);
+            for (let k = 0; k < s.cur.length; k++) {
+                if (!s.cur[k] || seen[k]) continue;
+                const comp = [k], stack = [k]; seen[k] = 1;
+                while (stack.length) {
+                    const q = stack.pop(), qx = q % s.w, qy = q / s.w | 0;
+                    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                        const xx = qx + dx, yy = qy + dy;
+                        if (xx < 0 || yy < 0 || xx >= s.w || yy >= s.h) continue;
+                        const n = yy * s.w + xx;
+                        if (s.cur[n] && !seen[n]) { seen[n] = 1; comp.push(n); stack.push(n); }
+                    }
+                }
+                if (comp.every((q) => q % s.w >= 38)) {
+                    const keep = s.shots++ % 3 === 0;
+                    for (const q of comp) {
+                        s.cur[q] = 0;
+                        if (keep) world[idx(s.x + q % s.w, s.y + (q / s.w | 0))] = 1;
+                    }
+                }
+            }
+        }
+
+        // ================= camera =================
+        const cv = document.getElementById('board'), ctx = cv.getContext('2d');
+        const name = entities[0];
+        const mobile = innerWidth < 760;
+        const nameW = name.box.x2 - name.box.x, nameMid = (name.box.y + name.box.y2) / 2;
+        const homeZ = mobile ? innerWidth * .94 / nameW : Math.min(9, innerWidth * .6 / nameW);
+        const cam = { x: name.x, y: nameMid + 4, z: homeZ }, camT = { ...cam };
+        let dpr = 1;
+        function resize() {
+            dpr = Math.min(2, devicePixelRatio || 1);
+            cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+        }
+        resize();
+        addEventListener('resize', resize);
+        const toScreen = (x, y) => [(x - cam.x) * cam.z + innerWidth / 2, (y - cam.y) * cam.z + innerHeight / 2];
+        const toWorld = (sx, sy) => [(sx - innerWidth / 2) / cam.z + cam.x, (sy - innerHeight / 2) / cam.z + cam.y];
+        const clampCam = (c) => {
+            // never zoom out past the board, never pan off it
+            c.z = Math.max(Math.max(innerWidth / W, innerHeight / H), Math.min(40, c.z));
+            const hw = innerWidth / 2 / c.z, hh = innerHeight / 2 / c.z;
+            c.x = Math.max(hw, Math.min(W - hw, c.x)); c.y = Math.max(hh, Math.min(H - hh, c.y));
+        };
+        function flyTo(x, y, z = camT.z) { Object.assign(camT, { x, y, z }); clampCam(camT); }
+
+        // ================= input =================
+        const pointers = new Map();
+        let drag = null, drawMode = false, hover = null, pinch = null;
+        const pen = document.getElementById('pen');
+        pen.onclick = () => { drawMode = !drawMode; pen.classList.toggle('on', drawMode); cv.classList.toggle('draw', drawMode); };
+
+        const entityAt = (wx, wy) => entities.find((e) => wx >= e.box.x && wx <= e.box.x2 && wy >= e.box.y && wy <= e.box.y2);
+
+        function paint(sx, sy) {
+            const [wx, wy] = toWorld(sx, sy), x = Math.floor(wx), y = Math.floor(wy);
+            if (x < 0 || y < 0 || x >= W || y >= H || inAnyBox(x, y, 0)) return;
+            world[idx(x, y)] = 1; heat[idx(x, y)] = 200;
+        }
+
+        cv.addEventListener('pointerdown', (e) => {
+            cv.setPointerCapture(e.pointerId);
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size === 2) {
+                const [a, b] = [...pointers.values()];
+                pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: camT.z };
+                drag = null;
+                return;
+            }
+            drag = { x: e.clientX, y: e.clientY, cx: camT.x, cy: camT.y, moved: false };
+            if (drawMode) paint(e.clientX, e.clientY);
+        });
+        cv.addEventListener('pointermove', (e) => {
+            if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pinch && pointers.size === 2) {
+                const [a, b] = [...pointers.values()];
+                camT.z = pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d; clampCam(camT);
+                return;
+            }
+            if (drag) {
+                const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+                if (Math.hypot(dx, dy) > 5) drag.moved = true;
+                if (drawMode) { paint(e.clientX, e.clientY); return; }
+                if (drag.moved) {
+                    cv.classList.add('panning');
+                    camT.x = drag.cx - dx / cam.z; camT.y = drag.cy - dy / cam.z; clampCam(camT);
+                    cam.x = camT.x; cam.y = camT.y;
+                }
+                return;
+            }
+            const [wx, wy] = toWorld(e.clientX, e.clientY);
+            hover = entityAt(wx, wy) ?? null;
+            cv.classList.toggle('over', !!hover && hover.id !== 'name' && !drawMode);
+        });
+        const end = (e) => {
+            pointers.delete(e.pointerId);
+            if (pointers.size < 2) pinch = null;
+            if (!drag) return;
+            cv.classList.remove('panning');
+            if (!drag.moved && !drawMode) {
+                const [wx, wy] = toWorld(e.clientX, e.clientY), hit = entityAt(wx, wy);
+                if (hit && hit.id !== 'name') open(hit);
+                else if (!hit) dropGlider(Math.floor(wx), Math.floor(wy));
+            }
+            drag = null;
+        };
+        cv.addEventListener('pointerup', end);
+        cv.addEventListener('pointercancel', end);
+        cv.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const [wx, wy] = toWorld(e.clientX, e.clientY);
+            camT.z *= Math.exp(-e.deltaY * .0015); clampCam(camT);
+            // keep the cell under the cursor fixed
+            camT.x = wx - (e.clientX - innerWidth / 2) / camT.z; camT.y = wy - (e.clientY - innerHeight / 2) / camT.z; clampCam(camT);
+        }, { passive: false });
+
+        function dropGlider(x, y) {
+            const g = GLIDERS[Math.random() * 4 | 0];
+            g.forEach((row, j) => row.forEach((v, i) => { if (v) { world[idx(x + i - 1, y + j - 1)] = 1; heat[idx(x + i - 1, y + j - 1)] = 255; } }));
+        }
+
+        document.querySelectorAll('[data-go="name"]').forEach((b) => b.onclick = () => flyTo(name.x, nameMid + 4, homeZ));
+
+        // ================= minimap =================
+        const mini = document.getElementById('mini'), mctx = mini.getContext('2d');
+        mini.width = W; mini.height = H;
+        function drawMini() {
+            mctx.fillStyle = C.paper; mctx.fillRect(0, 0, W, H);
+            mctx.fillStyle = C.mute;
+            for (let i = 0; i < world.length; i++) if (world[i]) mctx.fillRect(i % W, i / W | 0, 1, 1);
+            mctx.fillStyle = C.ink;
+            for (const s of structures) for (let k = 0; k < s.cur.length; k++)
+                if (s.cur[k] && !s.hidden[k]) mctx.fillRect(s.x + k % s.w, s.y + (k / s.w | 0), 1, 1);
+            const [x0, y0] = toWorld(0, 0), [x1, y1] = toWorld(innerWidth, innerHeight);
+            mctx.strokeStyle = C.accent; mctx.lineWidth = 3;
+            mctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+        }
+        const miniGo = (e) => {
+            const r = mini.getBoundingClientRect();
+            flyTo((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H);
+        };
+        mini.addEventListener('pointerdown', (e) => { miniGo(e); mini.onpointermove = (ev) => ev.buttons && miniGo(ev); });
+
+        // ================= list view =================
+        const list = document.getElementById('list');
+        document.getElementById('list-btn').onclick = () => list.classList.toggle('open');
+        document.getElementById('list-close').onclick = () => list.classList.remove('open');
+        document.getElementById('list-projects').innerHTML = Object.entries(pages)
+            .map(([id, p]) => `<li><a href="#/projets/${id}">${p.title}<span>${p.meta.split(' · ')[0]}</span></a></li>`).join('');
+
+        // ================= dive into a project =================
+        const page = document.getElementById('page');
+        let dive = null, returnTo = { ...cam };
+        function open(e) {
+            if (e.id === 'cv') return alert('[le PDF du CV viendra de RxResume]');
+            if (e.id === 'contact') return (location.href = 'mailto:[adresse]');
+            location.hash = `/projets/${e.id}`;
+        }
+        function route() {
+            const m = location.hash.match(/^#\/projets\/(\w+)/);
+            const e = m && entities.find((x) => x.id === m[1]);
+            list.classList.remove('open');
+            if (e) {
+                const cx = (e.box.x + e.box.x2) / 2, cy = (e.box.y + e.box.y2) / 2;
+                dive = { e, t0: performance.now(), from: { ...cam }, to: { x: cx, y: cy, z: 70 }, dir: 1 };
+                fillPage(e);
+            } else if (page.classList.contains('open')) {
+                page.classList.remove('open');
+                stopDither();
+                dive = { e: null, t0: performance.now(), from: { ...cam }, to: returnTo, dir: -1 };
+            }
+        }
+        addEventListener('hashchange', route);
+        document.getElementById('back').onclick = () => { history.length > 1 ? history.back() : (location.hash = ''); };
+        const ease = (t) => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+
+        // dithered media on the project page (ordered Bayer 4×4, in ink)
+        const dc = document.getElementById('dither'), dctx = dc.getContext('2d', { willReadFrequently: true });
+        const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + .5) / 16);
+        const vid = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true });
+        const img = new Image();
+        let src = null, draf;
+        function fillPage(e) {
+            const p = pages[e.id];
+            document.getElementById('page-title').textContent = p.title;
+            document.getElementById('page-meta').textContent = p.meta;
+            document.getElementById('page-note').textContent = p.note;
+            document.getElementById('page-cap').textContent = e.video || e.image ? 'capture · tramée en direct' : '[pas encore de capture]';
+            if (e.video) { vid.src = e.video; vid.play(); src = vid; } else if (e.image) { img.src = e.image; src = img; } else src = null;
+            cancelAnimationFrame(draf); dither();
+        }
+        function stopDither() { cancelAnimationFrame(draf); vid.pause(); }
+        function dither() {
+            draf = requestAnimationFrame(dither);
+            dctx.fillStyle = C.paper; dctx.fillRect(0, 0, dc.width, dc.height);
+            if (!src || (src === vid && vid.readyState < 2) || (src === img && !img.complete)) return;
+            dctx.drawImage(src, 0, 0, dc.width, dc.height);
+            const d = dctx.getImageData(0, 0, dc.width, dc.height), p = d.data;
+            const ink = parseInt(C.ink.slice(1), 16), pap = parseInt(C.paper.slice(1), 16);
+            let mean = 0;
+            for (let i = 0; i < p.length; i += 16) mean += p[i] * .3 + p[i + 1] * .59 + p[i + 2] * .11;
+            const flip = mean / (p.length / 16) / 255 < .45;
+            for (let i = 0; i < p.length; i += 4) {
+                const px = (i >> 2) % dc.width, py = (i >> 2) / dc.width | 0;
+                const on = ((p[i] * .3 + p[i + 1] * .59 + p[i + 2] * .11) / 255 < BAYER[(py & 3) * 4 + (px & 3)]) !== flip;
+                const c = on ? ink : pap;
+                p[i] = c >> 16; p[i + 1] = c >> 8 & 255; p[i + 2] = c & 255; p[i + 3] = 255;
+            }
+            dctx.putImageData(d, 0, 0);
+        }
+
+        // ================= render =================
+        const t0 = performance.now();
+        const INTRO = reduced ? 0 : 1600;
+        function draw(now) {
+            const t = Math.max(0, now - t0);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.fillStyle = C.paper; ctx.fillRect(0, 0, innerWidth, innerHeight);
+            const z = cam.z;
+            const [x0, y0] = toWorld(0, 0), [x1, y1] = toWorld(innerWidth, innerHeight);
+            const cx0 = Math.max(0, Math.floor(x0)), cy0 = Math.max(0, Math.floor(y0));
+            const cx1 = Math.min(W, Math.ceil(x1)), cy1 = Math.min(H, Math.ceil(y1));
+            // intro: the grid is drawn outward from the centre
+            const reveal = INTRO ? Math.min(1, t / (INTRO * .5)) : 1;
+            const R = reveal * Math.hypot(innerWidth, innerHeight) / 2;
+            ctx.save();
+            ctx.beginPath(); ctx.arc(innerWidth / 2, innerHeight / 2, R, 0, 7); ctx.clip();
+            if (z >= 4) {
+                ctx.strokeStyle = C.ink; ctx.globalAlpha = Math.min(.08, (z - 4) * .02); ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let x = cx0; x <= cx1; x++) { const [sx] = toScreen(x, 0); ctx.moveTo(Math.round(sx) + .5, toScreen(0, cy0)[1]); ctx.lineTo(Math.round(sx) + .5, toScreen(0, cy1)[1]); }
+                for (let y = cy0; y <= cy1; y++) { const [, sy] = toScreen(0, y); ctx.moveTo(toScreen(cx0, 0)[0], Math.round(sy) + .5); ctx.lineTo(toScreen(cx1, 0)[0], Math.round(sy) + .5); }
+                ctx.stroke(); ctx.globalAlpha = 1;
+            }
+            // world edge
+            ctx.strokeStyle = C.mute; ctx.setLineDash([4, 6]);
+            const [ex, ey] = toScreen(0, 0); ctx.strokeRect(ex, ey, W * z, H * z); ctx.setLineDash([]);
+            ctx.restore();
+
+            const g = z >= 6 ? 1 : 0, s = z - g;
+            const cellsIn = Math.max(0, Math.min(1, (t - INTRO * .35) / (INTRO * .65 || 1)));
+            // free cells
+            ctx.globalAlpha = .55 * cellsIn;
+            for (let y = cy0; y < cy1; y++) for (let x = cx0; x < cx1; x++) {
+                const i = y * W + x;
+                if (!world[i]) continue;
+                ctx.fillStyle = heat[i] > 30 ? C.accent : C.ink;
+                const [sx, sy] = toScreen(x, y); ctx.fillRect(sx, sy, s, s);
+            }
+            ctx.globalAlpha = 1;
+            // structures
+            for (const st of structures) {
+                if (st.x > cx1 || st.y > cy1 || st.x + st.w < cx0 || st.y + st.h < cy0) continue;
+                const hot = hover === st.entity && st.entity.id !== 'name' || dive?.e === st.entity;
+                ctx.fillStyle = hot ? C.accent : C.ink;
+                for (let k = 0; k < st.cur.length; k++) {
+                    if (!st.cur[k] || st.hidden[k]) continue;
+                    if (INTRO && st.born[k] > cellsIn) continue;
+                    const [sx, sy] = toScreen(st.x + k % st.w, st.y + (k / st.w | 0)); ctx.fillRect(sx, sy, s, s);
+                }
+            }
+            // labels and margin notes, only when they'd be legible
+            if (z >= 3.2 && cellsIn === 1) {
+                for (const e of entities) {
+                    if (e.label) {
+                        const [lx, ly] = toScreen(e.labelAt.x, e.labelAt.y);
+                        ctx.font = `${Math.max(10, z * 1.35)}px "Geist Mono"`; ctx.textBaseline = 'top';
+                        ctx.fillStyle = hover === e ? C.accent : C.mute;
+                        ctx.fillText(e.label.toUpperCase(), lx, ly);
+                    }
+                    if (e.note) {
+                        const [nx, ny] = toScreen(e.labelAt.x + e.note.dx - 1, e.labelAt.y + 5 + e.note.dy);
+                        ctx.save(); ctx.translate(nx, ny); ctx.rotate(e.note.r);
+                        const fs = Math.max(12, z * 1.9);
+                        ctx.font = `${fs}px "Shantell Sans"`; ctx.fillStyle = C.accent;
+                        e.note.t.split('\n').forEach((l, k) => ctx.fillText(l, 0, k * fs * 1.2));
+                        ctx.restore();
+                    }
+                }
+                // the one note that tells you what this is
+                const [hx, hy] = toScreen(name.box.x + 2, name.box.y2 + 3);
+                ctx.save(); ctx.translate(hx, hy); ctx.rotate(-.025);
+                ctx.font = `${Math.max(13, z * 2)}px "Shantell Sans"`; ctx.fillStyle = C.accent;
+                ['↑ mon nom, en cellules vivantes. tout le site est un jeu de la vie :', 'glisse pour explorer, clique dans le vide pour lâcher un planeur.']
+                    .forEach((l, k) => ctx.fillText(l, 0, k * Math.max(16, z * 2.4)));
+                ctx.restore();
+            }
+        }
+
+        // ================= loop =================
+        const genEl = document.getElementById('gen'), popEl = document.getElementById('pop');
+        let gen = 0, lastGen = 0, frame = 0;
+        const RATE = 110;
+        function loop(now) {
+            requestAnimationFrame(loop);
+            if (dive) {
+                const k = Math.min(1, (now - dive.t0) / 900), e = ease(k);
+                // zoom geometrically so the dive feels like falling into the cells
+                cam.z = dive.from.z * (dive.to.z / dive.from.z) ** e;
+                cam.x = dive.from.x + (dive.to.x - dive.from.x) * e; cam.y = dive.from.y + (dive.to.y - dive.from.y) * e;
+                if (k === 1) {
+                    if (dive.dir === 1) { page.classList.add('open'); page.scrollTop = 0; returnTo = dive.from; }
+                    Object.assign(camT, cam);
+                    dive = null;
+                }
+            } else {
+                cam.x += (camT.x - cam.x) * .18; cam.y += (camT.y - cam.y) * .18; cam.z += (camT.z - cam.z) * .18;
+            }
+            if (!reduced && !page.classList.contains('open') && now - lastGen > RATE && now - t0 > INTRO * .4) {
+                lastGen = now; gen++;
+                const pop = stepWorld();
+                stepStructures(gen);
+                genEl.textContent = String(gen).padStart(4, '0');
+                popEl.textContent = pop + structures.reduce((n, s) => n + s.cur.reduce((a, v) => a + v, 0), 0);
+            }
+            if (!page.classList.contains('open')) {
+                draw(now);
+                if (frame++ % 6 === 0) drawMini();
+            }
+        }
+        requestAnimationFrame(loop);
+        if (location.hash) { route(); }
+    </script>
+</body>
+
+</html>
