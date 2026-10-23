@@ -1,0 +1,19 @@
+---
+import ProjectPage from '../../../components/ProjectPage.astro';
+import { getResume, type Project } from '../../../lib/resume';
+
+export function getStaticPaths() {
+  return getResume('en').projects.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+interface Props {
+  project: Project;
+}
+
+const { project } = Astro.props;
+---
+
+<ProjectPage lang="en" project={project} />

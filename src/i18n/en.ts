@@ -1,0 +1,60 @@
+import type { UIStrings } from './fr';
+
+const en = {
+  lang: 'en',
+  board: {
+    title: (name: string) => `${name} — board`,
+    description: (text: string) => text,
+    listLabel: 'List view',
+    openList: '≡ list',
+    closeList: 'close ×',
+    projects: 'Projects',
+    elsewhere: 'Elsewhere',
+    cv: 'CV',
+    email: 'Email',
+    generation: 'generation',
+    cells: 'cells',
+    hint: 'drag: explore · wheel: zoom · click empty space: a glider · ',
+    pen: '[✎ draw]',
+    nameNote: [
+      '↑ my name, in living cells. the whole site is a game of life:',
+      'drag to explore, click empty space to drop a glider.',
+    ],
+    cvLabel: 'file · pdf ↓',
+    cvNote: 'my CV, paper version',
+    contactLabel: 'write ↗',
+    contactNote: 'the gun sends gliders.\nwrite to me, it’s the same.',
+    home: 'jpc',
+    themeNight: '[night]',
+    themePaper: '[paper]',
+    minimap: 'mini-map',
+  },
+  project: {
+    back: '← back to the board',
+    stamp: 'project page',
+    capture: 'capture · dithered live',
+    noCapture: '[no capture yet]',
+    visit: 'view the project ↗',
+    backBoard: 'back to the board',
+  },
+  cv: {
+    back: '← back to the board',
+    stamp: 'curriculum vitæ',
+    print: 'print',
+    pdf: 'CV.pdf ↓',
+    email: 'Email',
+    location: 'Location',
+    website: 'Website',
+    present: 'present',
+    level: 'level',
+    projectPage: 'view the page ↗',
+    contactHeading: 'Contact',
+    linksHeading: 'Links',
+  },
+  nav: {
+    language: 'Language',
+    theme: 'Theme',
+  },
+} satisfies UIStrings;
+
+export default en;

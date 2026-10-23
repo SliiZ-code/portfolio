@@ -1,0 +1,83 @@
+---
+import Base from '../layouts/Base.astro';
+import BoardHud from './BoardHud.astro';
+import BoardList from './BoardList.astro';
+import { getBoardProjects } from '../data/board';
+import { site } from '../data/site';
+import { strings } from '../i18n';
+import { getResume, htmlToText, type Lang } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const resume = getResume(lang);
+const projects = getBoardProjects(resume);
+const t = strings(lang);
+const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
+const cvPdf = site.cvPdf[lang];
+const [first, ...rest] = resume.name.split(' ');
+const nameText = rest.length ? `${first}\n${rest.join(' ')}` : first;
+const contactHref = resume.email ? `mailto:${resume.email}` : resume.profiles[0]?.url ?? '';
+const projectHref = (slug: string) => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
+
+const boardData = {
+  home: { text: nameText, k: 2 },
+  cv: {
+    text: 'cv',
+    k: 1,
+    label: t.board.cvLabel,
+    note: { t: t.board.cvNote, r: -0.05 },
+    url: cvHref,
+  },
+  contact: {
+    text: 'contact',
+    k: 1,
+    x: 150,
+    y: 22,
+    gun: true,
+    label: t.board.contactLabel,
+    note: { t: t.board.contactNote, r: 0.03 },
+    url: contactHref,
+  },
+  projects: projects.map((project) => ({
+    id: project.slug,
+    text: project.text,
+    x: project.x,
+    y: project.y,
+    emblem: project.emblem,
+    pad: project.pad,
+    label: project.label,
+    note: project.note ? { t: project.note.text, r: project.note.r } : undefined,
+    media: project.media,
+    url: projectHref(project.slug),
+  })),
+  nameNote: t.board.nameNote,
+};
+
+const json = JSON.stringify(boardData).replace(/</g, '\\u003c');
+const title = t.board.title(resume.name);
+const description = htmlToText(resume.summary) || resume.headline;
+---
+
+<Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }}>
+  <canvas id="board" aria-label={title}></canvas>
+
+  <BoardHud lang={lang} t={t} cvHref={cvHref} pdfHref={cvPdf} />
+  <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
+
+  <noscript>
+    <style>
+      #board, .hud { display: none; }
+      #list { position: static; transform: none; width: auto; border-left: 0; }
+      html, body { overflow: auto; }
+    </style>
+  </noscript>
+
+  <script type="application/json" id="board-data" set:html={json}></script>
+  <script>
+    import { initBoard } from '../scripts/board';
+    initBoard();
+  </script>
+</Base>

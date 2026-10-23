@@ -1,0 +1,48 @@
+---
+import type { UIStrings } from '../i18n/fr';
+import type { BoardProject } from '../data/board';
+import type { Lang, Resume } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+  t: UIStrings;
+  resume: Resume;
+  projects: BoardProject[];
+  cvHref: string;
+  cvPdf: string;
+}
+
+const { lang, t, resume, projects, cvHref, cvPdf } = Astro.props;
+const [first, ...rest] = resume.name.split(' ');
+const projectHref = (slug: string) =>
+  lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`;
+const tag = (label: string) => label.split(' · ')[0] || '';
+---
+
+<aside id="list" aria-label={t.board.listLabel}>
+  <button type="button" class="close" id="list-close">{t.board.closeList}</button>
+  <h2>{first}<br />{rest.join(' ')}</h2>
+  {resume.summary && <div class="summary" set:html={resume.summary} />}
+
+  <h3>{t.board.projects}</h3>
+  <ul id="list-projects">
+    {projects.map((project) => (
+      <li>
+        <a href={projectHref(project.slug)}>
+          {project.displayName}
+          <span>{tag(project.label)}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <h3>{t.board.elsewhere}</h3>
+  <ul>
+    <li><a href={cvPdf || cvHref}>{cvPdf ? 'CV (PDF)' : t.board.cv}<span>{cvPdf ? '↓' : '↗'}</span></a></li>
+    {resume.profiles.map((profile) => (
+      <li><a href={profile.url}>{profile.network}<span>↗</span></a></li>
+    ))}
+    {resume.email && <li><a href={`mailto:${resume.email}`}>{t.board.email}<span>↗</span></a></li>}
+    {resume.website.url && <li><a href={resume.website.url}>{resume.website.label || resume.website.url}<span>↗</span></a></li>}
+  </ul>
+</aside>

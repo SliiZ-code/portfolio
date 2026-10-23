@@ -1,0 +1,37 @@
+const KEY = 'jpc-theme';
+
+export const isNight = (): boolean => document.documentElement.dataset.theme === 'night';
+
+const apply = (night: boolean, persist: boolean) => {
+  document.documentElement.dataset.theme = night ? 'night' : 'paper';
+  document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((button) => {
+    const label = night ? button.dataset.labelPaper : button.dataset.labelNight;
+    if (label) button.textContent = label;
+  });
+  if (persist) {
+    try {
+      localStorage.setItem(KEY, night ? 'night' : 'paper');
+    } catch {
+      // private mode: the theme still applies for this page
+    }
+  }
+  document.dispatchEvent(new CustomEvent('themechange'));
+};
+
+export const initUI = () => {
+  let stored = '';
+  try {
+    stored = localStorage.getItem(KEY) ?? '';
+  } catch {
+    // ignore
+  }
+  apply(stored === 'night', false);
+
+  document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((button) => {
+    button.addEventListener('click', () => apply(!isNight(), true));
+  });
+
+  document.querySelectorAll<HTMLElement>('[data-print]').forEach((button) => {
+    button.addEventListener('click', () => window.print());
+  });
+};

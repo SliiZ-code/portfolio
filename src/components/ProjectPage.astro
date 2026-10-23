@@ -1,0 +1,76 @@
+---
+import Base from '../layouts/Base.astro';
+import DocActions from './DocActions.astro';
+import { BOARD_OVERLAY, boardMedia, boardNote } from '../data/board';
+import { strings, otherLang } from '../i18n';
+import { getProject, getResume, htmlToText, type Lang, type Project } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+  project: Project;
+}
+
+const { lang, project } = Astro.props;
+const resume = getResume(lang);
+const t = strings(lang);
+const other = otherLang(lang);
+const alt = getProject(other, project.slug);
+const boardHref = lang === 'fr' ? '/' : '/en/';
+const projectPath = (language: Lang, slug: string) =>
+  language === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`;
+const overlay = BOARD_OVERLAY[project.slug];
+const media = boardMedia(project);
+const note = boardNote(project, lang);
+const meta = [overlay?.label?.[lang], project.period].filter(Boolean).join(' · ');
+const frAlt = getProject('fr', project.slug) ? projectPath('fr', project.slug) : '/';
+const enAlt = getProject('en', project.slug) ? projectPath('en', project.slug) : '/en/';
+const switchHref = alt ? projectPath(other, project.slug) : other === 'fr' ? '/' : '/en/';
+const title = `${project.name} — ${resume.name}`;
+const description = htmlToText(project.description) || meta || resume.headline;
+---
+
+<Base lang={lang} title={title} description={description} alternates={{ fr: frAlt, en: enAlt }}>
+  <article id="page" class="open">
+    <div class="page-top">
+      <a class="back" href={`${boardHref}?from=${project.slug}`}>{t.project.back}</a>
+      <DocActions
+        lang={lang}
+        t={t}
+        frHref={switchHref}
+        enHref={switchHref}
+        pdfHref={undefined}
+      />
+    </div>
+
+    <div class="page-inner">
+      <figure class="page-media">
+        <canvas
+          id="dither"
+          width="240"
+          height="150"
+          data-src={media?.video ?? media?.image ?? ''}
+          data-kind={media?.video ? 'video' : media?.image ? 'image' : ''}
+        ></canvas>
+        <figcaption>{media ? t.project.capture : t.project.noCapture}</figcaption>
+      </figure>
+
+      <div class="page-text">
+        <span class="stamp">{t.project.stamp}</span>
+        <h1>{project.name}</h1>
+        {meta && <div class="meta">{meta}</div>}
+        {project.description && <div set:html={project.description} />}
+        {note && <span class="note">{note.text}</span>}
+        {project.website.url && (
+          <a class="visit" href={project.website.url} rel="noreferrer">
+            {project.website.label || t.project.visit}
+          </a>
+        )}
+      </div>
+    </div>
+  </article>
+
+  <script>
+    import { initDither } from '../scripts/board/dither';
+    initDither();
+  </script>
+</Base>

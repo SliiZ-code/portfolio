@@ -1,0 +1,218 @@
+---
+import Base from '../layouts/Base.astro';
+import DocActions from './DocActions.astro';
+import { site } from '../data/site';
+import { strings } from '../i18n';
+import { getResume, type Lang } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const resume = getResume(lang);
+const t = strings(lang);
+const boardHref = lang === 'fr' ? '/' : '/en/';
+const cvPath = (language: Lang) => (language === 'fr' ? '/cv/' : '/en/cv/');
+const projectPath = (slug: string) => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
+const pdf = site.cvPdf[lang];
+const title = `CV — ${resume.name}`;
+const where = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' · ');
+const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index < level);
+---
+
+<Base lang={lang} title={title} description={resume.headline} alternates={{ fr: '/cv/', en: '/en/cv/' }}>
+  <article id="page" class="open">
+    <header class="doc-bar">
+      <a class="back" href={boardHref}>{t.cv.back}</a>
+      <DocActions lang={lang} t={t} frHref={cvPath('fr')} enHref={cvPath('en')} pdfHref={pdf || undefined} print />
+    </header>
+
+    <div class="cv-inner">
+      <div class="cv-head">
+        <span class="stamp">{t.cv.stamp}</span>
+        <h1>{resume.name}</h1>
+        {resume.headline && <p class="cv-headline">{resume.headline}</p>}
+        {resume.summary && <div class="cv-summary" set:html={resume.summary} />}
+        <div class="cv-contact">
+          {resume.email && <a href={`mailto:${resume.email}`}>{resume.email}</a>}
+          {resume.location && <span>{resume.location}</span>}
+          {resume.website.url && (
+            <a href={resume.website.url}>{resume.website.label || t.cv.website}</a>
+          )}
+        </div>
+      </div>
+
+      {resume.experience.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.experience}</h2>
+          <div class="cv-items">
+            {resume.experience.map((entry) => (
+              <div class="cv-item">
+                <h3>{entry.position || entry.company}</h3>
+                <div class="where">
+                  {where(
+                    entry.company !== entry.position && entry.company,
+                    entry.location,
+                    entry.period,
+                  )}
+                  {entry.website.url && (
+                    <>
+                      {(entry.company || entry.location || entry.period) && ' · '}
+                      <a href={entry.website.url}>{entry.website.label || t.cv.website}</a>
+                    </>
+                  )}
+                </div>
+                {entry.description && <div class="description" set:html={entry.description} />}
+                {entry.roles.map((role) => (
+                  <div class="cv-role">
+                    <h3>{role.position}</h3>
+                    {role.period && <div class="where">{role.period}</div>}
+                    {role.description && <div class="description" set:html={role.description} />}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.education.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.education}</h2>
+          <div class="cv-items">
+            {resume.education.map((entry) => (
+              <div class="cv-item">
+                <h3>{[entry.degree, entry.area].filter(Boolean).join(' — ') || entry.school}</h3>
+                <div class="where">
+                  {where(entry.school, entry.location, entry.period, entry.grade && `${t.cv.level} ${entry.grade}`)}
+                  {entry.website.url && (
+                    <>
+                      {' · '}
+                      <a href={entry.website.url}>{entry.website.label || t.cv.website}</a>
+                    </>
+                  )}
+                </div>
+                {entry.description && <div class="description" set:html={entry.description} />}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.projects.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.projects}</h2>
+          <div class="cv-items">
+            {resume.projects.map((project) => (
+              <div class="cv-item">
+                <h3>{project.name}</h3>
+                {project.period && <div class="where">{project.period}</div>}
+                {project.description && <div class="description" set:html={project.description} />}
+                <a class="cv-project-link" href={projectPath(project.slug)}>{t.cv.projectPage}</a>
+                {project.website.url && (
+                  <>
+                    <span class="where"> · </span>
+                    <a class="cv-project-link" href={project.website.url}>{t.cv.website} ↗</a>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.skills.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.skills}</h2>
+          <div class="cv-items">
+            {resume.skills.map((skill) => (
+              <div class="cv-item">
+                <h3>
+                  {skill.name}
+                  {skill.level > 0 && (
+                    <span class="cv-level" aria-label={`${t.cv.level} ${skill.level}/5`}>
+                      {levels(skill.level).map((on) => <i class={on ? 'on' : ''}></i>)}
+                    </span>
+                  )}
+                </h3>
+                {(skill.proficiency || skill.keywords.length > 0) && (
+                  <div class="where">
+                    {where(skill.proficiency, skill.keywords.join(', '))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.languages.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.languages}</h2>
+          <div class="cv-items">
+            {resume.languages.map((language) => (
+              <div class="cv-item">
+                <h3>
+                  {language.language}
+                  {language.level > 0 && (
+                    <span class="cv-level" aria-label={`${t.cv.level} ${language.level}/5`}>
+                      {levels(language.level).map((on) => <i class={on ? 'on' : ''}></i>)}
+                    </span>
+                  )}
+                </h3>
+                {language.fluency && <div class="where">{language.fluency}</div>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.certifications.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.certifications}</h2>
+          <div class="cv-items">
+            {resume.certifications.map((entry) => (
+              <div class="cv-item">
+                <h3>{entry.title}</h3>
+                <div class="where">
+                  {where(entry.issuer, entry.date)}
+                  {entry.website.url && (
+                    <>
+                      {' · '}
+                      <a href={entry.website.url}>{entry.website.label || t.cv.website}</a>
+                    </>
+                  )}
+                </div>
+                {entry.description && <div class="description" set:html={entry.description} />}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.awards.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.awards}</h2>
+          <div class="cv-items">
+            {resume.awards.map((entry) => (
+              <div class="cv-item">
+                <h3>{entry.title}</h3>
+                <div class="where">
+                  {where(entry.awarder, entry.date)}
+                  {entry.website.url && (
+                    <>
+                      {' · '}
+                      <a href={entry.website.url}>{entry.website.label || t.cv.website}</a>
+                    </>
+                  )}
+                </div>
+                {entry.description && <div class="description" set:html={entry.description} />}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </article>
+</Base>

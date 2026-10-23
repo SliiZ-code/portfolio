@@ -1,0 +1,28 @@
+---
+import type { UIStrings } from '../i18n/fr';
+import type { Lang } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+  t: UIStrings;
+  frHref: string;
+  enHref: string;
+  pdfHref?: string;
+  print?: boolean;
+}
+
+const { lang, t, frHref, enHref, pdfHref, print } = Astro.props;
+---
+
+<div class="doc-actions">
+  <span aria-label={t.nav.language}>
+    {lang === 'fr' ? <span class="on" aria-current="page">FR</span> : <a href={frHref} hreflang="fr">FR</a>}
+    /
+    {lang === 'en' ? <span class="on" aria-current="page">EN</span> : <a href={enHref} hreflang="en">EN</a>}
+  </span>
+  <button type="button" data-theme-toggle data-label-night={t.board.themeNight} data-label-paper={t.board.themePaper}>
+    {t.board.themeNight}
+  </button>
+  {pdfHref && <a href={pdfHref}>{t.cv.pdf}</a>}
+  {print && <button type="button" data-print>{t.cv.print}</button>}
+</div>
