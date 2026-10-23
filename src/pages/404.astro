@@ -1,11 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 
-// Determine language based on URL
-const pathname = Astro.url.pathname;
-const isEnglish = pathname.startsWith('/en/');
-const lang = isEnglish ? 'en' : 'fr';
-
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'fr';
 const title = lang === 'fr' ? '404 — Page non trouvée' : '404 — Page Not Found';
 const description = lang === 'fr' ? 'La page que vous cherchez n\'existe pas.' : 'The page you are looking for does not exist.';
 
@@ -15,45 +11,104 @@ const alternates = {
 };
 ---
 
-<Base {lang} {title} {description} {alternates}>
-  <main style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; font-family: 'Gambarino', serif;">
-    <div style="text-align: center; max-width: 600px;">
-      <!-- French section -->
-      <div style="margin-bottom: 4rem;">
-        <h1 style="font-family: 'Geist Pixel', monospace; font-size: 6rem; margin: 0; line-height: 1; color: var(--color-ink);">404</h1>
-        <p style="font-family: 'Shantell Sans', cursive; font-size: 1.5rem; margin: 1rem 0 0 0; color: var(--color-ink);">cellule morte</p>
-        <p style="font-size: 1rem; color: var(--color-ink); margin: 1.5rem 0 0 0;">La page que vous cherchez n'existe pas.</p>
-        <a href="/" style="display: inline-block; margin-top: 1.5rem; padding: 0.5rem 1rem; background: var(--color-accent); color: var(--color-bg); text-decoration: none; border-radius: 0.25rem; font-family: 'Geist Mono', monospace;">Retour</a>
-      </div>
+<Base {lang} {title} {description} {alternates} noindex>
+  <main>
+    <div class="content">
+      <h1>404</h1>
+      <p class="note fr">cellule morte.</p>
+      <p class="msg fr">La page que vous cherchez n'existe pas.</p>
+      <a href="/" class="back">Retour</a>
 
-      <!-- English section -->
-      <div style="border-top: 1px solid var(--color-ink-faint); padding-top: 2rem;">
-        <h2 style="font-family: 'Geist Pixel', monospace; font-size: 2rem; margin: 0 0 0.5rem 0; line-height: 1; color: var(--color-ink);">404</h2>
-        <p style="font-family: 'Shantell Sans', cursive; font-size: 1.5rem; margin: 0.5rem 0 0 0; color: var(--color-ink);">dead cell</p>
-        <p style="font-size: 1rem; color: var(--color-ink); margin: 1.5rem 0 0 0;">The page you are looking for does not exist.</p>
-        <a href="/en/" style="display: inline-block; margin-top: 1.5rem; padding: 0.5rem 1rem; background: var(--color-accent); color: var(--color-bg); text-decoration: none; border-radius: 0.25rem; font-family: 'Geist Mono', monospace;">Back</a>
-      </div>
+      <hr />
+
+      <h2>404</h2>
+      <p class="note en">dead cell.</p>
+      <p class="msg en">The page you are looking for does not exist.</p>
+      <a href="/en/" class="back">Back</a>
     </div>
   </main>
 </Base>
 
 <style>
-  :root[data-theme='paper'] {
-    --color-bg: #e8e5dc;
-    --color-ink: #1b1a17;
-    --color-ink-faint: #d4d1c8;
-    --color-accent: #2433ff;
-  }
-
-  :root[data-theme='night'] {
-    --color-bg: #131210;
-    --color-ink: #e8e5dc;
-    --color-ink-faint: #4a4845;
-    --color-accent: #ff8a3d;
-  }
-
   main {
-    background: var(--color-bg);
-    color: var(--color-ink);
+    height: 100%;
+    overflow: auto;
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-attachment: local;
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 6vh 4vw;
+    text-align: center;
+  }
+
+  h1 {
+    font: clamp(48px, 10vw, 96px)/.9 'Geist Pixel';
+    font-weight: 400;
+    margin: 0 0 18px;
+    color: var(--ink);
+  }
+
+  h2 {
+    font: clamp(32px, 6vw, 48px)/.9 'Geist Pixel';
+    font-weight: 400;
+    margin: 28px 0 18px;
+    color: var(--ink);
+  }
+
+  .note {
+    font-family: 'Shantell Sans', cursive;
+    font-size: clamp(18px, 4vw, 24px);
+    color: var(--accent);
+    margin: 0 0 12px;
+    display: block;
+  }
+
+  .msg {
+    font-family: 'Gambarino', serif;
+    font-size: clamp(16px, 2vw, 20px);
+    line-height: 1.4;
+    color: var(--ink);
+    margin: 0 0 18px;
+    max-width: 40ch;
+  }
+
+  .back {
+    display: inline-block;
+    padding: 4px 8px;
+    border: 1px solid var(--ink);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--ink);
+    background: var(--paper);
+    font-size: 12px;
+  }
+
+  .back:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  hr {
+    width: 60%;
+    height: 1px;
+    border: none;
+    background: var(--line);
+    margin: 28px 0;
+  }
+
+  .fr + .msg.fr,
+  .en + .msg.en {
+    margin-bottom: 18px;
   }
 </style>
