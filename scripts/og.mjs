@@ -10,34 +10,49 @@ const projectRoot = path.join(__dirname, '..');
 const PORT = 4411;
 let previewProcess;
 
+async function checkPortInUse() {
+  try {
+    const response = await fetch(`http://127.0.0.1:${PORT}/`);
+    return response.ok || response.status === 404; // Port is in use
+  } catch {
+    return false; // Port is free
+  }
+}
+
 async function startPreview() {
+  // Check if port is already in use
+  const inUse = await checkPortInUse();
+  if (inUse) {
+    throw new Error(`Port ${PORT} is already in use`);
+  }
+
   return new Promise((resolve, reject) => {
-    previewProcess = spawn('npm', ['run', 'preview', '--', '--port', String(PORT)], {
+    const astroPath = path.join(projectRoot, 'node_modules/astro/bin/astro.mjs');
+    previewProcess = spawn('node', [astroPath, 'preview', '--port', String(PORT), '--host', '127.0.0.1'], {
       cwd: projectRoot,
     });
 
     let resolvedOnce = false;
+    let output = '';
 
     const timeout = setTimeout(() => {
       if (previewProcess && !resolvedOnce) {
-        previewProcess.kill();
+        previewProcess.kill('SIGTERM');
         reject(new Error('Preview server startup timeout'));
       }
-    }, 60000);
+    }, 30000);
 
     previewProcess.stdout.on('data', (data) => {
-      const text = data.toString();
-      console.log('[preview stdout]', text);
-      // Check for successful startup - look for port 4411 in output
-      if (text.includes(String(PORT)) && !resolvedOnce) {
+      output += data.toString();
+      if (output.includes(String(PORT)) && !resolvedOnce) {
         resolvedOnce = true;
         clearTimeout(timeout);
-        setTimeout(() => resolve(), 1500);
+        setTimeout(() => resolve(), 500);
       }
     });
 
     previewProcess.stderr.on('data', (data) => {
-      console.log('[preview stderr]', data.toString());
+      output += data.toString();
     });
 
     previewProcess.on('error', (err) => {
@@ -48,7 +63,8 @@ async function startPreview() {
     });
 
     previewProcess.on('close', (code) => {
-      if (!resolvedOnce && code !== 0) {
+      if (!resolvedOnce) {
+        clearTimeout(timeout);
         reject(new Error(`Preview process exited with code ${code}`));
       }
     });
@@ -58,53 +74,30 @@ async function startPreview() {
 async function captureOG() {
   let browser;
   try {
-    // Start the preview server
     console.log(`Starting preview server on port ${PORT}...`);
     await startPreview();
 
-    // Verify server is up
-    let connected = false;
-    for (let i = 0; i < 20; i++) {
-      try {
-        const response = await fetch(`http://127.0.0.1:${PORT}/`);
-        if (response.ok) {
-          connected = true;
-          break;
-        }
-      } catch {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-
-    if (!connected) {
-      throw new Error('Could not connect to preview server');
-    }
-
-    console.log('Server is up, launching browser...');
-
-    // Launch browser
+    console.log('Launching browser...');
     browser = await chromium.launch();
     const page = await browser.newPage();
     await page.setViewportSize({ width: 1200, height: 630 });
 
-    // Navigate to the site
     console.log('Navigating to preview...');
     await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for intro animation to finish
+    // Wait for intro animation (1600ms + buffer)
     console.log('Waiting for intro animation to complete...');
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(2000);
 
-    // Hide the HUD and minimap by injecting CSS
+    // Hide HUD, list panel, and minimap
     await page.addStyleTag({
       content: `
         .hud { display: none !important; }
-        .minimap { display: none !important; }
-        [data-hud] { display: none !important; }
+        #list { display: none !important; }
+        #mini { display: none !important; }
       `,
     });
 
-    // Take screenshot
     console.log('Capturing screenshot...');
     await page.screenshot({ path: outputPath, type: 'png' });
     console.log(`Generated ${outputPath}`);
@@ -112,14 +105,14 @@ async function captureOG() {
     if (browser) await browser.close();
     if (previewProcess) {
       previewProcess.kill('SIGTERM');
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 }
 
 // Build first
 console.log('Building site...');
-const buildProcess = spawn('npm', ['run', 'build'], {
+const buildProcess = spawn('node', [path.join(projectRoot, 'node_modules/astro/bin/astro.mjs'), 'build'], {
   cwd: projectRoot,
 });
 
@@ -129,7 +122,6 @@ buildProcess.on('close', (code) => {
     process.exit(1);
   }
 
-  // Proceed with OG generation
   captureOG().catch((err) => {
     console.error('Error generating OG image:', err);
     process.exit(1);
