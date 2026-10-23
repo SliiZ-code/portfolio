@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeResume } from '../scripts/sync-resume.mjs';
+import { resumeFromResponse, sanitizeResume } from '../scripts/sync-resume.mjs';
 import { getResume, htmlToText, parseResume, sanitizeHtml, slugify } from '../src/lib/resume';
 
 const fixture = {
@@ -54,6 +54,23 @@ describe('sanitizeResume', () => {
     expect(output.sections.projects.items).toHaveLength(1);
     expect(output.sections.projects.items[0].name).toBe('Visible');
     expect(output.sections.certifications.items).toHaveLength(0);
+  });
+});
+
+describe('resumeFromResponse', () => {
+  it('unwraps a { data } envelope and sanitises it', () => {
+    const output = resumeFromResponse({ data: fixture }) as Record<string, any>;
+    expect(output.basics.name).toBe('Julien Petit-Colboc');
+    expect(JSON.stringify(output)).not.toContain('private note');
+  });
+
+  it('accepts a bare resume body', () => {
+    const output = resumeFromResponse(fixture) as Record<string, any>;
+    expect(output.sections.projects.items).toHaveLength(1);
+  });
+
+  it('survives an empty or non-object body', () => {
+    expect(resumeFromResponse(null)).toMatchObject({ basics: { name: '' }, sections: {} });
   });
 });
 

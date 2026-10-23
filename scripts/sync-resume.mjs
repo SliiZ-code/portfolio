@@ -124,25 +124,33 @@ export const sanitizeResume = (input) => {
   return output;
 };
 
+/** RxResume wraps the resume in `{ data }` on some versions; accept both shapes. */
+export const resumeFromResponse = (body) => sanitizeResume(body?.data ?? body);
+
 const getResume = async (id, baseUrl, key) => {
   const response = await fetch(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, {
     headers: { 'x-api-key': key },
   });
   if (!response.ok) throw new Error(`RxResume ${id}: HTTP ${response.status} ${response.statusText}`);
   const body = await response.json();
-  return body?.data ?? body;
+  return resumeFromResponse(body);
 };
 
 const main = async () => {
   const baseUrl = (process.env.RXRESUME_URL || 'https://rxresu.me').replace(/\/+$/, '');
   const key = process.env.RXRESUME_API_KEY;
   if (!key) throw new Error('RXRESUME_API_KEY is required');
-  for (const lang of ['fr', 'en']) {
+  const langs = ['fr', 'en'];
+  const ids = langs.map((lang) => {
     const id = process.env[`RXRESUME_ID_${lang.toUpperCase()}`];
     if (!id) throw new Error(`RXRESUME_ID_${lang.toUpperCase()} is required`);
-    const resume = await getResume(id, baseUrl, key);
-    await writeFile(OUT[lang], `${JSON.stringify(sanitizeResume(resume), null, 2)}\n`);
-    console.log(`${lang}: ${resume.basics?.name ?? 'resume'} -> ${OUT[lang].pathname}`);
+    return id;
+  });
+  // fetch everything first so a failure on one language never leaves the two files out of sync
+  const resumes = await Promise.all(ids.map((id) => getResume(id, baseUrl, key)));
+  for (const [index, lang] of langs.entries()) {
+    await writeFile(OUT[lang], `${JSON.stringify(resumes[index], null, 2)}\n`);
+    console.log(`${lang}: ${resumes[index].basics.name || 'resume'} -> ${OUT[lang].pathname}`);
   }
 };
 
