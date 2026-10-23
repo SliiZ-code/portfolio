@@ -97,11 +97,25 @@ describe('sanitizeHtml', () => {
       '<a href="https://example.com" onmouseover="x">good</a>' +
       '<img src=x onerror=alert(1)><br></p>';
     expect(sanitizeHtml(dirty)).toBe(
-      '<p>Hi <strong>you</strong> <a href="">bad</a><a href="https://example.com">good</a><br></p>',
+      '<p>Hi <strong>you</strong> bad<a href="https://example.com">good</a><br></p>',
     );
     expect(sanitizeHtml('<ul><li>one</li></ul>')).toBe('<ul><li>one</li></ul>');
     expect(sanitizeHtml('<p>a &amp; b</p>')).toBe('<p>a &amp; b</p>');
     expect(sanitizeHtml('<iframe src="https://evil"></iframe><em>ok</em>')).toBe('<em>ok</em>');
+  });
+
+  it('drops a rejected link but keeps its text, including nested formatting', () => {
+    expect(sanitizeHtml('<p><a href="javascript:alert(1)">click <em>me</em></a> now</p>')).toBe('<p>click <em>me</em> now</p>');
+    expect(sanitizeHtml('<a>no href</a>')).toBe('no href');
+    expect(sanitizeHtml('x</a>y')).toBe('xy');
+  });
+
+  it('does not decode entities before parsing', () => {
+    expect(sanitizeHtml('<p>&lt;div&gt; and &lt;script&gt;alert(1)&lt;/script&gt;</p>')).toBe(
+      '<p>&lt;div&gt; and &lt;script&gt;alert(1)&lt;/script&gt;</p>',
+    );
+    expect(sanitizeHtml('<p>R&D & co</p>')).toBe('<p>R&amp;D &amp; co</p>');
+    expect(htmlToText('<p>&lt;div&gt;</p>')).toBe('<div>');
   });
 
   it('turns sanitised HTML into plain text for metadata', () => {

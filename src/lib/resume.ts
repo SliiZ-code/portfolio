@@ -30,6 +30,10 @@ const decodeEntities = (value: string): string =>
 const escapeText = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Text from the source is already HTML: keep its entities, escape only what could open a tag. */
+const escapeSourceText = (value: string): string =>
+  value.replace(/&(?!(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);)/gi, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const escapeAttr = (value: string): string => escapeText(value).replace(/"/g, '&quot;');
 
 /** Only these URLs may end up in an href. */
@@ -79,16 +83,17 @@ const hrefOf = (attrs: string): string => {
  */
 export const sanitizeHtml = (input: string): string => {
   if (!input) return '';
-  const html = decodeEntities(input.replace(/<!--[\s\S]*?-->/g, ''));
+  const html = input.replace(/<!--[\s\S]*?-->/g, '');
+  const links: boolean[] = [];
   let out = '';
   let i = 0;
   while (i < html.length) {
     const next = html.indexOf('<', i);
     if (next === -1) {
-      out += escapeText(html.slice(i));
+      out += escapeSourceText(html.slice(i));
       break;
     }
-    out += escapeText(html.slice(i, next));
+    out += escapeSourceText(html.slice(i, next));
     const tag = readTag(html, next);
     if (!tag) {
       out += '&lt;';
@@ -110,12 +115,17 @@ export const sanitizeHtml = (input: string): string => {
       if (!tag.closing) out += '<br>';
       continue;
     }
-    if (tag.closing) {
-      out += `</${tag.name}>`;
+    if (tag.name === 'a') {
+      if (tag.closing) {
+        if (links.pop()) out += '</a>';
+      } else {
+        const href = hrefOf(tag.attrs);
+        links.push(Boolean(href));
+        if (href) out += `<a href="${escapeAttr(href)}">`;
+      }
       continue;
     }
-    if (tag.name === 'a') out += `<a href="${escapeAttr(hrefOf(tag.attrs))}">`;
-    else out += `<${tag.name}>`;
+    out += tag.closing ? `</${tag.name}>` : `<${tag.name}>`;
   }
   return out;
 };
