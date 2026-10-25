@@ -50,6 +50,8 @@ async function mount(box: HTMLElement, src: string): Promise<void> {
   const controls = new OrbitControls(camera, effect.domElement);
   controls.enableZoom = false;
   controls.enablePan = false;
+  // OrbitControls sets touch-action: none; let a vertical swipe scroll the page, horizontal drag rotates
+  effect.domElement.style.touchAction = 'pan-y';
   controls.autoRotate = !reduced;
   controls.autoRotateSpeed = 2;
 
