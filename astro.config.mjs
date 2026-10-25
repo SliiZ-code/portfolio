@@ -9,6 +9,8 @@ export default defineConfig({
   build: { inlineStylesheets: 'auto' },
   integrations: [
     sitemap({
+      // the story pages hold placeholder copy until the real text is written
+      filter: (page) => !/\/(histoire|en\/story)\/$/.test(new URL(page).pathname),
       i18n: {
         defaultLocale: 'fr',
         locales: {

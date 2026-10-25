@@ -1,4 +1,5 @@
 import type { Lang, Project, Resume } from '../lib/resume';
+import { strings } from '../i18n';
 import { OSCILLATORS, PATTERNS, type EmblemName } from '../scripts/board/patterns';
 
 export const WORLD = { w: 420, h: 280 } as const;
@@ -240,14 +241,97 @@ function crowdedSpot(size: Size, occupied: Box[], keepClear: Box[], index: numbe
   return { x: best.x, y: best.y };
 }
 
+/**
+ * The lab and the story are hand-placed like the name and the CV, outside the RxResume
+ * data. They only peek into the home view (1440x900 shows about x 82..338, y 67..227), like
+ * the projects: the story's label and note show at the top edge, between the gun and Blink
+ * and clear of its glider lane; the lab's emblem and the top of its title show at the bottom
+ * edge, between Thrive and the weather station, clear of the HUD.
+ */
+export type PageId = 'labo' | 'story';
+
+export interface BoardPageDef {
+  id: PageId;
+  emblem: EmblemName;
+  x: number;
+  y: number;
+  pad: number;
+}
+
+export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
+  labo: { id: 'labo', emblem: 'beacon', x: 232, y: 214, pad: 2 },
+  story: { id: 'story', emblem: 'toad', x: 278, y: 30, pad: 2 },
+};
+
+const PAGE_PATHS: Record<PageId, Record<Lang, string>> = {
+  labo: { fr: '/labo/', en: '/en/lab/' },
+  story: { fr: '/histoire/', en: '/en/story/' },
+};
+
+export const pagePath = (id: PageId, lang: Lang): string => PAGE_PATHS[id][lang];
+
+export interface BoardPage {
+  id: PageId;
+  text: string;
+  emblem: EmblemName;
+  x: number;
+  y: number;
+  pad: number;
+  /** Short name for the server-rendered list. */
+  name: string;
+  label: string;
+  note: BoardNote;
+  url: string;
+}
+
+const PAGE_NOTE_TILT: Record<PageId, number> = { labo: 0.03, story: -0.03 };
+
+export const getBoardPages = (lang: Lang): BoardPage[] =>
+  Object.values(BOARD_PAGES).map((page) => {
+    const t = strings(lang).board.pages[page.id];
+    return {
+      ...page,
+      text: t.text,
+      name: t.name,
+      label: t.label,
+      note: { text: t.note, r: PAGE_NOTE_TILT[page.id] },
+      url: pagePath(page.id, lang),
+    };
+  });
+
+/** One box for both languages: the widest of the two raster texts, so the layout never depends on the language. */
+export const pageBox = (page: BoardPageDef): Box => {
+  const boxes = (['fr', 'en'] as const).map((lang) =>
+    projectBox({ ...page, text: strings(lang).board.pages[page.id].text }),
+  );
+  return {
+    x: Math.min(...boxes.map((box) => box.x)),
+    y: Math.min(...boxes.map((box) => box.y)),
+    x2: Math.max(...boxes.map((box) => box.x2)),
+    y2: Math.max(...boxes.map((box) => box.y2)),
+  };
+};
+
 /** Generous fixed boxes for the hand-placed entities, used only by auto-placement. */
-const FIXED_BOXES: Box[] = [
+export const FIXED_BOXES: Box[] = [
   { x: 104, y: 114, x2: 316, y2: 160 }, // name (rasterised client-side)
   { x: 196, y: 158, x2: 226, y2: 180 }, // cv
   { x: 144, y: 16, x2: 232, y2: 58 }, // contact + gun
 ];
 
-const boxFor = (project: BoardProject): Box => {
+/**
+ * Gliders leave the gun mouth around (188, 24) and fly down-right until they hit the name,
+ * so x - y stays near 164. Stepped boxes along that diagonal, 8 cells either side.
+ */
+export const GLIDER_LANE: Box[] = Array.from({ length: 10 }, (_, step) => {
+  const y = 20 + step * 10;
+  return { x: y + 156, y, x2: y + 10 + 172, y2: y + 10 };
+});
+
+const pageBoxes = (): Box[] => Object.values(BOARD_PAGES).map(pageBox);
+
+/** Estimated footprint of a placed project, same anchor convention as `autoPlace` (centre x, top y). */
+export const projectBox = (project: Pick<BoardProject, 'text' | 'emblem' | 'pad' | 'x' | 'y'>): Box => {
   const size = estimateBoxSize(project.text, project.emblem, project.pad);
   return {
     x: project.x - size.w / 2,
@@ -259,7 +343,7 @@ const boxFor = (project: BoardProject): Box => {
 
 export function getBoardProjects(resume: Resume): BoardProject[] {
   const known = resume.projects.map((project) => ({ project, overlay: overlayFor(project) }));
-  const occupied = FIXED_BOXES.map((box) => ({ ...box }));
+  const occupied = [...FIXED_BOXES, ...GLIDER_LANE, ...pageBoxes()].map((box) => ({ ...box }));
   const placed = new Map<string, BoardProject>();
 
   for (const { project, overlay } of known) {
@@ -277,7 +361,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       media: overlay.media,
     };
     placed.set(project.slug, boardProject);
-    occupied.push(boxFor(boardProject));
+    occupied.push(projectBox(boardProject));
   }
 
   let autoIndex = 0;
@@ -286,7 +370,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
     const text = boardText(project);
     const emblem = OSCILLATORS[hash(project.slug) % OSCILLATORS.length];
     const size = estimateBoxSize(text, emblem);
-    const spot = autoPlace(size, occupied, autoIndex++, FIXED_BOXES.slice(0, 2));
+    const spot = autoPlace(size, occupied, autoIndex++, [...FIXED_BOXES.slice(0, 2), ...pageBoxes()]);
     const boardProject: BoardProject = {
       ...project,
       text,
@@ -297,7 +381,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       pad: 2,
       label: project.period,
     };
-    occupied.push(boxFor(boardProject));
+    occupied.push(projectBox(boardProject));
     return boardProject;
   });
 }

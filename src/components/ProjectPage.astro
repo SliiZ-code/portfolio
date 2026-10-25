@@ -67,26 +67,8 @@ const description = htmlToText(project.description) || meta || resume.headline;
 
   <script>
     import { initDither } from '../scripts/board/dither';
+    import { initBackLink } from '../scripts/back';
     initDither();
-
-    const back = document.querySelector<HTMLAnchorElement>('[data-back-board]');
-    back?.addEventListener('click', (event) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      if (!document.referrer) return;
-      try {
-        const referrer = new URL(document.referrer);
-        if (referrer.origin === location.origin && referrer.pathname === back.dataset.backBoard) {
-          event.preventDefault();
-          try {
-            sessionStorage.setItem('jpc-from', back.dataset.slug ?? '');
-          } catch {
-            // private mode: Back lands on the normal board view
-          }
-          history.back();
-        }
-      } catch {
-        // malformed referrer: follow the link
-      }
-    });
+    initBackLink();
   </script>
 </Base>

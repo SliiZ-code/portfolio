@@ -46,6 +46,9 @@ export interface BoardProjectConfig {
   url: string;
 }
 
+/** A hand-placed page (lab, story): same shape as a project, but not backed by the resume. */
+export type BoardPageConfig = Omit<BoardProjectConfig, 'media'>;
+
 export interface BoardConfig {
   home: { text: string; k: number };
   cv: { text: string; k: number; label: string; note: NoteConfig; url: string };
@@ -60,6 +63,7 @@ export interface BoardConfig {
     url: string;
   };
   projects: BoardProjectConfig[];
+  pages: BoardPageConfig[];
   nameNote: string[];
 }
 

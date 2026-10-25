@@ -5,6 +5,7 @@ import { addStructure, stepStructures, structurePopulation, widenGun } from './s
 import { clampCam, flyTo, toWorld } from './camera';
 import { draw, type Colors, type RenderState } from './render';
 import { drawMini } from './minimap';
+import { createFromFlag, createReturnTracker, resolveFrom } from './return-flag';
 import { bindInput } from './input';
 import type { BoardConfig, Cam, Dive, Entity, Structure, Viewport } from './types';
 
@@ -70,7 +71,7 @@ export async function initBoard(): Promise<void> {
     box: blank(),
     labelAt: { x: 0, y: 0 },
   };
-  const entities: Entity[] = [name, cv, ...data.projects.map((project) => ({
+  const entities: Entity[] = [name, cv, ...[...data.projects, ...data.pages].map((project) => ({
     id: project.id,
     x: project.x,
     y: project.y,
@@ -80,7 +81,7 @@ export async function initBoard(): Promise<void> {
     pad: project.pad,
     label: project.label,
     note: project.note,
-    media: project.media,
+    media: 'media' in project ? project.media : undefined,
     url: project.url,
     box: blank(),
     labelAt: { x: 0, y: 0 },
@@ -191,34 +192,14 @@ export async function initBoard(): Promise<void> {
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   };
 
-  const FROM_KEY = 'jpc-from';
-  const storage = {
-    get: (): string | null => {
-      try {
-        return sessionStorage.getItem(FROM_KEY);
-      } catch {
-        return null;
-      }
-    },
-    set: (value: string) => {
-      try {
-        sessionStorage.setItem(FROM_KEY, value);
-      } catch {
-        // private mode: Back just lands on the normal board view
-      }
-    },
-    clear: () => {
-      try {
-        sessionStorage.removeItem(FROM_KEY);
-      } catch {
-        // ignore
-      }
-    },
-  };
+  const flag = createFromFlag(() => sessionStorage);
+  const tracker = createReturnTracker(flag);
+  const diveTarget = (entity: Entity) => !['name', 'cv', 'contact'].includes(entity.id);
 
   const replayZoomOut = (slug: string): boolean => {
-    const target = entities.find((entity) => entity.id === slug && !['name', 'cv', 'contact'].includes(entity.id));
+    const target = entities.find((entity) => entity.id === slug && diveTarget(entity));
     if (!target) return false;
+    tracker.remember(slug);
     intro = 0;
     introStart = performance.now();
     if (reduced) {
@@ -237,19 +218,28 @@ export async function initBoard(): Promise<void> {
     return true;
   };
 
-  // `?from=` comes from the back link; a history Back (reload without bfcache) only has the stored flag
   const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-  const stored = storage.get();
-  const from = new URLSearchParams(location.search).get('from') ?? (navigation?.type === 'back_forward' ? stored : null);
-  storage.clear();
-  if (from) replayZoomOut(from);
+  const from = resolveFrom({
+    query: new URLSearchParams(location.search).get('from'),
+    navType: navigation?.type,
+    stored: flag.get(),
+  });
+  flag.clear();
+  canvas.dataset.entry = from && replayZoomOut(from) ? (reduced ? 'direct' : 'zoom-out') : reduced ? 'direct' : 'intro';
 
   addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
-    const slug = storage.get();
-    storage.clear();
-    if (slug) replayZoomOut(slug);
+    const slug = flag.get();
+    flag.clear();
+    if (slug && replayZoomOut(slug)) canvas.dataset.entry = reduced ? 'direct' : 'zoom-out';
   });
+
+  // Back → Forward → Back: the flag was consumed on arrival, put it back when the board is left
+  addEventListener('pagehide', () => tracker.pagehide());
+  // any other way out (CV, language switch, list link) must not replay a zoom-out on the next Back
+  document.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('a[href]')) tracker.forget();
+  }, true);
 
   const resize = () => {
     const dpr = Math.min(2, devicePixelRatio || 1);
@@ -287,17 +277,19 @@ export async function initBoard(): Promise<void> {
 
   const activate = (entity: Entity) => {
     if (entity.id === 'name') return;
+    // leaving without a dive: no slug may survive to be replayed on a later Back
     if (entity.id === 'contact') {
+      tracker.forget();
       if (entity.url) location.href = entity.url;
       return;
     }
     if (reduced) {
+      tracker.forget();
       if (entity.url) location.href = entity.url;
       return;
     }
     const cx = (entity.box.x + entity.box.x2) / 2;
     const cy = (entity.box.y + entity.box.y2) / 2;
-    storage.set(entity.id);
     dive = { entity, t0: performance.now(), from: { ...cam }, to: { x: cx, y: cy, z: 70 }, dir: 1 };
   };
 
@@ -401,9 +393,11 @@ export async function initBoard(): Promise<void> {
       cam.y = dive.from.y + (dive.to.y - dive.from.y) * e;
       if (k === 1) {
         if (dive.dir === 1) {
-          const url = dive.entity?.url;
+          const target = dive.entity;
           dive = null;
-          if (url) location.href = url;
+          if (target && diveTarget(target)) tracker.remember(target.id);
+          else tracker.forget();
+          if (target?.url) location.href = target.url;
         } else {
           Object.assign(camT, cam);
           dive = null;

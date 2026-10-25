@@ -1,6 +1,6 @@
 ---
 import type { UIStrings } from '../i18n/fr';
-import type { BoardProject } from '../data/board';
+import type { BoardPage, BoardProject } from '../data/board';
 import type { Lang, Resume } from '../lib/resume';
 
 interface Props {
@@ -8,11 +8,12 @@ interface Props {
   t: UIStrings;
   resume: Resume;
   projects: BoardProject[];
+  pages: BoardPage[];
   cvHref: string;
   cvPdf: string;
 }
 
-const { lang, t, resume, projects, cvHref, cvPdf } = Astro.props;
+const { lang, t, resume, projects, pages, cvHref, cvPdf } = Astro.props;
 const [first, ...rest] = resume.name.split(' ');
 const projectHref = (slug: string) =>
   lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`;
@@ -38,6 +39,9 @@ const tag = (label: string) => label.split(' · ')[0] || '';
 
   <h3>{t.board.elsewhere}</h3>
   <ul>
+    {pages.map((page) => (
+      <li><a href={page.url}>{page.name}<span>{tag(page.label)}</span></a></li>
+    ))}
     <li><a href={cvPdf || cvHref}>{cvPdf ? 'CV (PDF)' : t.board.cv}<span>{cvPdf ? '↓' : '↗'}</span></a></li>
     {resume.profiles.map((profile) => (
       <li><a href={profile.url}>{profile.network}<span>↗</span></a></li>
