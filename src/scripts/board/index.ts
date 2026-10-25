@@ -277,11 +277,14 @@ export async function initBoard(): Promise<void> {
 
   const activate = (entity: Entity) => {
     if (entity.id === 'name') return;
+    // leaving without a dive: no slug may survive to be replayed on a later Back
     if (entity.id === 'contact') {
+      tracker.forget();
       if (entity.url) location.href = entity.url;
       return;
     }
     if (reduced) {
+      tracker.forget();
       if (entity.url) location.href = entity.url;
       return;
     }
