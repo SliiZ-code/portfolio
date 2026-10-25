@@ -92,8 +92,9 @@ async function mount(box: HTMLElement, src: string): Promise<void> {
   render();
   box.dataset.state = 'ready';
   if (reduced) {
-    // still, unless dragged
-    controls.addEventListener('change', render);
+    // still, unless dragged. `change` fires from inside controls.update(), so redraw only:
+    // calling render() here would re-enter update() and overflow the stack
+    controls.addEventListener('change', () => effect.render(scene, camera));
     return;
   }
   const loop = () => {
