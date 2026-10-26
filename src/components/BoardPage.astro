@@ -76,7 +76,7 @@ const description = htmlToText(resume.summary) || resume.headline;
 <Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }}>
   <canvas id="board" aria-label={title}></canvas>
 
-  <BoardHud lang={lang} t={t} cvHref={cvHref} pdfHref={cvPdf} />
+  <BoardHud lang={lang} t={t} />
   <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
 
   <noscript>

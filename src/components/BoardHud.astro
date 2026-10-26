@@ -5,11 +5,9 @@ import type { Lang } from '../lib/resume';
 interface Props {
   lang: Lang;
   t: UIStrings;
-  cvHref: string;
-  pdfHref: string;
 }
 
-const { lang, t, cvHref, pdfHref } = Astro.props;
+const { lang, t } = Astro.props;
 const frHref = '/';
 const enHref = '/en/';
 ---
@@ -25,9 +23,6 @@ const enHref = '/en/';
   <button type="button" data-theme-toggle data-label-night={t.board.themeNight} data-label-paper={t.board.themePaper}>
     {t.board.themeNight}
   </button>
-  {pdfHref
-    ? <a href={pdfHref}>{t.cv.pdf}</a>
-    : <a href={cvHref}>CV</a>}
 </div>
 
 <div class="hud bl">
