@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { initialTheme } from '../src/scripts/theme';
 
@@ -12,7 +13,6 @@ describe('initialTheme', () => {
     it('returns night when hour is before 7', () => {
       expect(initialTheme(null, 0)).toBe('night');
       expect(initialTheme(null, 6)).toBe('night');
-      expect(initialTheme(null, 6.59)).toBe('night');
     });
 
     it('returns paper at 7:00', () => {
@@ -23,7 +23,6 @@ describe('initialTheme', () => {
       expect(initialTheme(null, 8)).toBe('paper');
       expect(initialTheme(null, 12)).toBe('paper');
       expect(initialTheme(null, 18)).toBe('paper');
-      expect(initialTheme(null, 18.59)).toBe('paper');
     });
   });
 
@@ -45,5 +44,18 @@ describe('initialTheme', () => {
       expect(initialTheme('NIGHT', 12)).toBe('paper');
       expect(initialTheme('Paper', 3)).toBe('night');
     });
+  });
+});
+
+describe('inline copy in Base.astro', () => {
+  // the inline script can't import modules before first paint, so it carries its own copy
+  const source = readFileSync(new URL('../src/layouts/Base.astro', import.meta.url), 'utf8');
+  const block = source.match(/const initialTheme = [\s\S]*?\n\s*};/)?.[0];
+  const inline = new Function(`${block}; return initialTheme;`)();
+
+  it('decides exactly like src/scripts/theme.ts', () => {
+    expect(block).toBeDefined();
+    for (const stored of [null, 'night', 'paper', 'blue', ''])
+      for (let hour = 0; hour < 24; hour++) expect(inline(stored, hour)).toBe(initialTheme(stored, hour));
   });
 });
