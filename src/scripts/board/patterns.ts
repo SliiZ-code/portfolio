@@ -28,7 +28,7 @@ OO.OOOO.OO
 ..O....O..`);
 
 export const BLINKERS = P(`
-OOO...OOO...OOO...OOO`);
+OOO...OOO...OOO`);
 
 export const CLOCK = P(`
 ..O.
@@ -57,6 +57,11 @@ export const TOAD = P(`
 .OOO
 OOO.`);
 
+export const BEEHIVE = P(`
+.OO.
+O..O
+.OO.`);
+
 export const GUN = P(`
 ........................O...........
 ......................O.O...........
@@ -68,12 +73,39 @@ OO........O...O.OO....O.O...........
 ...........O...O....................
 ............OO......................`);
 
-export const GLIDERS: Pattern[] = [
-  P(`.O.\n..O\nOOO`),
-  P(`.O.\nO..\nOOO`),
-  P(`OOO\n..O\n.O.`),
-  P(`OOO\nO..\n.O.`),
+/** Gliders by the diagonal they travel along: [dx, dy], y growing downwards. */
+export const GLIDER_HEADINGS: { heading: readonly [number, number]; cells: Pattern }[] = [
+  {
+    heading: [1, 1],
+    cells: P(`
+.O.
+..O
+OOO`),
+  },
+  {
+    heading: [-1, 1],
+    cells: P(`
+.O.
+O..
+OOO`),
+  },
+  {
+    heading: [1, -1],
+    cells: P(`
+OOO
+..O
+.O.`),
+  },
+  {
+    heading: [-1, -1],
+    cells: P(`
+OOO
+O..
+.O.`),
+  },
 ];
+
+export const GLIDERS: Pattern[] = GLIDER_HEADINGS.map((entry) => entry.cells);
 
 export const PATTERNS = {
   pulsar: PULSAR,
@@ -83,9 +115,10 @@ export const PATTERNS = {
   clock: CLOCK,
   beacon: BEACON,
   toad: TOAD,
+  beehive: BEEHIVE,
 } as const;
 
-export type EmblemName = keyof typeof PATTERNS;
+export type PatternName = keyof typeof PATTERNS;
 
-/** Deterministic list used for projects that only exist in RxResume; beacon and toad are reserved for the lab and story pages. */
-export const OSCILLATORS: EmblemName[] = ['clock', 'blinkers', 'penta', 'galaxy', 'pulsar'];
+/** Deterministic list used for projects that only exist in RxResume; beacon, toad and beehive belong to the lab, the story and the CV. */
+export const OSCILLATORS: PatternName[] = ['clock', 'blinkers', 'penta', 'galaxy', 'pulsar'];
