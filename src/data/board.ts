@@ -1,15 +1,7 @@
 import type { Lang, Project, Resume } from '../lib/resume';
 import { strings } from '../i18n';
-import { OSCILLATORS, PATTERNS, type EmblemName } from '../scripts/board/patterns';
-
-export const WORLD = { w: 420, h: 280 } as const;
-
-export interface Box {
-  x: number;
-  y: number;
-  x2: number;
-  y2: number;
-}
+import type { At } from '../scripts/board/layout';
+import { OSCILLATORS, type PatternName } from '../scripts/board/patterns';
 
 interface OverlayNote {
   fr: string;
@@ -18,49 +10,44 @@ interface OverlayNote {
 }
 
 export interface BoardOverlay {
-  emblem: EmblemName;
-  x: number;
-  y: number;
+  pattern: PatternName;
   pad: number;
+  /** Screen fractions [centre x, pattern top y] per orientation: l landscape, p portrait. */
+  at: Required<Pick<At, 'l' | 'p'>>;
   /** Other language slugs that resolve to this same project. */
   aliases?: string[];
   /** Board-only abbreviation; the resume name stays authoritative. */
-  text?: string;
-  label?: { fr: string; en: string };
+  name?: string;
+  /** Short tag for the list and the project page. */
+  label: { fr: string; en: string };
+  /** The line under the name on the board: the tag, then the joke. */
+  meta: { fr: string; en: string };
+  /** Margin note on the project page. */
   note?: OverlayNote;
   media?: { video?: string; image?: string };
 }
 
 /**
- * Site-only layer: where a project sits, which oscillator it is, its margin note
- * and its capture. Keyed by the slug of the RxResume project name.
+ * Site-only layer: where a project sits on the screen, which pattern it is, its joke line, its
+ * page note and its capture. Keyed by the slug of the RxResume project name.
  */
 export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
   'jeu-de-la-vie': {
-    emblem: 'pulsar',
-    x: 100,
-    y: 62,
+    pattern: 'pulsar',
     pad: 3,
+    at: { l: [0.14, 0.66], p: [0.26, 0.57] },
     aliases: ['game-of-life'],
     label: { fr: 'C++ · projet CESI', en: 'C++ · CESI project' },
+    meta: { fr: 'C++ · un pulsar, forcément', en: 'C++ · a pulsar, obviously' },
     note: { fr: 'un pulsar. forcément.', en: 'a pulsar. obviously.', r: 0.04 },
     media: { video: '/media/conway.mp4' },
   },
-  blink: {
-    emblem: 'blinkers',
-    x: 322,
-    y: 70,
-    pad: 2,
-    label: { fr: 'Python · vidéo générée', en: 'Python · generated video' },
-    note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
-    media: { video: '/media/blink.mp4' },
-  },
   thrive: {
-    emblem: 'penta',
-    x: 104,
-    y: 186,
+    pattern: 'penta',
     pad: 4,
+    at: { l: [0.38, 0.71], p: [0.74, 0.68] },
     label: { fr: 'Flutter · multiplateforme', en: 'Flutter · cross-platform' },
+    meta: { fr: 'Flutter · il grandit, il rétrécit, il tient', en: 'Flutter · it grows, it shrinks, it holds' },
     note: {
       fr: 'un pentadécathlon :\nil grandit, il rétrécit, il tient',
       en: 'a pentadecathlon:\nit grows, it shrinks, it holds',
@@ -69,17 +56,26 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     media: { image: '/media/thrive.jpg' },
   },
   'worldwide-weather-watcher': {
-    emblem: 'galaxy',
-    x: 318,
-    y: 184,
+    pattern: 'galaxy',
     pad: 2,
-    text: 'Weather\nWatcher',
+    at: { l: [0.62, 0.68], p: [0.26, 0.79] },
+    name: 'Weather Watcher',
     label: { fr: 'Arduino · capteurs · RTC', en: 'Arduino · sensors · RTC' },
+    meta: { fr: 'Arduino · tourne comme une trotteuse', en: 'Arduino · turns like a clock hand' },
     note: {
       fr: 'une galaxie de Kok :\nelle tourne comme une trotteuse',
       en: "a Kok's galaxy:\nit turns like a clock hand",
       r: -0.03,
     },
+  },
+  blink: {
+    pattern: 'blinkers',
+    pad: 2,
+    at: { l: [0.84, 0.12], p: [0.74, 0.15] },
+    label: { fr: 'Python · vidéo générée', en: 'Python · generated video' },
+    meta: { fr: 'Python · des clignotants', en: 'Python · blinkers' },
+    note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
+    media: { video: '/media/blink.mp4' },
   },
 };
 
@@ -89,15 +85,16 @@ export interface BoardNote {
 }
 
 export interface BoardProject extends Project {
-  /** Text rasterised on the board, possibly wrapped or abbreviated by the overlay. */
-  text: string;
+  /** Name drawn on the board, possibly shortened by the overlay. */
+  boardName: string;
   /** Full resume name, for the server-rendered list. */
   displayName: string;
-  emblem: EmblemName;
-  x: number;
-  y: number;
+  pattern: PatternName;
   pad: number;
+  /** Null for a project outside the overlay: the board finds it a free slot at runtime. */
+  at: At | null;
   label: string;
+  meta: string;
   note?: BoardNote;
   media?: { video?: string; image?: string };
 }
@@ -123,24 +120,6 @@ const hash = (value: string): number => {
   return h;
 };
 
-const MAX_TEXT_WIDTH = 14;
-
-const wrap = (value: string, max = MAX_TEXT_WIDTH): string => {
-  const lines: string[] = [];
-  for (const raw of value.trim().split(/\s+/)) {
-    if (!raw) continue;
-    const word = raw.slice(0, max);
-    const last = lines.at(-1);
-    if (last && `${last} ${word}`.length <= max) lines[lines.length - 1] = `${last} ${word}`;
-    else lines.push(word);
-  }
-  return lines.join('\n');
-};
-
-export const boardText = (project: Project): string => overlayFor(project)?.text ?? wrap(project.name);
-
-export const boardLabel = (project: Project, lang: Lang): string => overlayFor(project)?.label?.[lang] ?? project.period;
-
 export const boardNote = (project: Project, lang: Lang): BoardNote | undefined => {
   const note = overlayFor(project)?.note;
   return note ? { text: note[lang], r: note.r } : undefined;
@@ -163,104 +142,64 @@ export function findAlternateProject(project: Project, projects: Project[], othe
   return undefined;
 }
 
-interface Size {
-  w: number;
-  h: number;
-}
+export const projectPath = (lang: Lang, slug: string): string => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
 
-const CHAR_W = 7;
-const LINE_H = 11;
-
-export const estimateBoxSize = (text: string, emblem: EmblemName, pad = 2): Size => {
-  const pattern = PATTERNS[emblem];
-  const lines = text.split('\n');
-  const textW = Math.max(...lines.map((line) => line.length)) * CHAR_W;
-  const textH = lines.length * LINE_H;
-  return {
-    w: Math.max(pattern[0].length + pad * 2, textW) + 8,
-    h: pattern.length + pad * 2 + textH + 12,
-  };
-};
-
-const overlaps = (a: Box, b: Box, margin = 6): boolean =>
-  a.x < b.x2 + margin && a.x2 > b.x - margin && a.y < b.y2 + margin && a.y2 > b.y - margin;
-
-/**
- * Finds a free spot on rings around the name. Returns the centre/top anchor.
- * Pure and deterministic so a project outside the overlay always lands somewhere sane.
- */
-export function autoPlace(size: Size, occupied: Box[], index = 0, keepClear: Box[] = []): { x: number; y: number } {
-  const cx = 210;
-  const cy = 140;
-  const golden = 2.399963;
-  for (const radius of [100, 118, 136, 84, 154, 172, 60, 190]) {
-    for (let step = 0; step < 24; step++) {
-      const angle = index * golden + step * (Math.PI * 2 / 24) - Math.PI / 2;
-      const centerX = cx + Math.cos(angle) * radius;
-      const centerY = cy + Math.sin(angle) * radius;
-      const raw = {
-        x: centerX - size.w / 2,
-        y: centerY - size.h / 2,
-        x2: centerX + size.w / 2,
-        y2: centerY + size.h / 2,
+export function getBoardProjects(resume: Resume): BoardProject[] {
+  return resume.projects.map((project) => {
+    const overlay = overlayFor(project);
+    const base = { ...project, displayName: project.name };
+    if (!overlay) {
+      return {
+        ...base,
+        boardName: project.name,
+        pattern: OSCILLATORS[hash(project.slug) % OSCILLATORS.length],
+        pad: 2,
+        at: null,
+        label: project.period,
+        meta: project.period,
       };
-      if (raw.x < 4 || raw.y < 4 || raw.x2 > WORLD.w - 4 || raw.y2 > WORLD.h - 4) continue;
-      if (occupied.some((other) => overlaps(raw, other))) continue;
-      return { x: Math.round(centerX), y: Math.round(raw.y) };
     }
-  }
-  for (let y = 6; y < WORLD.h - size.h; y += 12) {
-    for (let x = 6; x < WORLD.w - size.w; x += 12) {
-      const box = { x, y, x2: x + size.w, y2: y + size.h };
-      if (!occupied.some((other) => overlaps(box, other))) return { x: Math.round(x + size.w / 2), y };
-    }
-  }
-  return crowdedSpot(size, occupied, keepClear, index);
+    return {
+      ...base,
+      boardName: overlay.name ?? project.name,
+      pattern: overlay.pattern,
+      pad: overlay.pad,
+      at: overlay.at,
+      label: overlay.label[resume.lang],
+      meta: overlay.meta[resume.lang],
+      note: boardNote(project, resume.lang),
+      media: overlay.media,
+    };
+  });
 }
 
-const overlapArea = (a: Box, b: Box): number =>
-  Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y, b.y));
-
-/** Board is full: take the least-overlapping spot on the outermost ring, clamped inside the world. */
-function crowdedSpot(size: Size, occupied: Box[], keepClear: Box[], index: number): { x: number; y: number } {
-  const golden = 2.399963;
-  const radiusX = WORLD.w / 2 - size.w / 2 - 4;
-  const radiusY = WORLD.h / 2 - size.h / 2 - 4;
-  let best = { x: 0, y: 0, cost: Infinity };
-  for (let step = 0; step < 48; step++) {
-    const angle = index * golden + step * (Math.PI * 2 / 48);
-    const centerX = Math.min(WORLD.w - 4 - size.w / 2, Math.max(4 + size.w / 2, WORLD.w / 2 + Math.cos(angle) * radiusX));
-    const top = Math.min(WORLD.h - 4 - size.h, Math.max(4, WORLD.h / 2 + Math.sin(angle) * radiusY - size.h / 2));
-    const box = { x: centerX - size.w / 2, y: top, x2: centerX + size.w / 2, y2: top + size.h };
-    const cost =
-      occupied.reduce((sum, other) => sum + overlapArea(box, other), 0) +
-      keepClear.reduce((sum, other) => sum + overlapArea(box, other) * 1000, 0);
-    if (cost < best.cost) best = { x: Math.round(centerX), y: Math.round(top), cost };
-  }
-  console.warn(`[board] no free spot for a ${size.w}x${size.h} project; placed on the outer ring and it may overlap`);
-  return { x: best.x, y: best.y };
-}
-
-/**
- * The lab and the story are hand-placed like the name and the CV, outside the RxResume
- * data. They only peek into the home view (1440x900 shows about x 82..338, y 67..227), like
- * the projects: the story's label and note show at the top edge, between the gun and Blink
- * and clear of its glider lane; the lab's emblem and the top of its title show at the bottom
- * edge, between Thrive and the weather station, clear of the HUD.
- */
+/** The lab and the story are hand-placed like the projects, but live outside the RxResume data. */
 export type PageId = 'labo' | 'story';
 
 export interface BoardPageDef {
   id: PageId;
-  emblem: EmblemName;
-  x: number;
-  y: number;
+  pattern: PatternName;
   pad: number;
+  at: Required<Pick<At, 'l' | 'p'>>;
 }
 
 export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
-  labo: { id: 'labo', emblem: 'beacon', x: 232, y: 214, pad: 2 },
-  story: { id: 'story', emblem: 'toad', x: 278, y: 30, pad: 2 },
+  labo: { id: 'labo', pattern: 'beacon', pad: 2, at: { l: [0.86, 0.7], p: [0.74, 0.84] } },
+  story: { id: 'story', pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } },
+};
+
+/** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait. */
+export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.76, 0.55] } } as const satisfies {
+  pattern: PatternName;
+  pad: number;
+  at: At;
+};
+
+/** The gun, at the top edge. */
+export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.5, 0.025] } } as const satisfies {
+  pattern: PatternName;
+  pad: number;
+  at: At;
 };
 
 const PAGE_PATHS: Record<PageId, Record<Lang, string>> = {
@@ -270,16 +209,13 @@ const PAGE_PATHS: Record<PageId, Record<Lang, string>> = {
 
 export const pagePath = (id: PageId, lang: Lang): string => PAGE_PATHS[id][lang];
 
-export interface BoardPage {
-  id: PageId;
-  text: string;
-  emblem: EmblemName;
-  x: number;
-  y: number;
-  pad: number;
+export interface BoardPage extends BoardPageDef {
+  /** Name drawn on the board. */
+  boardName: string;
   /** Short name for the server-rendered list. */
   name: string;
   label: string;
+  meta: string;
   note: BoardNote;
   url: string;
 }
@@ -291,97 +227,63 @@ export const getBoardPages = (lang: Lang): BoardPage[] =>
     const t = strings(lang).board.pages[page.id];
     return {
       ...page,
-      text: t.text,
+      boardName: t.text,
       name: t.name,
       label: t.label,
+      meta: t.meta,
       note: { text: t.note, r: PAGE_NOTE_TILT[page.id] },
       url: pagePath(page.id, lang),
     };
   });
 
-/** One box for both languages: the widest of the two raster texts, so the layout never depends on the language. */
-export const pageBox = (page: BoardPageDef): Box => {
-  const boxes = (['fr', 'en'] as const).map((lang) =>
-    projectBox({ ...page, text: strings(lang).board.pages[page.id].text }),
-  );
-  return {
-    x: Math.min(...boxes.map((box) => box.x)),
-    y: Math.min(...boxes.map((box) => box.y)),
-    x2: Math.max(...boxes.map((box) => box.x2)),
-    y2: Math.max(...boxes.map((box) => box.y2)),
-  };
-};
-
-/** Generous fixed boxes for the hand-placed entities, used only by auto-placement. */
-export const FIXED_BOXES: Box[] = [
-  { x: 104, y: 114, x2: 316, y2: 160 }, // name (rasterised client-side)
-  { x: 196, y: 158, x2: 226, y2: 180 }, // cv
-  { x: 144, y: 16, x2: 232, y2: 58 }, // contact + gun
-];
+export interface BoardEntity {
+  id: string;
+  kind: 'project' | 'page' | 'cv' | 'contact';
+  name: string;
+  meta: string;
+  /** Empty for a contact with no address: drawn, but not a link. */
+  url: string;
+  pattern: PatternName;
+  pad: number;
+  at: At | null;
+}
 
 /**
- * Gliders leave the gun mouth around (188, 24) and fly down-right until they hit the name,
- * so x - y stays near 164. Stepped boxes along that diagonal, 8 cells either side.
+ * Everything that is drawn on the board besides the name, fixed positions first: the ones
+ * without a position (projects outside the overlay) are placed at runtime, in this order,
+ * once everything else has claimed its room.
  */
-export const GLIDER_LANE: Box[] = Array.from({ length: 10 }, (_, step) => {
-  const y = 20 + step * 10;
-  return { x: y + 156, y, x2: y + 10 + 172, y2: y + 10 };
-});
-
-const pageBoxes = (): Box[] => Object.values(BOARD_PAGES).map(pageBox);
-
-/** Estimated footprint of a placed project, same anchor convention as `autoPlace` (centre x, top y). */
-export const projectBox = (project: Pick<BoardProject, 'text' | 'emblem' | 'pad' | 'x' | 'y'>): Box => {
-  const size = estimateBoxSize(project.text, project.emblem, project.pad);
-  return {
-    x: project.x - size.w / 2,
-    y: project.y - 2,
-    x2: project.x + size.w / 2,
-    y2: project.y - 2 + size.h,
+export function getBoardEntities(resume: Resume, links: { cvHref: string; contactHref: string }): BoardEntity[] {
+  const t = strings(resume.lang).board;
+  const projects = getBoardProjects(resume).map<BoardEntity>((project) => ({
+    id: project.slug,
+    kind: 'project',
+    name: project.boardName,
+    meta: project.meta,
+    url: projectPath(resume.lang, project.slug),
+    pattern: project.pattern,
+    pad: project.pad,
+    at: project.at,
+  }));
+  const pages = getBoardPages(resume.lang).map<BoardEntity>((page) => ({
+    id: page.id,
+    kind: 'page',
+    name: page.boardName,
+    meta: page.meta,
+    url: page.url,
+    pattern: page.pattern,
+    pad: page.pad,
+    at: page.at,
+  }));
+  const cv: BoardEntity = { id: 'cv', kind: 'cv', name: t.cvName, meta: t.cvMeta, url: links.cvHref, ...CV_LAYOUT };
+  const contact: BoardEntity = {
+    id: 'contact',
+    kind: 'contact',
+    name: t.contactName,
+    meta: t.contactMeta,
+    url: links.contactHref,
+    ...CONTACT_LAYOUT,
   };
-};
-
-export function getBoardProjects(resume: Resume): BoardProject[] {
-  const known = resume.projects.map((project) => ({ project, overlay: overlayFor(project) }));
-  const occupied = [...FIXED_BOXES, ...GLIDER_LANE, ...pageBoxes()].map((box) => ({ ...box }));
-  const placed = new Map<string, BoardProject>();
-
-  for (const { project, overlay } of known) {
-    if (!overlay) continue;
-    const boardProject: BoardProject = {
-      ...project,
-      text: boardText(project),
-      displayName: project.name,
-      emblem: overlay.emblem,
-      x: overlay.x,
-      y: overlay.y,
-      pad: overlay.pad,
-      label: boardLabel(project, resume.lang),
-      note: boardNote(project, resume.lang),
-      media: overlay.media,
-    };
-    placed.set(project.slug, boardProject);
-    occupied.push(projectBox(boardProject));
-  }
-
-  let autoIndex = 0;
-  return known.map(({ project, overlay }) => {
-    if (overlay) return placed.get(project.slug)!;
-    const text = boardText(project);
-    const emblem = OSCILLATORS[hash(project.slug) % OSCILLATORS.length];
-    const size = estimateBoxSize(text, emblem);
-    const spot = autoPlace(size, occupied, autoIndex++, [...FIXED_BOXES.slice(0, 2), ...pageBoxes()]);
-    const boardProject: BoardProject = {
-      ...project,
-      text,
-      displayName: project.name,
-      emblem,
-      x: spot.x,
-      y: spot.y,
-      pad: 2,
-      label: project.period,
-    };
-    occupied.push(projectBox(boardProject));
-    return boardProject;
-  });
+  const all = [...projects, ...pages, cv, contact];
+  return [...all.filter((entity) => entity.at), ...all.filter((entity) => !entity.at)];
 }
