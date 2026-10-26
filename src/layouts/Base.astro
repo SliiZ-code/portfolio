@@ -50,6 +50,12 @@ const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <script is:inline>
+      const initialTheme = (stored, hour) => {
+        if (stored === 'night' || stored === 'paper') {
+          return stored;
+        }
+        return hour >= 19 || hour < 7 ? 'night' : 'paper';
+      };
       const updateThemeColor = () => {
         const isNight = document.documentElement.dataset.theme === 'night';
         const color = isNight ? '#131210' : '#e8e5dc';
@@ -57,8 +63,10 @@ const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
         if (el) el.content = color;
       };
       try {
-        var theme = localStorage.getItem('jpc-theme');
-        if (theme === 'night' || theme === 'paper') document.documentElement.dataset.theme = theme;
+        var stored = localStorage.getItem('jpc-theme');
+        var hour = new Date().getHours();
+        var theme = initialTheme(stored, hour);
+        document.documentElement.dataset.theme = theme;
       } catch (error) {}
       updateThemeColor();
       document.addEventListener('themechange', updateThemeColor);

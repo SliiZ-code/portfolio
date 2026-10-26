@@ -19,13 +19,7 @@ const apply = (night: boolean, persist: boolean) => {
 };
 
 export const initUI = () => {
-  let stored = '';
-  try {
-    stored = localStorage.getItem(KEY) ?? '';
-  } catch {
-    // ignore
-  }
-  apply(stored === 'night', false);
+  apply(isNight(), false);
 
   document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((button) => {
     button.addEventListener('click', () => apply(!isNight(), true));
