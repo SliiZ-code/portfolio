@@ -28,7 +28,7 @@ export function draw(state: RenderState): void {
   const { ctx, cell, dpr, width, height, world, structures, colors, hoverId, ready } = state;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  const gap = cell >= 7 ? 1 : 0;
+  const gap = cell >= 4 ? 1 : 0;
   const size = cell - gap;
 
   ctx.globalAlpha = 0.5 * ready;

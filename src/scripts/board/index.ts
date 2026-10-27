@@ -5,6 +5,7 @@ import { addStructure, stepStructures, structurePopulation } from './structures'
 import {
   anchorFor,
   cellSizeFor,
+  fineNameFits,
   coreBox,
   footprint,
   gridFor,
@@ -90,17 +91,19 @@ export async function initBoard(): Promise<void> {
   const protectedBoxes = () => [...keepClear, ...structures.map((s) => coreBox(s))];
   const isFree = (x: number, y: number) => !isProtected(x, y, 0, protectedBoxes());
 
-  /** Lays the board out for the current screen: cell size from the name, then everything in screen fractions. */
+  /** Lays the board out for the current screen: cell size from the screen, then everything in screen fractions. */
   function layout(): void {
     const vw = innerWidth;
     const vh = innerHeight;
     lastSize = `${vw}x${vh}`;
     const dpr = Math.min(2, devicePixelRatio || 1);
     const orientation = orientationFor(vw, vh);
-    const nameCells = rasterize(data.name[orientation]);
-    if (!nameCells.length) return;
+    cell = cellSizeFor(vw, vh);
+    const coarse = rasterize(data.name[orientation]);
+    if (!coarse.length) return;
+    const fine = fineNameFits({ cols: coarse[0].length, rows: coarse.length }, vw, vh, cell, orientation);
+    const nameCells = fine ? rasterize(data.name[orientation], true) : coarse;
     const nameDims = { cols: nameCells[0].length, rows: nameCells.length };
-    cell = cellSizeFor(nameDims, vw, vh, orientation);
     grid = gridFor(vw, vh, cell);
     stage!.style.setProperty('--c', `${cell}px`);
     canvas!.width = vw * dpr;
@@ -124,7 +127,7 @@ export async function initBoard(): Promise<void> {
     if (note) {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
-      note.style.top = `${(at.y + at.h + 1.2) * cell}px`;
+      note.style.top = `${(at.y + at.h) * cell + 10}px`;
       note.style.maxWidth = orientation === 'p' ? `${at.w * cell}px` : '';
     }
 
@@ -195,9 +198,9 @@ export async function initBoard(): Promise<void> {
       if (result) addLabelBoxes(result.el);
     }
 
-    // the board starts busy: a third of the free space is seeded
+    // the board starts busy, but not noisy: one free cell in seven is seeded
     const boxes = protectedBoxes();
-    seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.3);
+    seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.14);
     updateCounters(0);
   }
 

@@ -12,7 +12,7 @@ import {
 } from '../src/data/board';
 import { strings } from '../src/i18n';
 import { getResume, type Project, type Resume } from '../src/lib/resume';
-import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
+import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, fineNameFits, type Box } from '../src/scripts/board/layout';
 import { OSCILLATORS, PATTERNS } from '../src/scripts/board/patterns';
 
 const extra = (name: string, index = 0): Project => ({
@@ -161,12 +161,14 @@ describe('board entities', () => {
 
   it('does not collide: structures never overlap and stay on screen, in both orientations', () => {
     const entities = getBoardEntities(getResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' }).filter((entity) => entity.at);
-    // name raster of "Julien / Petit-Colboc" is about 80 × 23 cells; check a spread of screens
+    // coarse name raster of "Julien / Petit-Colboc" is about 75 × 23 cells; check a spread of screens
     const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740]];
     for (const [vw, vh] of screens) {
       const orientation = orientationFor(vw, vh);
-      const name = orientation === 'p' ? { cols: 38, rows: 33 } : { cols: 80, rows: 23 };
-      const cell = cellSizeFor(name, vw, vh, orientation);
+      const coarse = orientation === 'p' ? { cols: 41, rows: 31 } : { cols: 75, rows: 23 };
+      const cell = cellSizeFor(vw, vh);
+      const fine = fineNameFits(coarse, vw, vh, cell, orientation);
+      const name = fine ? { cols: coarse.cols * 2, rows: coarse.rows * 2 } : coarse;
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
       const boxes = entities.map((entity) => {

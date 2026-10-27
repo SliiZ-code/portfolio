@@ -27,13 +27,16 @@ export interface Box {
 
 export const orientationFor = (vw: number, vh: number): Orientation => (vh > vw * 1.1 ? 'p' : 'l');
 
-/** The name sets the cell size: about 60% of the width on desktop, 72% on phones. */
-export const cellSizeFor = (name: Grid, vw: number, vh: number, orientation: Orientation): number => {
+/**
+ * Cells have a size of their own, about 6px on a laptop: a bigger screen shows more board,
+ * not bigger cells.
+ */
+export const cellSizeFor = (vw: number, vh: number): number => Math.max(4, Math.min(8, Math.round(Math.min(vw / 240, vh / 150))));
+
+/** The name at the font's half-pixel resolution when it fits, so it keeps its presence on a fine board. */
+export const fineNameFits = (coarse: Grid, vw: number, vh: number, cell: number, orientation: Orientation): boolean => {
   const portrait = orientation === 'p';
-  return Math.max(
-    5,
-    Math.min(14, Math.floor(Math.min((vw * (portrait ? 0.72 : 0.6)) / name.cols, (vh * (portrait ? 0.2 : 0.3)) / name.rows))),
-  );
+  return coarse.cols * 2 * cell <= vw * (portrait ? 0.88 : 0.64) && coarse.rows * 2 * cell <= vh * (portrait ? 0.3 : 0.32);
 };
 
 export const gridFor = (vw: number, vh: number, cell: number): Grid => ({

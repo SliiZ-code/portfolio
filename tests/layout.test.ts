@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   anchorFor,
   cellSizeFor,
+  fineNameFits,
   coreBox,
   footprint,
   gridFor,
@@ -13,7 +14,7 @@ import {
 
 const NAME = { cols: 80, rows: 23 };
 
-describe('orientation and cell size', () => {
+describe('orientation, cell size and name resolution', () => {
   it('is portrait only when clearly taller than wide', () => {
     expect(orientationFor(1440, 900)).toBe('l');
     expect(orientationFor(900, 900)).toBe('l');
@@ -21,16 +22,21 @@ describe('orientation and cell size', () => {
     expect(orientationFor(390, 844)).toBe('p');
   });
 
-  it('derives the cell from the name: 60% of the width on desktop, 72% on phones', () => {
-    // min(1440 * .6 / 80 = 10.8, 900 * .3 / 23 = 11.7) -> 10
-    expect(cellSizeFor(NAME, 1440, 900, 'l')).toBe(10);
-    // min(390 * .72 / 40 = 7.02, 844 * .2 / 31 = 5.4) -> 5
-    expect(cellSizeFor({ cols: 40, rows: 31 }, 390, 844, 'p')).toBe(5);
+  it('gives cells a size of their own: about 6px on a laptop, more board on a bigger screen', () => {
+    expect(cellSizeFor(1440, 900)).toBe(6);
+    expect(cellSizeFor(1920, 1080)).toBe(7);
+    expect(cellSizeFor(390, 844)).toBe(4);
   });
 
-  it('clamps the cell between 5 and 14 pixels', () => {
-    expect(cellSizeFor({ cols: 10, rows: 5 }, 1440, 900, 'l')).toBe(14);
-    expect(cellSizeFor({ cols: 400, rows: 80 }, 600, 900, 'l')).toBe(5);
+  it('clamps the cell between 4 and 8 pixels', () => {
+    expect(cellSizeFor(5120, 2880)).toBe(8);
+    expect(cellSizeFor(320, 568)).toBe(4);
+  });
+
+  it('draws the name at half-pixel resolution only when it still fits', () => {
+    expect(fineNameFits({ cols: 75, rows: 23 }, 1440, 900, 6, 'l')).toBe(true);
+    expect(fineNameFits({ cols: 75, rows: 23 }, 844, 390, 4, 'l')).toBe(false);
+    expect(fineNameFits({ cols: 41, rows: 31 }, 390, 844, 4, 'p')).toBe(true);
   });
 
   it('covers the viewport with whole cells', () => {

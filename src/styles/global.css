@@ -729,6 +729,11 @@ a.flag:hover {
     display: none;
   }
 
+  /* phones: the bottom edge is too narrow for the counters and the profile links */
+  .hud.bl {
+    display: none;
+  }
+
   .page-inner {
     grid-template-columns: 1fr;
   }
