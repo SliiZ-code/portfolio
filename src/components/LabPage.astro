@@ -29,9 +29,10 @@ const title = `${t.lab.title} — ${resume.name}`;
       <div class="page-media">
         {EXPERIMENTS.map((experiment) => (
           <figure>
-            <div class="ascii-box" data-src={experiment.src} data-kind={experiment.kind}>
-              <span class="ascii-loading">{t.lab.loading}</span>
-              <span class="ascii-error">{t.lab.unavailable}</span>
+            <div class="pix-box" data-src={experiment.src} data-kind={experiment.kind}>
+              <canvas class="pix" width="160" height="100"></canvas>
+              <span class="pix-loading">{t.lab.loading}</span>
+              <span class="pix-error">{t.lab.unavailable}</span>
             </div>
             <figcaption>{experiment.title[lang]}</figcaption>
           </figure>
@@ -53,9 +54,9 @@ const title = `${t.lab.title} — ${resume.name}`;
   </article>
 
   <script>
-    import { initAsciiModel } from '../scripts/lab/ascii';
+    import { initPixelModel } from '../scripts/lab/model';
     import { initBackLink } from '../scripts/back';
-    document.querySelectorAll<HTMLElement>('.ascii-box[data-kind="ascii-model"]').forEach(initAsciiModel);
+    document.querySelectorAll<HTMLElement>('.pix-box[data-kind="pixel-model"]').forEach(initPixelModel);
     initBackLink();
   </script>
 </Base>

@@ -17,7 +17,7 @@ describe('overlay aliases', () => {
   it('resolves the overlay through an alias slug', () => {
     const en = project('Game of Life', 'game-of-life');
     expect(overlayKeyFor(en)).toBe('jeu-de-la-vie');
-    expect(overlayFor(en)?.emblem).toBe('pulsar');
+    expect(overlayFor(en)?.pattern).toBe('pulsar');
     expect(boardNote(en, 'en')?.text).toBe('a pulsar. obviously.');
     expect(boardMedia(en)).toEqual({ video: '/media/conway.mp4' });
   });

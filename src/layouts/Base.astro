@@ -50,16 +50,24 @@ const abs = (path: string) => (site.url ? new URL(path, site.url).href : path);
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <script is:inline>
+      const initialTheme = (stored, hour) => {
+        if (stored === 'night' || stored === 'paper') {
+          return stored;
+        }
+        return hour >= 19 || hour < 7 ? 'night' : 'paper';
+      };
       const updateThemeColor = () => {
         const isNight = document.documentElement.dataset.theme === 'night';
         const color = isNight ? '#131210' : '#e8e5dc';
         const el = document.getElementById('theme-color');
         if (el) el.content = color;
       };
+      // keep this copy in step with src/scripts/theme.ts (tests/theme.test.ts compares them)
+      var stored = null;
       try {
-        var theme = localStorage.getItem('jpc-theme');
-        if (theme === 'night' || theme === 'paper') document.documentElement.dataset.theme = theme;
+        stored = localStorage.getItem('jpc-theme');
       } catch (error) {}
+      document.documentElement.dataset.theme = initialTheme(stored, new Date().getHours());
       updateThemeColor();
       document.addEventListener('themechange', updateThemeColor);
     </script>

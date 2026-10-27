@@ -22,7 +22,7 @@
   --paper: #e8e5dc;
   --ink: #1b1a17;
   --mute: #75716a;
-  --line: #1b1a1724;
+  --line: #1b1a1714;
   --accent: #2433ff;
 }
 
@@ -30,7 +30,7 @@
   --paper: #131210;
   --ink: #e8e5dc;
   --mute: #8a857c;
-  --line: #e8e5dc1f;
+  --line: #e8e5dc12;
   --accent: #ff8a3d;
 }
 
@@ -74,25 +74,102 @@ button {
   border: 0;
 }
 
-#board {
+/* the board is exactly one screen: cells are drawn on a grid-paper background */
+#stage {
   position: fixed;
+  inset: 0;
+  opacity: 0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: var(--c, 10px) var(--c, 10px);
+  transition: transform .8s cubic-bezier(.6, 0, .9, .4), opacity .3s;
+  /* dragging draws cells: it must never select a label or start a native link drag */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#stage.ready {
+  opacity: 1;
+}
+
+#board {
+  position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   touch-action: none;
-  cursor: grab;
+  cursor: crosshair;
 }
 
-#board.panning {
-  cursor: grabbing;
+/* ---- structures' labels: real links laid over the canvas ---- */
+.ent {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  transform: translateX(-50%);
+  -webkit-user-drag: none;
 }
 
-#board.over {
+.ent:not(.placed) {
+  visibility: hidden;
+}
+
+.ent .hit {
+  display: block;
+}
+
+.ent .name {
+  font: 500 clamp(17px, 1.6vw, 23px)/1.1 "Shantell Sans", cursive;
+  color: var(--accent);
+  margin-top: 6px;
+  padding: 0 6px;
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+
+.ent .meta {
+  font-size: 11px;
+  color: var(--mute);
+  margin-top: 3px;
+  background: var(--paper);
+  box-shadow: 0 0 0 2px var(--paper);
+  white-space: nowrap;
+}
+
+.ent .meta:empty {
+  display: none;
+}
+
+a.ent,
+a.ent .hit,
+a.ent .name {
   cursor: pointer;
 }
 
-#board.draw {
-  cursor: crosshair;
+a.ent:hover .name,
+a.ent:focus-visible .name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.ent:focus-visible {
+  outline: none;
+}
+
+.name-note {
+  position: absolute;
+  font: 15px/1.25 "Shantell Sans", cursive;
+  color: var(--accent);
+  transform: rotate(-1.5deg);
+  background: var(--paper);
+  box-shadow: 0 0 0 3px var(--paper);
+  pointer-events: none;
 }
 
 /* ---- HUD: four quiet corners ---- */
@@ -102,29 +179,24 @@ button {
   display: flex;
   gap: 14px;
   align-items: center;
-  text-transform: uppercase;
-  letter-spacing: .05em;
   user-select: none;
 }
 
-.hud>*:not(#mini) {
+.hud>* {
   background: var(--paper);
   box-shadow: 0 0 0 4px var(--paper);
-}
-
-.hud button:hover,
-.hud a:hover {
-  color: var(--accent);
 }
 
 .tl {
   top: 14px;
   left: 16px;
+  font: 20px "Geist Pixel";
 }
 
 .tr {
-  top: 14px;
+  top: 12px;
   right: 16px;
+  gap: 10px;
 }
 
 .bl {
@@ -134,6 +206,8 @@ button {
   align-items: flex-start;
   gap: 2px;
   color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
 .br {
@@ -147,27 +221,74 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.on {
-  color: var(--accent);
+/* language flags and the pixel sun/moon, shared by the board and every page bar */
+.flags {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.flag {
+  display: block;
+  padding: 3px;
+  border-bottom: 2px solid transparent;
+  opacity: .35;
+  transition: opacity .2s;
+}
+
+.flag svg {
+  display: block;
+  width: 22px;
+  height: 15px;
+  image-rendering: pixelated;
+}
+
+a.flag:hover {
+  opacity: .8;
+}
+
+.flag.on {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.theme-toggle svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  shape-rendering: crispEdges;
+  fill: var(--ink);
+}
+
+.theme-toggle:hover svg {
+  fill: var(--accent);
+}
+
+/* the icon shows the theme you switch to: the moon on paper, the sun at night */
+[data-theme="night"] .ic-moon,
+:root:not([data-theme="night"]) .ic-sun {
+  display: none;
+}
+
+.sep {
+  width: 1px;
+  height: 18px;
+  background: var(--mute);
+  opacity: .4;
+  box-shadow: none;
 }
 
 #list-btn {
-  padding: 5px 9px;
+  padding: 6px 10px;
   border: 1px solid var(--ink);
   background: var(--paper);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
 #list-btn:hover {
   border-color: var(--accent);
-}
-
-#mini {
-  width: 200px;
-  height: 133px;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  cursor: pointer;
-  display: block;
+  color: var(--accent);
 }
 
 /* ---- list view ---- */
@@ -300,7 +421,7 @@ button {
   align-self: start;
 }
 
-#dither {
+.pix {
   width: 100%;
   image-rendering: pixelated;
   display: block;
@@ -402,30 +523,20 @@ button {
   margin-top: 28px;
 }
 
-.ascii-box {
+.pix-box {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-  color: var(--ink);
+}
+
+.pix-box .pix {
+  aspect-ratio: 16 / 10;
   cursor: grab;
   touch-action: pan-y;
   user-select: none;
 }
 
-.ascii-box>div {
-  cursor: grab;
-}
-
-.ascii-box table {
-  /* AsciiEffect sizes its table from the box; keep it from reflowing the page */
-  max-width: none;
-}
-
-.ascii-loading,
-.ascii-error {
+.pix-loading,
+.pix-error {
   position: absolute;
   inset: 0;
   display: grid;
@@ -435,13 +546,13 @@ button {
   pointer-events: none;
 }
 
-.ascii-error,
-.ascii-box[data-state="ready"] .ascii-loading,
-.ascii-box[data-state="error"] .ascii-loading {
+.pix-error,
+.pix-box[data-state="ready"] .pix-loading,
+.pix-box[data-state="error"] .pix-loading {
   display: none;
 }
 
-.ascii-box[data-state="error"] .ascii-error {
+.pix-box[data-state="error"] .pix-error {
   display: grid;
 }
 
@@ -641,7 +752,7 @@ button {
 @media (max-width: 760px) {
 
   .hint,
-  #mini {
+  .ent .meta {
     display: none;
   }
 
@@ -651,11 +762,6 @@ button {
 
   .page-media {
     position: static;
-  }
-
-  #list-btn {
-    font-size: 14px;
-    padding: 8px 14px;
   }
 
   .cv-section {
@@ -669,6 +775,56 @@ button {
 
   .doc-bar {
     flex-wrap: wrap;
+  }
+}
+
+/* shorter screens: the bottom-left pattern would sit under the counters, and the hint repeats the note */
+@media (max-height: 820px) {
+  .hud.bl .hint {
+    display: none;
+  }
+
+  .hud.bl {
+    bottom: 10px;
+  }
+}
+
+/* landscape phones: no room left for the counters under the bottom-left pattern */
+@media (max-height: 450px) {
+  .hud.bl {
+    display: none;
+  }
+}
+
+/* landscape phones: the joke line and the full-size note do not fit between the labels */
+@media (max-height: 620px) {
+  .ent .meta {
+    display: none;
+  }
+
+  .ent .name {
+    font-size: 15px;
+  }
+
+  .name-note {
+    font-size: 13px;
+    max-width: 55vw;
+  }
+}
+
+/* small tablets: keep the joke lines, but shorter than the name */
+@media (min-width: 761px) and (max-width: 1150px) and (max-height: 900px) {
+  .ent .meta {
+    font-size: 9px;
+  }
+}
+
+/* reduced motion: the board steps only when the user draws, so nothing else may slide or fade */
+@media (prefers-reduced-motion: reduce) {
+  #stage,
+  #list,
+  #list.open {
+    transition: none;
   }
 }
 

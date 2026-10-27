@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="paper">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Julien Petit-Colboc — plateau v2</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=gambarino@400&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Shantell+Sans:wght@400;500&display=swap">
+    <script>
+        // night between 19:00 and 07:00 local time, unless the visitor already chose
+        (() => {
+            const stored = localStorage.getItem('v2-theme'), h = new Date().getHours();
+            document.documentElement.dataset.theme = stored === 'paper' || stored === 'night' ? stored : (h >= 19 || h < 7 ? 'night' : 'paper');
+        })();
+    </script>
+    <style>
+        @font-face {
+            font-family: "Geist Pixel";
+            src: url("fonts/GeistPixel-Square.woff2") format("woff2");
+        }
+
+        [data-theme="paper"] {
+            --paper: #e8e5dc;
+            --ink: #1b1a17;
+            --mute: #75716a;
+            --line: #1b1a1714;
+            --accent: #2433ff;
+        }
+
+        [data-theme="night"] {
+            --paper: #131210;
+            --ink: #e8e5dc;
+            --mute: #8a857c;
+            --line: #e8e5dc12;
+            --accent: #ff8a3d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background: var(--paper);
+            color: var(--ink);
+            font: 12px/1.5 "Geist Mono", monospace;
+            overscroll-behavior: none;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        button {
+            font: inherit;
+            color: inherit;
+            background: none;
+            border: 0;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        /* the board is exactly one screen: cells are drawn on a grid-paper background */
+        #stage {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line) 1px, transparent 1px);
+            background-size: var(--c) var(--c);
+            transition: transform .8s cubic-bezier(.6, 0, .9, .4), opacity .3s;
+        }
+
+        #board {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* ---- structures' labels: real links laid over the canvas ---- */
+        .ent {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            text-decoration: none;
+            transform: translateX(-50%);
+        }
+
+        .ent .hit {
+            display: block;
+            cursor: pointer;
+        }
+
+        .ent .name {
+            font: 500 clamp(17px, 1.6vw, 23px)/1.1 "Shantell Sans", cursive;
+            color: var(--accent);
+            margin-top: 6px;
+            padding: 0 6px;
+            background: var(--paper);
+            box-shadow: 0 0 0 3px var(--paper);
+            cursor: pointer;
+        }
+
+        .ent .meta {
+            font-size: 11px;
+            color: var(--mute);
+            margin-top: 3px;
+            background: var(--paper);
+            box-shadow: 0 0 0 2px var(--paper);
+            white-space: nowrap;
+        }
+
+        .ent:hover .name,
+        .ent:focus-visible .name {
+            text-decoration: underline;
+            text-decoration-thickness: 2px;
+            text-underline-offset: 4px;
+        }
+
+        .ent:focus-visible {
+            outline: none;
+        }
+
+        .name-note {
+            position: absolute;
+            font: 15px/1.25 "Shantell Sans", cursive;
+            color: var(--accent);
+            transform: rotate(-1.5deg);
+            background: var(--paper);
+            box-shadow: 0 0 0 3px var(--paper);
+            pointer-events: none;
+        }
+
+        /* ---- HUD ---- */
+        .hud {
+            position: fixed;
+            z-index: 2;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            user-select: none;
+        }
+
+        .hud>* {
+            background: var(--paper);
+            box-shadow: 0 0 0 4px var(--paper);
+        }
+
+        .tl {
+            top: 14px;
+            left: 16px;
+            font: 20px "Geist Pixel";
+        }
+
+        .tr {
+            top: 12px;
+            right: 16px;
+            gap: 10px;
+        }
+
+        .bl {
+            bottom: 14px;
+            left: 16px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            color: var(--mute);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        .bl b {
+            color: var(--ink);
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .br {
+            bottom: 14px;
+            right: 16px;
+        }
+
+        .flag {
+            display: block;
+            padding: 3px;
+            border-bottom: 2px solid transparent;
+            opacity: .35;
+            transition: opacity .2s;
+        }
+
+        .flag svg {
+            display: block;
+            width: 22px;
+            height: 15px;
+            image-rendering: pixelated;
+        }
+
+        .flag:hover {
+            opacity: .8;
+        }
+
+        .flag.on {
+            opacity: 1;
+            border-color: var(--accent);
+        }
+
+        #theme svg {
+            display: block;
+            width: 22px;
+            height: 22px;
+            shape-rendering: crispEdges;
+            fill: var(--ink);
+        }
+
+        #theme:hover svg {
+            fill: var(--accent);
+        }
+
+        .sep {
+            width: 1px;
+            height: 18px;
+            background: var(--mute);
+            opacity: .4;
+            box-shadow: none;
+        }
+
+        #list-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--ink);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+
+        #list-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ---- list view ---- */
+        #list {
+            position: fixed;
+            z-index: 3;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(440px, 100%);
+            background: var(--paper);
+            border-left: 1px solid var(--ink);
+            padding: 56px 28px 28px;
+            overflow: auto;
+            transform: translateX(100%);
+            transition: transform .35s cubic-bezier(.7, 0, .2, 1);
+        }
+
+        #list.open {
+            transform: none;
+        }
+
+        #list h2 {
+            font: 34px/1 "Geist Pixel";
+            font-weight: 400;
+            margin-bottom: 18px;
+        }
+
+        #list h3 {
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--mute);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin: 22px 0 6px;
+        }
+
+        #list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #list li a {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--mute);
+            text-decoration: none;
+        }
+
+        #list li a:hover {
+            color: var(--accent);
+        }
+
+        #list li span:last-child {
+            color: var(--mute);
+        }
+
+        #list .close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            text-transform: uppercase;
+        }
+
+        /* ---- project page stand-in (what the dive lands on) ---- */
+        #page {
+            position: fixed;
+            inset: 0;
+            z-index: 4;
+            background: var(--paper);
+            background-image:
+                linear-gradient(var(--line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line) 1px, transparent 1px);
+            background-size: 24px 24px;
+            overflow: auto;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s;
+        }
+
+        #page.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #page .back {
+            margin: 14px 16px;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            padding: 4px 8px;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+
+        .page-inner {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+            gap: 48px;
+            padding: 5vh 4vw 12vh;
+        }
+
+        #pix {
+            width: 100%;
+            image-rendering: pixelated;
+            display: block;
+            border: 1px solid var(--ink);
+            background: var(--paper);
+        }
+
+        figcaption {
+            margin-top: 6px;
+            color: var(--mute);
+            text-transform: uppercase;
+        }
+
+        .page-text h1 {
+            font: clamp(48px, 6vw, 96px)/.9 "Geist Pixel";
+            font-weight: 400;
+            margin-bottom: 18px;
+        }
+
+        .page-text .meta {
+            text-transform: uppercase;
+            color: var(--mute);
+            margin-bottom: 28px;
+        }
+
+        .page-text p {
+            font: 21px/1.38 "Gambarino", serif;
+            max-width: 36ch;
+            margin-bottom: 18px;
+        }
+
+        .stamp {
+            display: inline-block;
+            border: 1px dashed var(--mute);
+            color: var(--mute);
+            padding: 2px 6px;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 760px) {
+            .hint {
+                display: none;
+            }
+
+            .page-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .ent .meta {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="stage"><canvas id="board"></canvas>
+        <div id="labels"></div>
+    </div>
+
+    <div class="hud tl">jpc</div>
+    <div class="hud tr">
+        <a class="flag on" href="#" title="Français" aria-label="Français"><svg viewBox="0 0 3 2">
+                <rect width="1" height="2" fill="#2440a8" />
+                <rect x="1" width="1" height="2" fill="#f4f1ea" />
+                <rect x="2" width="1" height="2" fill="#d63a3a" />
+            </svg></a>
+        <a class="flag" href="#" title="English" aria-label="English"><svg viewBox="0 0 60 40">
+                <rect width="60" height="40" fill="#24306e" />
+                <path d="M0 0L60 40M60 0L0 40" stroke="#f4f1ea" stroke-width="8" />
+                <path d="M0 0L60 40M60 0L0 40" stroke="#c8303a" stroke-width="3" />
+                <path d="M30 0V40M0 20H60" stroke="#f4f1ea" stroke-width="12" />
+                <path d="M30 0V40M0 20H60" stroke="#c8303a" stroke-width="7" />
+            </svg></a>
+        <span class="sep"></span>
+        <button id="theme" aria-label="Changer de thème"></button>
+    </div>
+    <div class="hud bl">
+        <span>génération <b id="gen">0000</b> · <b id="pop">0</b> cellules</span>
+        <span class="hint">glisse pour dessiner · clique dans le vide pour lâcher un planeur</span>
+    </div>
+    <div class="hud br"><button id="list-btn">≡ liste</button></div>
+
+    <aside id="list" aria-label="Vue liste">
+        <button class="close" id="list-close">fermer ×</button>
+        <h2>Julien<br>Petit-Colboc</h2>
+        <h3>Projets</h3>
+        <ul id="list-projects"></ul>
+    </aside>
+
+    <article id="page">
+        <button class="back" id="back">← retour au plateau</button>
+        <div class="page-inner">
+            <figure><canvas id="pix"></canvas>
+                <figcaption id="pix-cap"></figcaption>
+            </figure>
+            <div class="page-text">
+                <span class="stamp">page factice · prototype v2</span>
+                <h1 id="page-title"></h1>
+                <div class="meta" id="page-meta"></div>
+                <p>[Placeholder] Aperçu pixelisé en cinq niveaux d'encre, avec le bleu pour les tons les plus vifs.</p>
+            </div>
+        </div>
+    </article>
+
+    <script type="importmap">
+        { "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+        } }
+    </script>
+    <script type="module">
+        // ================= colours / theme =================
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+        let C = {};
+        const readColors = () => { C = { paper: css('--paper'), ink: css('--ink'), mute: css('--mute'), accent: css('--accent') }; };
+        readColors();
+
+        // 7×7 pixel sun and moon
+        const ICON = {
+            sun: ['...O...', '.O...O.', '..OOO..', 'O.OOO.O', '..OOO..', '.O...O.', '...O...'],
+            moon: ['..OOO..', '.OO....', 'OO.....', 'OO.....', 'OO.....', '.OO....', '..OOO..'],
+        };
+        const themeBtn = document.getElementById('theme');
+        const drawIcon = () => {
+            const night = document.documentElement.dataset.theme === 'night';
+            // show what you switch to
+            const rows = ICON[night ? 'sun' : 'moon'];
+            themeBtn.innerHTML = `<svg viewBox="0 0 7 7">${rows.flatMap((r, y) => [...r].map((c, x) => c === 'O' ? `<rect x="${x}" y="${y}" width="1" height="1"/>` : '')).join('')}</svg>`;
+            themeBtn.title = night ? 'Mode papier' : 'Mode nuit';
+        };
+        drawIcon();
+        themeBtn.onclick = () => {
+            const html = document.documentElement;
+            html.dataset.theme = html.dataset.theme === 'night' ? 'paper' : 'night';
+            localStorage.setItem('v2-theme', html.dataset.theme);
+            readColors(); drawIcon();
+        };
+
+        // ================= patterns =================
+        const P = (s) => s.trim().split('\n').map((r) => [...r.trim()].map((c) => c === 'O' ? 1 : 0));
+        const PATTERNS = {
+            pulsar: P(`..OOO...OOO..\n.............\nO....O.O....O\nO....O.O....O\nO....O.O....O\n..OOO...OOO..\n.............\n..OOO...OOO..\nO....O.O....O\nO....O.O....O\nO....O.O....O\n.............\n..OOO...OOO..`),
+            penta: P(`..O....O..\nOO.OOOO.OO\n..O....O..`),
+            blinkers: P(`OOO...OOO...OOO`),
+            galaxy: P(`OO.OOOOOO\nOO.OOOOOO\nOO.......\nOO.....OO\nOO.....OO\nOO.....OO\n.......OO\nOOOOOO.OO\nOOOOOO.OO`),
+            beacon: P(`OO..\nOO..\n..OO\n..OO`),
+            toad: P(`.OOO\nOOO.`),
+            beehive: P(`.OO.\nO..O\n.OO.`),
+            gun: P(`........................O...........\n......................O.O...........\n............OO......OO............OO\n...........O...O....OO............OO\nOO........O.....O...OO..............\nOO........O...O.OO....O.O...........\n..........O.....O.......O...........\n...........O...O....................\n............OO......................`),
+        };
+        const GLIDERS = [P(`.O.\n..O\nOOO`), P(`.O.\nO..\nOOO`), P(`OOO\n..O\n.O.`), P(`OOO\nO..\n.O.`)];
+
+        // ================= entities =================
+        // x/y are fractions of the screen (pattern centre, pattern top), per orientation
+        const ENT = [
+            { id: 'conway', pat: 'pulsar', pad: 3, name: 'Jeu de la vie', meta: 'C++ · un pulsar, forcément', at: { l: [.14, .66], p: [.26, .57] }, video: '../public/media/conway.mp4' },
+            { id: 'thrive', pat: 'penta', pad: 4, name: 'Thrive', meta: 'Flutter · il grandit, il rétrécit, il tient', at: { l: [.38, .71], p: [.74, .68] }, image: '../public/media/thrive.jpg' },
+            { id: 'www', pat: 'galaxy', pad: 2, name: 'Weather Watcher', meta: 'Arduino · tourne comme une trotteuse', at: { l: [.62, .68], p: [.26, .79] } },
+            { id: 'labo', pat: 'beacon', pad: 2, name: 'labo', meta: 'des expériences sans place ailleurs', at: { l: [.86, .70], p: [.74, .84] }, lab: true },
+            { id: 'blink', pat: 'blinkers', pad: 2, name: 'Blink', meta: 'Python · des clignotants', at: { l: [.84, .12], p: [.74, .15] }, video: '../public/media/blink.mp4' },
+            { id: 'story', pat: 'toad', pad: 2, name: 'mon histoire', meta: 'ce que le CV ne dit pas', at: { l: [.58, .10], p: [.26, .145] } },
+            { id: 'contact', pat: 'gun', pad: 0, name: 'contact', meta: 'le canon envoie des planeurs', at: { l: [.18, .05], p: [.5, .025] }, gun: true },
+            { id: 'cv', pat: 'beehive', pad: 2, name: 'mon CV', meta: 'version lisible', cv: true, at: { p: [.76, .55] } },
+        ];
+
+        // ================= grid sized to the screen =================
+        const stage = document.getElementById('stage'), cv = document.getElementById('board'), ctx = cv.getContext('2d');
+        const labels = document.getElementById('labels');
+        let CELL, COLS, ROWS, world, next, heat, heatN, structures, nameS, keepClear, dpr;
+
+        await document.fonts.load('32px "Geist Pixel"');
+        await document.fonts.load('20px "Shantell Sans"');
+
+        function rasterize(text) {
+            const U = 32, S = U * 13, lines = text.split('\n'), LH = 11 * U;
+            const off = new OffscreenCanvas(10, 10), o = off.getContext('2d');
+            o.font = `${S}px "Geist Pixel"`;
+            off.width = Math.ceil(Math.max(...lines.map((l) => o.measureText(l).width))) + U * 2;
+            off.height = LH * lines.length + U * 2;
+            o.font = `${S}px "Geist Pixel"`; o.textBaseline = 'top';
+            lines.forEach((l, i) => o.fillText(l, U, U + i * LH));
+            const d = o.getImageData(0, 0, off.width, off.height).data;
+            let px = off.width, py = off.height;
+            for (let y = 0; y < off.height; y++) for (let x = 0; x < off.width; x++) if (d[(y * off.width + x) * 4 + 3] > 128) { px = Math.min(px, x); py = Math.min(py, y); }
+            px %= U; py %= U;
+            const out = [];
+            for (let j = 0; j < Math.floor((off.height - py) / U); j++) {
+                const r = [];
+                for (let i = 0; i < Math.floor((off.width - px) / U); i++)
+                    r.push(d[(Math.round(py + (j + .5) * U) * off.width + Math.round(px + (i + .5) * U)) * 4 + 3] > 128 ? 1 : 0);
+                out.push(r);
+            }
+            while (!out[0].some(Boolean)) out.shift();
+            while (!out.at(-1).some(Boolean)) out.pop();
+            let l = 1e9, rr = 0;
+            out.forEach((r) => r.forEach((v, i) => { if (v) { l = Math.min(l, i); rr = Math.max(rr, i); } }));
+            return out.map((r) => r.slice(l, rr + 1));
+        }
+
+        const idx = (x, y) => ((y + ROWS) % ROWS) * COLS + ((x + COLS) % COLS);
+
+        function makeStructure(cells, x, y, pad, kind, ent) {
+            const w = cells[0].length + pad * 2, h = cells.length + pad * 2;
+            const cur = new Uint8Array(w * h);
+            cells.forEach((row, j) => row.forEach((v, i) => cur[(j + pad) * w + i + pad] = v));
+            return { x: x - pad, y: y - pad, w, h, cur, nxt: new Uint8Array(w * h), hidden: new Uint16Array(w * h), born: new Float32Array(w * h).map(() => Math.random()), kind, ent, hurt: false, shots: 0, core: { x: 0, y: 0, w, h } };
+        }
+
+        function layout() {
+            dpr = Math.min(2, devicePixelRatio || 1);
+            const vw = innerWidth, vh = innerHeight, portrait = vh > vw * 1.1;
+            const name = rasterize(portrait ? 'Julien\nPetit-\nColboc' : 'Julien\nPetit-Colboc');
+            // the name sets the cell size: ~60% of the width on desktop, ~84% on phones
+            CELL = Math.max(5, Math.min(14, Math.floor(Math.min(vw * (portrait ? .72 : .6) / name[0].length, vh * (portrait ? .2 : .3) / name.length))));
+            COLS = Math.ceil(vw / CELL); ROWS = Math.ceil(vh / CELL);
+            stage.style.setProperty('--c', CELL + 'px');
+            cv.width = vw * dpr; cv.height = vh * dpr;
+            world = new Uint8Array(COLS * ROWS); next = new Uint8Array(COLS * ROWS);
+            heat = new Uint8Array(COLS * ROWS); heatN = new Uint8Array(COLS * ROWS);
+            structures = []; keepClear = []; labels.innerHTML = '';
+
+            const nx = Math.round(COLS / 2 - name[0].length / 2), ny = Math.round(ROWS * (portrait ? .37 : .38) - name.length / 2);
+            nameS = makeStructure(name, nx, ny, 0, 'name', null);
+            structures.push(nameS);
+            keepClear.push({ x: nx - 1, y: ny - 1, x2: nx + name[0].length + 1, y2: ny + name.length + 1 });
+
+            const note = document.createElement('div');
+            note.className = 'name-note';
+            note.textContent = portrait ? '↑ mon nom, en cellules vivantes. glisse pour dessiner.' : '↑ mon nom, en cellules vivantes. tout le site est un jeu de la vie : glisse pour dessiner.';
+            note.style.left = nx * CELL + 'px'; note.style.top = (ny + name.length + 1.2) * CELL + 'px';
+            note.style.maxWidth = (portrait ? name[0].length * CELL : 9e9) + 'px';
+            labels.append(note);
+
+            for (const e of ENT) {
+                const cells = PATTERNS[e.pat];
+                let cx, ty;
+                if (e.cv && !portrait) { cx = nx + name[0].length - 4; ty = ny + name.length + 3; }
+                else { const [fx, fy] = e.at[portrait ? 'p' : 'l']; cx = Math.round(COLS * fx); ty = Math.round(ROWS * fy); }
+                const x0 = e.gun ? Math.max(1, cx - 18) : cx - Math.floor(cells[0].length / 2);
+                const s = makeStructure(cells, x0, ty, e.pad, e.gun ? 'gun' : 'osc', e);
+                if (e.gun) {
+                    // a wider private board so gliders leave the gun cleanly before being handed over
+                    const w = 52, h = 34, cur = new Uint8Array(w * h);
+                    for (let j = 0; j < s.h; j++) for (let i = 0; i < s.w; i++) cur[j * w + i] = s.cur[j * s.w + i];
+                    Object.assign(s, { w, h, cur, nxt: new Uint8Array(w * h), hidden: new Uint16Array(w * h), born: new Float32Array(w * h).map(() => Math.random()), core: { x: 0, y: 0, w: 37, h: 10 } });
+                }
+                structures.push(s);
+                e.s = s;
+                // the label is a real link sitting under the pattern; its hit area covers the pattern too
+                const pw = (e.gun ? 37 : s.w) * CELL, ph = (e.gun ? 10 : s.h) * CELL;
+                const a = document.createElement('a');
+                a.className = 'ent'; a.href = '#/' + e.id; a.dataset.id = e.id;
+                a.style.left = (s.x * CELL + pw / 2) + 'px'; a.style.top = s.y * CELL + 'px';
+                a.innerHTML = `<span class="hit" style="width:${pw}px;height:${ph}px"></span><span class="name">${e.name}</span><span class="meta">${e.meta}</span>`;
+                labels.append(a);
+                e.a = a;
+            }
+            // text stays readable: free cells die inside label boxes
+            for (const el of labels.querySelectorAll('.name, .meta, .name-note')) {
+                const r = el.getBoundingClientRect();
+                keepClear.push({ x: Math.floor(r.left / CELL) - 1, y: Math.floor(r.top / CELL), x2: Math.ceil(r.right / CELL) + 1, y2: Math.ceil(r.bottom / CELL) });
+            }
+            // the board starts busy: a third of the free space is seeded
+            for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++)
+                if (!protectedAt(x, y, 5) && Math.random() < .3) world[idx(x, y)] = 1;
+        }
+
+        const inBox = (b, x, y, m = 0) => x >= b.x - m && x < b.x2 + m && y >= b.y - m && y < b.y2 + m;
+        const protectedAt = (x, y, m = 0) => keepClear.some((b) => inBox(b, x, y, m)) || structures.some((s) => inBox({ x: s.x + s.core.x, y: s.y + s.core.y, x2: s.x + s.core.x + s.core.w, y2: s.y + s.core.y + s.core.h }, x, y, m));
+
+        // ================= life =================
+        function stepWorld() {
+            let pop = 0;
+            for (let y = 0; y < ROWS; y++) {
+                const up = ((y - 1 + ROWS) % ROWS) * COLS, mid = y * COLS, dn = ((y + 1) % ROWS) * COLS;
+                for (let x = 0; x < COLS; x++) {
+                    const l = (x - 1 + COLS) % COLS, r = (x + 1) % COLS, i = mid + x;
+                    const n = world[up + l] + world[up + x] + world[up + r] + world[mid + l] + world[mid + r] + world[dn + l] + world[dn + x] + world[dn + r];
+                    const alive = n === 3 || (n === 2 && world[i]) ? 1 : 0;
+                    next[i] = alive;
+                    if (!alive) { heatN[i] = 0; continue; }
+                    pop++;
+                    heatN[i] = world[i] ? (heat[i] > 5 ? heat[i] - 5 : 0) : Math.max(heat[up + l], heat[up + x], heat[up + r], heat[mid + l], heat[mid + r], heat[dn + l], heat[dn + x], heat[dn + r]) * .9;
+                }
+            }
+            [world, next] = [next, world];
+            [heat, heatN] = [heatN, heat];
+            for (const b of keepClear) for (let y = Math.max(0, b.y); y < Math.min(ROWS, b.y2); y++) for (let x = Math.max(0, b.x); x < Math.min(COLS, b.x2); x++) world[y * COLS + x] = 0;
+            return pop;
+        }
+
+        function stepBox(cur, nxt, w, h) {
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                let n = 0;
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const xx = x + dx, yy = y + dy;
+                    if (xx >= 0 && yy >= 0 && xx < w && yy < h) n += cur[yy * w + xx];
+                }
+                nxt[y * w + x] = n === 3 || (n === 2 && cur[y * w + x]) ? 1 : 0;
+            }
+        }
+
+        function emitGliders(s) {
+            const seen = new Uint8Array(s.w * s.h);
+            for (let k = 0; k < s.cur.length; k++) {
+                if (!s.cur[k] || seen[k]) continue;
+                const comp = [k], stack = [k]; seen[k] = 1;
+                while (stack.length) {
+                    const q = stack.pop(), qx = q % s.w, qy = q / s.w | 0;
+                    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                        const xx = qx + dx, yy = qy + dy, n = yy * s.w + xx;
+                        if (xx >= 0 && yy >= 0 && xx < s.w && yy < s.h && s.cur[n] && !seen[n]) { seen[n] = 1; comp.push(n); stack.push(n); }
+                    }
+                }
+                if (comp.every((q) => q % s.w >= 38)) {
+                    const keep = s.shots++ % 2 === 0;
+                    for (const q of comp) { s.cur[q] = 0; if (keep) world[idx(s.x + q % s.w, s.y + (q / s.w | 0))] = 1; }
+                }
+            }
+        }
+
+        function stepStructures(gen) {
+            for (const s of structures) {
+                if (s.kind !== 'name') { stepBox(s.cur, s.nxt, s.w, s.h); [s.cur, s.nxt] = [s.nxt, s.cur]; }
+                if (s.kind === 'gun') emitGliders(s);
+                const c = s.core;
+                for (let j = c.y; j < c.y + c.h; j++) for (let i = c.x; i < c.x + c.w; i++) {
+                    if (!world[idx(s.x + i, s.y + j)]) continue;
+                    s.hurt = true;
+                    for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+                        const ii = i + di, jj = j + dj;
+                        if (ii < 0 || jj < 0 || ii >= s.w || jj >= s.h) continue;
+                        const k = jj * s.w + ii;
+                        if (s.cur[k] && !s.hidden[k] && Math.random() < .6) {
+                            s.hidden[k] = 20 + Math.random() * 40;
+                            const w2 = idx(s.x + ii, s.y + jj); world[w2] = 1; heat[w2] = 255;
+                        }
+                    }
+                }
+                let still = false;
+                for (let k = 0; k < s.hidden.length; k++) if (s.hidden[k]) { s.hidden[k]--; still = true; }
+                if (s.hurt && (!still || gen % 40 === 0)) {
+                    for (let j = 0; j < c.h; j++) for (let i = 0; i < c.w; i++) world[idx(s.x + i, s.y + j)] = 0;
+                    if (!still) s.hurt = false;
+                }
+            }
+        }
+
+        function dropGlider(x, y, g = GLIDERS[Math.random() * 4 | 0]) {
+            g.forEach((row, j) => row.forEach((v, i) => { if (v && !protectedAt(x + i - 1, y + j - 1)) { const k = idx(x + i - 1, y + j - 1); world[k] = 1; heat[k] = 255; } }));
+        }
+
+        // keep it alive: a glider comes in from a random edge every so often
+        function feed() {
+            const side = Math.random() * 4 | 0;
+            const x = side === 0 ? 1 : side === 1 ? COLS - 4 : Math.random() * (COLS - 4) | 0;
+            const y = side === 2 ? 1 : side === 3 ? ROWS - 4 : Math.random() * (ROWS - 4) | 0;
+            const dir = (x > COLS / 2 ? 1 : 0) + (y > ROWS / 2 ? 2 : 0); // aim back toward the middle
+            const g = [P(`OOO\nO..\n.O.`), P(`OOO\n..O\n.O.`), P(`.O.\nO..\nOOO`), P(`.O.\n..O\nOOO`)][dir];
+            g.forEach((row, j) => row.forEach((v, i) => { if (v) world[idx(x + i, y + j)] = 1; }));
+        }
+
+        // ================= drawing =================
+        let drag = null;
+        const cellAt = (e) => [Math.floor(e.clientX / CELL), Math.floor(e.clientY / CELL)];
+        const paint = (x, y) => { if (!protectedAt(x, y)) { const k = idx(x, y); world[k] = 1; heat[k] = 200; } };
+        cv.addEventListener('pointerdown', (e) => {
+            cv.setPointerCapture(e.pointerId);
+            const [x, y] = cellAt(e);
+            drag = { x0: e.clientX, y0: e.clientY, x, y, moved: false };
+        });
+        cv.addEventListener('pointermove', (e) => {
+            if (!drag) return;
+            if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 4) drag.moved = true;
+            if (!drag.moved) return;
+            // fill the gap between two pointer events so fast strokes stay continuous
+            const [x, y] = cellAt(e), n = Math.max(Math.abs(x - drag.x), Math.abs(y - drag.y), 1);
+            for (let t = 0; t <= n; t++) paint(Math.round(drag.x + (x - drag.x) * t / n), Math.round(drag.y + (y - drag.y) * t / n));
+            drag.x = x; drag.y = y;
+        });
+        const up = (e) => {
+            if (drag && !drag.moved) dropGlider(drag.x, drag.y);
+            drag = null;
+        };
+        cv.addEventListener('pointerup', up);
+        cv.addEventListener('pointercancel', () => { drag = null; });
+
+        // ================= render =================
+        let hover = null;
+        function draw(now) {
+            const t = now - t0;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, innerWidth, innerHeight);
+            const g = CELL >= 7 ? 1 : 0, s = CELL - g;
+            const ready = reduced ? 1 : Math.min(1, t / 1400);
+            ctx.globalAlpha = .5 * ready;
+            for (let i = 0; i < world.length; i++) {
+                if (!world[i]) continue;
+                ctx.fillStyle = heat[i] > 30 ? C.accent : C.ink;
+                ctx.fillRect((i % COLS) * CELL + g, (i / COLS | 0) * CELL + g, s, s);
+            }
+            ctx.globalAlpha = 1;
+            for (const st of structures) {
+                ctx.fillStyle = st.ent && st.ent === hover ? C.accent : C.ink;
+                for (let k = 0; k < st.cur.length; k++) {
+                    if (!st.cur[k] || st.hidden[k] || st.born[k] > ready) continue;
+                    ctx.fillRect((st.x + k % st.w) * CELL + g, (st.y + (k / st.w | 0)) * CELL + g, s, s);
+                }
+            }
+        }
+
+        // ================= dive into a structure =================
+        const page = document.getElementById('page');
+        labels.addEventListener('pointerover', (e) => { const a = e.target.closest('.ent'); hover = a ? ENT.find((x) => x.id === a.dataset.id) : null; });
+        labels.addEventListener('pointerout', (e) => { if (!e.relatedTarget?.closest?.('.ent')) hover = null; });
+        labels.addEventListener('click', (e) => {
+            const a = e.target.closest('.ent');
+            if (!a) return;
+            e.preventDefault();
+            const ent = ENT.find((x) => x.id === a.dataset.id);
+            if (ent.id === 'contact') return void (location.href = 'mailto:[adresse]');
+            const s = ent.s, w = ent.gun ? 37 : s.w, h = ent.gun ? 10 : s.h;
+            stage.style.transformOrigin = `${(s.x + w / 2) * CELL}px ${(s.y + h / 2) * CELL}px`;
+            stage.style.transform = 'scale(16)';
+            setTimeout(() => openPage(ent), reduced ? 0 : 750);
+        });
+        document.getElementById('back').onclick = () => {
+            page.classList.remove('open'); stopPix();
+            requestAnimationFrame(() => { stage.style.transform = ''; });
+        };
+
+        // ================= pixelated previews =================
+        // Five ink levels between paper and ink, plus the accent for vivid colours.
+        const pix = document.getElementById('pix'), pctx = pix.getContext('2d', { willReadFrequently: true });
+        const hexRGB = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; };
+        let pixRaf, pixSrc, three;
+        function pixelate(src, sw, sh) {
+            const W = 160, H = Math.round(W * sh / sw);
+            if (pix.width !== W || pix.height !== H) { pix.width = W; pix.height = H; }
+            pctx.drawImage(src, 0, 0, W, H);
+            const d = pctx.getImageData(0, 0, W, H), p = d.data;
+            const ink = hexRGB(C.ink), pap = hexRGB(C.paper), acc = hexRGB(C.accent);
+            const night = document.documentElement.dataset.theme === 'night';
+            for (let i = 0; i < p.length; i += 4) {
+                const r = p[i], g = p[i + 1], b = p[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+                const lum = (r * .3 + g * .59 + b * .11) / 255, sat = mx ? (mx - mn) / mx : 0;
+                let c;
+                if (sat > .5 && mx > 90) c = acc;
+                else {
+                    // light pixels read as paper on the paper theme and as ink on the night theme
+                    const lvl = Math.round((night ? lum : 1 - lum) * 4) / 4;
+                    c = pap.map((v, k) => Math.round(v + (ink[k] - v) * lvl));
+                }
+                p[i] = c[0]; p[i + 1] = c[1]; p[i + 2] = c[2]; p[i + 3] = 255;
+            }
+            pctx.putImageData(d, 0, 0);
+        }
+        function stopPix() { cancelAnimationFrame(pixRaf); pixSrc?.pause?.(); }
+        async function openPage(ent) {
+            document.getElementById('page-title').textContent = ent.name;
+            document.getElementById('page-meta').textContent = ent.meta;
+            const cap = document.getElementById('pix-cap');
+            stopPix();
+            if (ent.video || ent.image) {
+                const el = ent.video ? Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true, src: ent.video }) : Object.assign(new Image(), { src: ent.image });
+                pixSrc = el;
+                if (ent.video) el.play();
+                cap.textContent = 'capture · pixelisée en direct';
+                (function loop() {
+                    pixRaf = requestAnimationFrame(loop);
+                    const ok = ent.video ? el.readyState >= 2 : el.complete && el.naturalWidth;
+                    if (ok) pixelate(el, ent.video ? el.videoWidth : el.naturalWidth, ent.video ? el.videoHeight : el.naturalHeight);
+                })();
+            } else if (ent.lab) {
+                cap.textContent = 'arduino.glb · rendu 3D pixelisé';
+                three ??= await import('three').then(async (T) => ({ T, GLTFLoader: (await import('three/addons/loaders/GLTFLoader.js')).GLTFLoader }));
+                const { T, GLTFLoader } = three;
+                const r = new T.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+                r.setPixelRatio(1); r.setSize(320, 200);
+                const scene = new T.Scene(); scene.background = new T.Color(0xffffff);
+                scene.add(new T.HemisphereLight(0xffffff, 0x888888, 3));
+                const dl = new T.DirectionalLight(0xffffff, 2.5); dl.position.set(2, 3, 2); scene.add(dl);
+                const cam = new T.PerspectiveCamera(30, 320 / 200, .01, 100); cam.position.set(0, 2.6, 2.2); cam.lookAt(0, 0, 0);
+                const holder = new T.Group(); scene.add(holder);
+                new GLTFLoader().load('../public/media/arduino.glb', (gl) => {
+                    const m = gl.scene, sz0 = new T.Box3().setFromObject(m).getSize(new T.Vector3());
+                    // lay the board flat: its thinnest side becomes the vertical axis
+                    if (sz0.z < sz0.y && sz0.z <= sz0.x) m.rotation.x = -Math.PI / 2;
+                    else if (sz0.x < sz0.y && sz0.x < sz0.z) m.rotation.z = Math.PI / 2;
+                    m.updateMatrixWorld(true);
+                    const b = new T.Box3().setFromObject(m), sz = b.getSize(new T.Vector3());
+                    m.scale.setScalar(1.5 / Math.max(sz.x, sz.y, sz.z));
+                    m.updateMatrixWorld(true);
+                    m.position.sub(new T.Box3().setFromObject(m).getCenter(new T.Vector3()));
+                    holder.add(m);
+                });
+                pixSrc = { pause: () => r.dispose() };
+                (function loop() {
+                    pixRaf = requestAnimationFrame(loop);
+                    if (!reduced) holder.rotation.y += .01;
+                    r.render(scene, cam);
+                    pixelate(r.domElement, 320, 200);
+                })();
+            } else {
+                cap.textContent = '[pas encore de capture]';
+                pix.width = 120; pix.height = 75; pctx.fillStyle = C.paper; pctx.fillRect(0, 0, 120, 75);
+            }
+            page.classList.add('open');
+        }
+
+        // ================= list =================
+        const list = document.getElementById('list');
+        document.getElementById('list-btn').onclick = () => list.classList.toggle('open');
+        document.getElementById('list-close').onclick = () => list.classList.remove('open');
+        document.getElementById('list-projects').innerHTML = ENT.filter((e) => !e.gun)
+            .map((e) => `<li><a href="#/${e.id}">${e.name}<span>${e.meta.split(' · ')[0]}</span></a></li>`).join('');
+
+        // ================= loop =================
+        layout();
+        let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(layout, 200); });
+        const genEl = document.getElementById('gen'), popEl = document.getElementById('pop');
+        let gen = 0, last = 0;
+        const t0 = performance.now();
+        function loop(now) {
+            requestAnimationFrame(loop);
+            if (!reduced && now - last > 120 && now - t0 > 500) {
+                last = now; gen++;
+                const pop = stepWorld();
+                stepStructures(gen);
+                if (gen % 18 === 0) feed();
+                genEl.textContent = String(gen).padStart(4, '0');
+                popEl.textContent = pop;
+            }
+            draw(now);
+        }
+        requestAnimationFrame(loop);
+    </script>
+</body>
+
+</html>

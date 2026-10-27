@@ -1,10 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
+import LangFlags from '../components/LangFlags.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import { strings } from '../i18n';
 
 const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'fr';
 const title = lang === 'fr' ? '404 — Page non trouvée' : '404 — Page Not Found';
 const description = lang === 'fr' ? 'La page que vous cherchez n\'existe pas.' : 'The page you are looking for does not exist.';
 
+const t = strings(lang);
 const alternates = {
   fr: '/',
   en: '/en/',
@@ -13,6 +17,14 @@ const alternates = {
 
 <Base {lang} {title} {description} {alternates} noindex>
   <main>
+    <header class="doc-bar">
+      <span></span>
+      <div class="doc-actions">
+        <LangFlags t={t} frHref="/" enHref="/en/" />
+        <span class="sep"></span>
+        <ThemeToggle t={t} />
+      </div>
+    </header>
     <div class="content">
       <h1>404</h1>
       <p class="note fr">cellule morte.</p>
@@ -46,7 +58,7 @@ const alternates = {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100%;
+    min-height: calc(100% - 56px);
     padding: 6vh 4vw;
     text-align: center;
   }
