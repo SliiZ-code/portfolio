@@ -49,13 +49,13 @@ const fakeCanvas: MakeCanvas = () => {
 
 describe('rasterize', () => {
   it('returns non-empty rows for visible text', () => {
-    const rows = rasterize('AB', 1, fakeCanvas);
+    const rows = rasterize('AB', false, fakeCanvas);
     expect(rows.length).toBe(1);
     expect(rows[0]).toEqual([1, 1]);
   });
 
-  it('scales every design pixel to k×k cells', () => {
-    const rows = rasterize('AB', 2, fakeCanvas);
+  it('samples every half pixel when fine', () => {
+    const rows = rasterize('AB', true, fakeCanvas);
     expect(rows).toEqual([
       [1, 1, 1, 1],
       [1, 1, 1, 1],
@@ -63,7 +63,7 @@ describe('rasterize', () => {
   });
 
   it('keeps a text line per input line and trims empty edges', () => {
-    const rows = rasterize('A\nB', 1, fakeCanvas);
+    const rows = rasterize('A\nB', false, fakeCanvas);
     expect(rows.length).toBeGreaterThan(1);
     expect(rows.some((row) => row.some(Boolean))).toBe(true);
     expect(rows[0].some(Boolean)).toBe(true);
@@ -71,6 +71,6 @@ describe('rasterize', () => {
   });
 
   it('does not crash on blank text', () => {
-    expect(rasterize('', 1, fakeCanvas)).toEqual([]);
+    expect(rasterize('', false, fakeCanvas)).toEqual([]);
   });
 });

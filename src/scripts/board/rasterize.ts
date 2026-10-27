@@ -24,11 +24,13 @@ const makeCanvas: MakeCanvas = (width, height) => {
 };
 
 /**
- * Geist Pixel is drawn on a grid of em/13. Render big, then sample the centre of each
- * design pixel, so one font pixel becomes exactly k×k cells (no broken glyphs).
+ * Geist Pixel is drawn on a grid of em/13, with half steps in its curves (the J, the C, the o).
+ * Render big, then sample the centre of each design pixel: one cell per pixel, or with `fine`,
+ * one cell per half pixel, which keeps the curves and doubles the size.
  */
-export function rasterize(text: string, k = 1, factory: MakeCanvas = makeCanvas): number[][] {
+export function rasterize(text: string, fine = false, factory: MakeCanvas = makeCanvas): number[][] {
   const U = 32;
+  const P = fine ? U / 2 : U;
   const S = U * 13;
   const lines = text.split('\n');
   const LH = 11 * U;
@@ -47,26 +49,28 @@ export function rasterize(text: string, k = 1, factory: MakeCanvas = makeCanvas)
   const d = o.getImageData(0, 0, off.width, off.height).data;
   const on = (x: number, y: number) => d[(Math.round(y) * off.width + Math.round(x)) * 4 + 3] > 128;
 
-  // find the grid phase from the first inked row / column
-  let px = off.width;
-  let py = off.height;
-  for (let y = 0; y < off.height; y++) {
-    for (let x = 0; x < off.width; x++) {
-      if (d[(y * off.width + x) * 4 + 3] > 128) {
-        px = Math.min(px, x);
-        py = Math.min(py, y);
-      }
+  // find the grid phase from the edges of the ink: the most common one wins, because a few glyphs
+  // (the C) start half a design pixel off the grid, and one of them must not shift every other glyph
+  const ink = (x: number, y: number) => d[(y * off.width + x) * 4 + 3] > 128;
+  const votesX = new Array<number>(P).fill(0);
+  const votesY = new Array<number>(P).fill(0);
+  for (let y = 1; y < off.height; y++) {
+    for (let x = 1; x < off.width; x++) {
+      if (!ink(x, y)) continue;
+      if (!ink(x - 1, y)) votesX[x % P]++;
+      if (!ink(x, y - 1)) votesY[y % P]++;
     }
   }
-  px %= U;
-  py %= U;
-  const cols = Math.floor((off.width - px) / U);
-  const rows = Math.floor((off.height - py) / U);
+  const mode = (votes: number[]) => votes.indexOf(Math.max(...votes));
+  const px = mode(votesX);
+  const py = mode(votesY);
+  const cols = Math.floor((off.width - px) / P);
+  const rows = Math.floor((off.height - py) / P);
   const out: number[][] = [];
   for (let j = 0; j < rows; j++) {
     const row: number[] = [];
-    for (let i = 0; i < cols; i++) row.push(on(px + (i + 0.5) * U, py + (j + 0.5) * U) ? 1 : 0);
-    for (let a = 0; a < k; a++) out.push(row.flatMap((value) => Array(k).fill(value)));
+    for (let i = 0; i < cols; i++) row.push(on(px + (i + 0.5) * P, py + (j + 0.5) * P) ? 1 : 0);
+    out.push(row);
   }
 
   while (out.length && !out[0].some(Boolean)) out.shift();
