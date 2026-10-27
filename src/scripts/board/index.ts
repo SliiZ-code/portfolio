@@ -34,7 +34,43 @@ interface Placed {
   fp: Footprint;
 }
 
+/**
+ * The list panel. Wired before anything else, and before the font wait, so the closed panel is
+ * out of the tab order from the first moment the script runs.
+ */
+function initList(): void {
+  const list = document.querySelector<HTMLElement>('#list');
+  const listButton = document.querySelector<HTMLButtonElement>('#list-btn');
+  const listClose = document.querySelector<HTMLButtonElement>('#list-close');
+  const setList = (open: boolean) => {
+    if (!list) return;
+    list.classList.toggle('open', open);
+    listButton?.setAttribute('aria-expanded', String(open));
+    // a closed panel is out of the tab order and out of the accessibility tree
+    if (open) {
+      list.removeAttribute('inert');
+      list.removeAttribute('aria-hidden');
+      listClose?.focus();
+    } else {
+      const hadFocus = list.contains(document.activeElement);
+      list.setAttribute('inert', '');
+      list.setAttribute('aria-hidden', 'true');
+      if (hadFocus) listButton?.focus();
+    }
+  };
+  setList(false);
+  listButton?.addEventListener('click', () => setList(!list?.classList.contains('open')));
+  listClose?.addEventListener('click', () => setList(false));
+  document.addEventListener('keydown', (event) => {
+    // leave Escape alone when another control has already used it, or during IME composition
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || !list?.classList.contains('open')) return;
+    event.preventDefault();
+    setList(false);
+  });
+}
+
 export async function initBoard(): Promise<void> {
+  initList();
   const source = document.getElementById('board-data');
   const canvas = document.querySelector<HTMLCanvasElement>('#board');
   const stage = document.getElementById('stage');
@@ -351,36 +387,6 @@ export async function initBoard(): Promise<void> {
     },
     true,
   );
-
-  // ---- list ----
-  const list = document.querySelector<HTMLElement>('#list');
-  const listButton = document.querySelector<HTMLButtonElement>('#list-btn');
-  const listClose = document.querySelector<HTMLButtonElement>('#list-close');
-  const setList = (open: boolean) => {
-    if (!list) return;
-    list.classList.toggle('open', open);
-    listButton?.setAttribute('aria-expanded', String(open));
-    // a closed panel is out of the tab order and out of the accessibility tree
-    if (open) {
-      list.removeAttribute('inert');
-      list.removeAttribute('aria-hidden');
-      listClose?.focus();
-    } else {
-      const hadFocus = list.contains(document.activeElement);
-      list.setAttribute('inert', '');
-      list.setAttribute('aria-hidden', 'true');
-      if (hadFocus) listButton?.focus();
-    }
-  };
-  setList(false);
-  listButton?.addEventListener('click', () => setList(!list?.classList.contains('open')));
-  listClose?.addEventListener('click', () => setList(false));
-  document.addEventListener('keydown', (event) => {
-    // leave Escape alone when another control has already used it, or during IME composition
-    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || !list?.classList.contains('open')) return;
-    event.preventDefault();
-    setList(false);
-  });
 
   document.addEventListener('themechange', readColors);
 
