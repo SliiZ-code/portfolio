@@ -26,7 +26,7 @@ export function initBackLink(): void {
       const fallback = setTimeout(() => {
         flag.clear();
         location.assign(back.dataset.backBoard || back.href);
-      }, 400);
+      }, 1000);
       addEventListener('pagehide', () => clearTimeout(fallback), { once: true });
       history.back();
     } catch {

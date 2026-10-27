@@ -303,17 +303,12 @@ a.flag:hover {
   border-left: 1px solid var(--ink);
   padding: 56px 28px 28px;
   overflow: auto;
-  visibility: hidden;
   transform: translateX(100%);
-  transition:
-    transform .35s cubic-bezier(.7, 0, .2, 1),
-    visibility 0s linear .35s;
+  transition: transform .35s cubic-bezier(.7, 0, .2, 1);
 }
 
 #list.open {
-  visibility: visible;
   transform: none;
-  transition: transform .35s cubic-bezier(.7, 0, .2, 1);
 }
 
 #list h2 {

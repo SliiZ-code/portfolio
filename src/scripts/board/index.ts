@@ -376,7 +376,8 @@ export async function initBoard(): Promise<void> {
   listButton?.addEventListener('click', () => setList(!list?.classList.contains('open')));
   listClose?.addEventListener('click', () => setList(false));
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !list?.classList.contains('open')) return;
+    // leave Escape alone when another control has already used it, or during IME composition
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing || !list?.classList.contains('open')) return;
     event.preventDefault();
     setList(false);
   });

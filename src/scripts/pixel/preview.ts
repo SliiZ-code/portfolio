@@ -67,16 +67,19 @@ export function initPixelPreview(): void {
   };
 
   // reduced motion: a still capture, recoloured on theme change, instead of a looping video
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    video.addEventListener('loadeddata', frameIt, { once: true });
-    document.addEventListener('themechange', frameIt);
-    return;
-  }
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const playing = () => {
+    if (motion.matches) video.pause();
+    else video.play().catch(() => undefined);
+  };
+  playing();
+  motion.addEventListener('change', playing);
+  video.addEventListener('loadeddata', frameIt, { once: true });
+  document.addEventListener('themechange', frameIt);
 
-  video.play().catch(() => undefined);
   const frame = () => {
     requestAnimationFrame(frame);
-    frameIt();
+    if (!motion.matches) frameIt();
   };
   requestAnimationFrame(frame);
 }
