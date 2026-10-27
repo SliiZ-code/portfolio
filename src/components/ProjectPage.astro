@@ -43,6 +43,7 @@ const description = htmlToText(project.description) || meta || resume.headline;
           class="pix"
           width="160"
           height="100"
+          aria-hidden="true"
           data-src={media?.video ?? media?.image ?? ''}
           data-kind={media?.video ? 'video' : media?.image ? 'image' : ''}
         ></canvas>

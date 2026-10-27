@@ -20,7 +20,7 @@ const flags = [
 <span class="flags" role="group" aria-label={t.nav.language}>
   {flags.map(({ code, title, href }) => {
     const Tag = lang === code ? 'span' : 'a';
-    const props = lang === code ? { 'aria-current': 'page' as const } : { href, hreflang: code };
+    const props = lang === code ? { role: 'img' as const, 'aria-current': 'page' as const } : { href, hreflang: code };
     return (
       <Tag class:list={['flag', { on: lang === code }]} title={title} aria-label={title} {...props}>
         {code === 'fr' ? (

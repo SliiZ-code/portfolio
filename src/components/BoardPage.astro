@@ -36,24 +36,26 @@ const title = t.board.title(resume.name);
 const description = htmlToText(resume.summary) || resume.headline;
 ---
 
-<Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }}>
-  <h1 class="sr-only">{resume.name}</h1>
-  <div id="stage">
-    <canvas id="board" aria-label={title}></canvas>
-    <div id="labels">
-      <div class="name-note" id="name-note">{t.board.nameNote}</div>
-      {entities.map((entity) => {
-        const Tag = entity.url ? 'a' : 'span';
-        return (
-          <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
-            <span class="hit"></span>
-            <span class="name">{entity.name}</span>
-            <span class="meta">{entity.meta}</span>
-          </Tag>
-        );
-      })}
+<Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }} zoomable>
+  <main>
+    <h1 class="sr-only">{resume.name}</h1>
+    <div id="stage">
+      <canvas id="board" role="img" aria-label={title}></canvas>
+      <div id="labels">
+        <div class="name-note" id="name-note">{t.board.nameNote}</div>
+        {entities.map((entity) => {
+          const Tag = entity.url ? 'a' : 'span';
+          return (
+            <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
+              <span class="hit"></span>
+              <span class="name">{entity.name}</span>
+              <span class="meta">{entity.meta}</span>
+            </Tag>
+          );
+        })}
+      </div>
     </div>
-  </div>
+  </main>
 
   <BoardHud lang={lang} t={t} />
   <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
@@ -61,7 +63,7 @@ const description = htmlToText(resume.summary) || resume.headline;
   <noscript>
     <style>
       #stage, .hud { display: none; }
-      #list { position: static; transform: none; width: auto; border-left: 0; }
+      #list { position: static; transform: none; visibility: visible; width: auto; border-left: 0; }
       html, body { overflow: auto; }
     </style>
   </noscript>

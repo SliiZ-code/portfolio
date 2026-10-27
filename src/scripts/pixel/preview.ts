@@ -55,11 +55,28 @@ export function initPixelPreview(): void {
     return;
   }
 
-  const video = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true, src });
+  const video = Object.assign(document.createElement('video'), {
+    muted: true,
+    loop: true,
+    playsInline: true,
+    preload: 'auto',
+    src,
+  });
+  const frameIt = () => {
+    if (video.readyState >= 2) pixelateInto(canvas, ctx, video, video.videoWidth, video.videoHeight);
+  };
+
+  // reduced motion: a still capture, recoloured on theme change, instead of a looping video
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    video.addEventListener('loadeddata', frameIt, { once: true });
+    document.addEventListener('themechange', frameIt);
+    return;
+  }
+
   video.play().catch(() => undefined);
   const frame = () => {
     requestAnimationFrame(frame);
-    if (video.readyState >= 2) pixelateInto(canvas, ctx, video, video.videoWidth, video.videoHeight);
+    frameIt();
   };
   requestAnimationFrame(frame);
 }

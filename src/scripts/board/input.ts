@@ -20,30 +20,40 @@ interface InputOptions {
   paint: (x: number, y: number) => void;
   /** A tap on empty space. */
   glider: (x: number, y: number) => void;
+  /** After a stroke or a dropped glider: the board steps once when motion is reduced. */
+  onChange?: () => void;
 }
 
-/** Drag to draw, tap to drop a glider. */
-export function bindInput({ canvas, cell, paint, glider }: InputOptions): void {
-  let drag: { x0: number; y0: number; at: Cell; moved: boolean } | null = null;
+/** Drag to draw, tap to drop a glider. One pointer at a time, so a second finger cannot join a stroke. */
+export function bindInput({ canvas, cell, paint, glider, onChange }: InputOptions): void {
+  let drag: { id: number; x0: number; y0: number; at: Cell; moved: boolean } | null = null;
   const cellAt = (event: PointerEvent): Cell => [Math.floor(event.clientX / cell()), Math.floor(event.clientY / cell())];
 
   canvas.addEventListener('pointerdown', (event) => {
-    canvas.setPointerCapture(event.pointerId);
-    drag = { x0: event.clientX, y0: event.clientY, at: cellAt(event), moved: false };
+    // a stroke already in progress, a second finger and a right/ctrl click must not start or restart one
+    if (drag || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // the pointer is already gone: the stroke still works, it just stops at the edge
+    }
+    drag = { id: event.pointerId, x0: event.clientX, y0: event.clientY, at: cellAt(event), moved: false };
   });
   canvas.addEventListener('pointermove', (event) => {
-    if (!drag) return;
+    if (!drag || event.pointerId !== drag.id) return;
     if (!isTap(drag.x0, drag.y0, event.clientX, event.clientY)) drag.moved = true;
     if (!drag.moved) return;
     const to = cellAt(event);
     for (const [x, y] of strokeCells(drag.at, to)) paint(x, y);
     drag.at = to;
   });
-  canvas.addEventListener('pointerup', () => {
-    if (drag && !drag.moved) glider(drag.at[0], drag.at[1]);
+  canvas.addEventListener('pointerup', (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    if (!drag.moved) glider(drag.at[0], drag.at[1]);
     drag = null;
+    onChange?.();
   });
-  canvas.addEventListener('pointercancel', () => {
-    drag = null;
+  canvas.addEventListener('pointercancel', (event) => {
+    if (drag && event.pointerId === drag.id) drag = null;
   });
 }

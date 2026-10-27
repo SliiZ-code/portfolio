@@ -50,7 +50,11 @@ export async function initBoard(): Promise<void> {
     return;
   }
 
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = motion.matches;
+  motion.addEventListener('change', (event) => {
+    reduced = event.matches;
+  });
   const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   let colors: Colors = { paper: '', ink: '', mute: '', accent: '' };
   const readColors = () => {
@@ -59,10 +63,14 @@ export async function initBoard(): Promise<void> {
   readColors();
 
   try {
-    await Promise.all([
-      document.fonts.load('32px "Geist Pixel"'),
-      document.fonts.load('12px "Geist Mono"'),
-      document.fonts.load('20px "Shantell Sans"'),
+    // a font that never loads must not leave the stage at opacity 0 forever
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('32px "Geist Pixel"'),
+        document.fonts.load('12px "Geist Mono"'),
+        document.fonts.load('20px "Shantell Sans"'),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
     ]);
   } catch {
     // the fallback fonts still give a usable board
@@ -218,7 +226,16 @@ export async function initBoard(): Promise<void> {
       }),
     );
   };
-  bindInput({ canvas, cell: () => cell, paint, glider: dropGlider });
+  bindInput({
+    canvas,
+    cell: () => cell,
+    paint,
+    glider: dropGlider,
+    // reduced motion: the board still answers the user, one generation at a time
+    onChange: () => {
+      if (reduced) tick();
+    },
+  });
 
   // ---- dive and return ----
   const flag = createFromFlag(() => sessionStorage);
@@ -285,6 +302,8 @@ export async function initBoard(): Promise<void> {
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {
       location.href = el.href;
+      // if the navigation never happens (offline, blocked), the board must come back
+      setTimeout(resetStage, 1200);
     }, DIVE_MS);
   });
   labels.addEventListener('pointerover', (event) => {
@@ -334,12 +353,31 @@ export async function initBoard(): Promise<void> {
   // ---- list ----
   const list = document.querySelector<HTMLElement>('#list');
   const listButton = document.querySelector<HTMLButtonElement>('#list-btn');
+  const listClose = document.querySelector<HTMLButtonElement>('#list-close');
   const setList = (open: boolean) => {
-    list?.classList.toggle('open', open);
+    if (!list) return;
+    list.classList.toggle('open', open);
     listButton?.setAttribute('aria-expanded', String(open));
+    // a closed panel is out of the tab order and out of the accessibility tree
+    if (open) {
+      list.removeAttribute('inert');
+      list.removeAttribute('aria-hidden');
+      listClose?.focus();
+    } else {
+      const hadFocus = list.contains(document.activeElement);
+      list.setAttribute('inert', '');
+      list.setAttribute('aria-hidden', 'true');
+      if (hadFocus) listButton?.focus();
+    }
   };
+  setList(false);
   listButton?.addEventListener('click', () => setList(!list?.classList.contains('open')));
-  document.querySelector('#list-close')?.addEventListener('click', () => setList(false));
+  listClose?.addEventListener('click', () => setList(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !list?.classList.contains('open')) return;
+    event.preventDefault();
+    setList(false);
+  });
 
   document.addEventListener('themechange', readColors);
 
@@ -355,16 +393,19 @@ export async function initBoard(): Promise<void> {
   const t0 = performance.now();
   let gen = 0;
   let last = 0;
+  function tick(): void {
+    gen++;
+    stepWorld(world);
+    clearBoxes(world, keepClear);
+    stepStructures(world, structures, gen);
+    if (gen % FEED_EVERY === 0) addFeedGlider(world);
+    updateCounters(gen);
+  }
   const loop = (now: number) => {
     requestAnimationFrame(loop);
     if (!reduced && now - last > RATE && now - t0 > 500) {
       last = now;
-      gen++;
-      stepWorld(world);
-      clearBoxes(world, keepClear);
-      stepStructures(world, structures, gen);
-      if (gen % FEED_EVERY === 0) addFeedGlider(world);
-      updateCounters(gen);
+      tick();
     }
     draw({
       ctx,
