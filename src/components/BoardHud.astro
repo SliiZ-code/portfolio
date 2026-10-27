@@ -2,14 +2,16 @@
 import LangFlags from './LangFlags.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import type { UIStrings } from '../i18n/fr';
-import type { Lang } from '../lib/resume';
+import type { Lang, Profile } from '../lib/resume';
 
 interface Props {
   lang: Lang;
   t: UIStrings;
+  profiles: Profile[];
+  cvPdf: string;
 }
 
-const { lang, t } = Astro.props;
+const { lang, t, profiles, cvPdf } = Astro.props;
 ---
 
 <div class="hud tl">{t.board.home}</div>
@@ -25,6 +27,7 @@ const { lang, t } = Astro.props;
   <span class="hint">{t.board.hint}</span>
 </div>
 
-<div class="hud br">
-  <button type="button" id="list-btn" aria-controls="list" aria-expanded="false">{t.board.openList}</button>
-</div>
+<nav class="hud br" aria-label={t.board.elsewhere}>
+  {profiles.map((profile) => <a href={profile.url}>{profile.network}</a>)}
+  {cvPdf && <a href={cvPdf}>CV (PDF)</a>}
+</nav>

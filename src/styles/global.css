@@ -274,37 +274,21 @@ a.flag:hover {
   box-shadow: none;
 }
 
-#list-btn {
-  padding: 6px 10px;
-  border: 1px solid var(--ink);
-  background: var(--paper);
+.br a {
   text-transform: uppercase;
   letter-spacing: .05em;
+  text-decoration: none;
+  color: var(--mute);
 }
 
-#list-btn:hover {
-  border-color: var(--accent);
+.br a:hover {
   color: var(--accent);
 }
 
-/* ---- list view ---- */
+/* ---- list view: the board without JavaScript ---- */
 #list {
-  position: fixed;
-  z-index: 3;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(440px, 100%);
-  background: var(--paper);
-  border-left: 1px solid var(--ink);
+  max-width: 440px;
   padding: 56px 28px 28px;
-  overflow: auto;
-  transform: translateX(100%);
-  transition: transform .35s cubic-bezier(.7, 0, .2, 1);
-}
-
-#list.open {
-  transform: none;
 }
 
 #list h2 {
@@ -354,13 +338,6 @@ a.flag:hover {
 #list li span:last-child {
   color: var(--mute);
   text-align: right;
-}
-
-#list .close {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  text-transform: uppercase;
 }
 
 /* ---- project page (reached by diving into a structure) ---- */
@@ -817,9 +794,7 @@ a.flag:hover {
 
 /* reduced motion: the board steps only when the user draws, so nothing else may slide or fade */
 @media (prefers-reduced-motion: reduce) {
-  #stage,
-  #list,
-  #list.open {
+  #stage {
     transition: none;
   }
 }

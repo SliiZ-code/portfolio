@@ -57,15 +57,14 @@ const description = htmlToText(resume.summary) || resume.headline;
     </div>
   </main>
 
-  <BoardHud lang={lang} t={t} />
-  <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
-
+  <BoardHud lang={lang} t={t} profiles={resume.profiles} cvPdf={cvPdf} />
+  <!-- without JavaScript there is no board: the same content as a plain list -->
   <noscript>
     <style>
       #stage, .hud { display: none; }
-      #list { position: static; transform: none; visibility: visible; width: auto; border-left: 0; }
       html, body { overflow: auto; }
     </style>
+    <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
   </noscript>
 
   <script type="application/json" id="board-data" set:html={json}></script>

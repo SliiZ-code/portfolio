@@ -21,7 +21,6 @@ const tag = (label: string) => label.split(' · ')[0] || '';
 ---
 
 <aside id="list" aria-label={t.board.listLabel}>
-  <button type="button" class="close" id="list-close">{t.board.closeList}</button>
   <h2>{first}<br />{rest.join(' ')}</h2>
   {resume.summary && <div class="summary" set:html={resume.summary} />}
 

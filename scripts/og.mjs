@@ -94,11 +94,10 @@ async function captureOG() {
     await page.waitForSelector('#stage.ready');
     await page.waitForTimeout(2600);
 
-    // Hide the HUD and the list panel
+    // Hide the HUD
     await page.addStyleTag({
       content: `
         .hud { display: none !important; }
-        #list { display: none !important; }
       `,
     });
 

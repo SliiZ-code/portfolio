@@ -81,16 +81,6 @@ await visit('/', {
   },
 });
 
-await visit('/', {
-  label: 'home-fr-list',
-  viewport: { width: 1440, height: 900 },
-  settle: 3200,
-  before: async (page) => {
-    await page.click('#list-btn');
-    await page.waitForTimeout(600);
-  },
-});
-
 await visit('/en/', { label: 'home-en', viewport: { width: 1440, height: 900 }, settle: 3600 });
 
 await visit('/', {

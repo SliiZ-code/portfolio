@@ -4,8 +4,6 @@ const fr = {
     title: (name: string) => `${name} — plateau`,
     description: (text: string) => text,
     listLabel: 'Vue liste',
-    openList: '≡ liste',
-    closeList: 'fermer ×',
     projects: 'Projets',
     elsewhere: 'Ailleurs',
     cv: 'CV',

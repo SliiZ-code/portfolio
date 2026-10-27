@@ -6,8 +6,6 @@ const en = {
     title: (name: string) => `${name} — board`,
     description: (text: string) => text,
     listLabel: 'List view',
-    openList: '≡ list',
-    closeList: 'close ×',
     projects: 'Projects',
     elsewhere: 'Elsewhere',
     cv: 'CV',

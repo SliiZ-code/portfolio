@@ -72,10 +72,10 @@ publishing. Do not invent facts about Julien in this repository.
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
-`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, pattern, joke line,
+`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, pattern, tag,
 page note and capture are a site-only overlay in `src/data/board.ts`, keyed by that slug
 (positions are screen fractions per orientation, `l` landscape / `p` portrait). A project
-that exists in RxResume but not in the overlay is still rendered, in the list and as a page:
+that exists in RxResume but not in the overlay is still rendered, in the no-JavaScript list and as a page:
 on the board it gets a deterministic pattern and a free slot found at runtime (a scan for a
 free rectangle that avoids every pattern, label, keep-clear zone and HUD corner). If the
 screen has no room left it is left off the board with a `[board] no free slot` console
@@ -123,7 +123,7 @@ The board fits the viewport exactly: no pan, no zoom. The cell size comes from t
 (about 60% of the width on desktop, 72% on phones), the grid covers the screen, and every
 structure is placed by screen fractions. The engine lives in `src/scripts/board/`:
 
-- `index.ts`: bootstrap, layout (re-run on resize), generation loop, dive and return, list;
+- `index.ts`: bootstrap, layout (re-run on resize), generation loop, dive and return;
 - `layout.ts`: pure geometry: orientation, cell size, anchors, footprints, keep-clear boxes;
 - `slots.ts`: pure free-rectangle finder for projects outside the overlay;
 - `life.ts`: world stepping and heat, seeding, keep-clear, the glider fed from an edge;
@@ -219,7 +219,7 @@ This script:
 2. Starts a preview server on port 4411
 3. Opens the home page in headless Chromium at 1200×630
 4. Waits for the intro (cells fade in over about 1.4 s)
-5. Hides the HUD and the list panel
+5. Hides the HUD
 6. Screenshots the result to `public/og.png`
 
 The Playwright binary is at `/tmp/shot/node_modules/playwright/index.mjs`
