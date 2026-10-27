@@ -8,6 +8,8 @@ const outputPath = path.join(__dirname, '../public/og.png');
 const projectRoot = path.join(__dirname, '..');
 
 const PORT = 4411;
+// OG_URL: use a preview that is already running instead of starting one
+const EXTERNAL_URL = process.env.OG_URL?.replace(/\/$/, '');
 let previewProcess;
 
 async function checkPortInUse() {
@@ -74,8 +76,10 @@ async function startPreview() {
 async function captureOG() {
   let browser;
   try {
-    console.log(`Starting preview server on port ${PORT}...`);
-    await startPreview();
+    if (!EXTERNAL_URL) {
+      console.log(`Starting preview server on port ${PORT}...`);
+      await startPreview();
+    }
 
     console.log('Launching browser...');
     browser = await chromium.launch();
@@ -83,18 +87,18 @@ async function captureOG() {
     await page.setViewportSize({ width: 1200, height: 630 });
 
     console.log('Navigating to preview...');
-    await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(`${EXTERNAL_URL ?? `http://127.0.0.1:${PORT}`}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for intro animation (1600ms + buffer)
+    // Wait for the intro (cells fade in over 1400ms, the stage fades in with them)
     console.log('Waiting for intro animation to complete...');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('#stage.ready');
+    await page.waitForTimeout(2600);
 
-    // Hide HUD, list panel, and minimap
+    // Hide the HUD and the list panel
     await page.addStyleTag({
       content: `
         .hud { display: none !important; }
         #list { display: none !important; }
-        #mini { display: none !important; }
       `,
     });
 

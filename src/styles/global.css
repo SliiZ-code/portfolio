@@ -208,8 +208,6 @@ a.ent:focus-visible .name {
 .br {
   bottom: 14px;
   right: 16px;
-  text-transform: uppercase;
-  letter-spacing: .05em;
 }
 
 .bl b {
@@ -279,6 +277,8 @@ a.flag:hover {
   padding: 6px 10px;
   border: 1px solid var(--ink);
   background: var(--paper);
+  text-transform: uppercase;
+  letter-spacing: .05em;
 }
 
 #list-btn:hover {
@@ -757,11 +757,6 @@ a.flag:hover {
 
   .page-media {
     position: static;
-  }
-
-  #list-btn {
-    font-size: 14px;
-    padding: 8px 14px;
   }
 
   .cv-section {

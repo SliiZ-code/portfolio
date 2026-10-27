@@ -1,4 +1,4 @@
-import type { At, Box } from './layout';
+import type { At } from './layout';
 import type { PatternName } from './patterns';
 
 export interface EntityConfig {
@@ -33,5 +33,3 @@ export interface Structure {
   hurt: boolean;
   shots: number;
 }
-
-export type { Box };

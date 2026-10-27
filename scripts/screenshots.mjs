@@ -10,7 +10,7 @@
  *
  * Env:
  *   BASE_URL       default http://localhost:4321
- *   PROTOTYPE_URL  default file://<repo>/design/board.html
+ *   PROTOTYPE_URL  default file://<repo>/design/board-v2.html
  *   OUT_DIR        default /tmp/shot
  */
 import { mkdir, readFile } from 'node:fs/promises';
@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const base = (process.env.BASE_URL || 'http://localhost:4321').replace(/\/$/, '');
-const prototype = process.env.PROTOTYPE_URL || pathToFileURL(resolve(root, 'design/board.html')).href;
+const prototype = process.env.PROTOTYPE_URL || pathToFileURL(resolve(root, 'design/board-v2.html')).href;
 const out = process.env.OUT_DIR || '/tmp/shot';
 const modulePath = process.env.PLAYWRIGHT_MODULE || 'playwright';
 
@@ -68,15 +68,16 @@ const visit = async (path, { label, viewport, theme, before, settle = 2600, full
 await visit('/', { label: 'home-fr', viewport: { width: 1440, height: 900 }, settle: 3600 });
 
 await visit('/', {
-  label: 'home-fr-pan',
+  label: 'home-fr-draw',
   viewport: { width: 1440, height: 900 },
   settle: 3400,
   before: async (page) => {
-    await page.mouse.move(720, 450);
+    await page.mouse.move(60, 280);
     await page.mouse.down();
-    await page.mouse.move(1080, 690, { steps: 12 });
+    await page.mouse.move(260, 300, { steps: 20 });
     await page.mouse.up();
-    await page.waitForTimeout(900);
+    await page.mouse.click(700, 560);
+    await page.waitForTimeout(300);
   },
 });
 
@@ -123,18 +124,14 @@ await visit('/labo/', { label: 'lab-mobile', viewport: { width: 390, height: 844
 await visit('/histoire/', { label: 'story-fr', viewport: { width: 1440, height: 900 }, settle: 800 });
 await visit('/en/story/', { label: 'story-en', viewport: { width: 390, height: 844 }, settle: 800 });
 
-// the whole board: zoomed all the way out, to check the placement of every structure
+// dive into a structure: the stage scales toward the pattern before the page changes
 await visit('/', {
-  label: 'board-full',
+  label: 'dive',
   viewport: { width: 1440, height: 900 },
   settle: 2600,
   before: async (page) => {
-    await page.mouse.move(720, 450);
-    for (let i = 0; i < 8; i++) {
-      await page.mouse.wheel(0, 600);
-      await page.waitForTimeout(80);
-    }
-    await page.waitForTimeout(1500);
+    await page.click('.ent[data-id="blink"] .name');
+    await page.waitForTimeout(450);
   },
 });
 

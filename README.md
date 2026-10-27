@@ -1,9 +1,9 @@
 # portfolio-astro
 
-Julien Petit-Colboc's portfolio: a Game of Life board rendered on a canvas, with
+Julien Petit-Colboc's portfolio: a one-screen Game of Life board you can draw on, with
 project pages, a CV page and a French/English static build.
 
-The visual reference is `design/board.html`. It is kept as-is for comparison; the
+The visual reference is `design/board-v2.html`. It is kept as-is for comparison; the
 Astro site is the port of that prototype.
 
 ## Stack
@@ -22,7 +22,7 @@ three.js is used only by the lab page (loaded on demand); no GSAP, Lenis or clie
 ```bash
 npm install
 npm run dev        # http://localhost:4321
-npm run build      # 16 static pages in dist/
+npm run build      # 17 static pages in dist/
 npm run preview    # serve dist/
 npm run check      # astro check
 npm test           # vitest run
@@ -72,12 +72,15 @@ publishing. Do not invent facts about Julien in this repository.
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
-`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, emblem,
-margin note and capture are a site-only overlay in `src/data/board.ts`, keyed by
-that slug. A project that exists in RxResume but not in the overlay is still
-rendered: its emblem and position are chosen deterministically on rings around
-the name. An overlay entry without a matching RxResume project is ignored
-(RxResume stays the source of truth for projects).
+`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, pattern, joke line,
+page note and capture are a site-only overlay in `src/data/board.ts`, keyed by that slug
+(positions are screen fractions per orientation, `l` landscape / `p` portrait). A project
+that exists in RxResume but not in the overlay is still rendered, in the list and as a page:
+on the board it gets a deterministic pattern and a free slot found at runtime (a scan for a
+free rectangle that avoids every pattern, label, keep-clear zone and HUD corner). If the
+screen has no room left it is left off the board with a `[board] no free slot` console
+warning. An overlay entry without a matching RxResume project is ignored (RxResume stays the
+source of truth for projects).
 
 ## Routes
 
@@ -104,41 +107,57 @@ time, not rendered on the client.
 
 ## Lab and story
 
-Two hand-placed structures sit on the board next to the projects: the lab (`labo`, a
-beacon) and "mon histoire" / "my story" (a toad). Their position, emblem and size live in
-`BOARD_PAGES` in `src/data/board.ts`; their text, label and margin note in `src/i18n`.
-They are kept clear of the name, the CV, the gun and its glider lane, and auto-placed
-RxResume projects avoid them too (`tests/board-pages.test.ts`).
+Two hand-placed patterns sit on the board next to the projects: the lab (`labo`, a beacon)
+and "mon histoire" / "my story" (a toad). Their position and pattern live in `BOARD_PAGES`
+in `src/data/board.ts`; their name, joke line, label and margin note in `src/i18n`.
 
 - The lab page lists the experiments of `src/data/lab.ts`. The first one renders
-  `public/media/arduino.glb` as live ASCII with three.js `AsciiEffect`; drag to rotate,
-  it turns by itself unless reduced motion is requested, and follows the theme.
+  `public/media/arduino.glb` with three.js at 320×200, then pixelates it (see below); drag to
+  rotate, it turns by itself unless reduced motion is requested, and it follows the theme.
   three.js is imported only once the viewer is on screen.
 - The story page is a placeholder (`[placeholder]` copy) until the real text is written.
 
 ## Board
 
-The engine lives in `src/scripts/board/`:
+The board fits the viewport exactly: no pan, no zoom. The cell size comes from the name
+(about 60% of the width on desktop, 72% on phones), the grid covers the screen, and every
+structure is placed by screen fractions. The engine lives in `src/scripts/board/`:
 
-- `index.ts`: bootstrap, generation loop, dive navigation, list/theme/minimap
-  wiring;
-- `life.ts`: world stepping and heat;
-- `structures.ts`: emblems, guns, intrusion/heal;
-- `patterns.ts`: Life patterns;
-- `render.ts` / `dither.ts`: canvas and project capture rendering;
-- `camera.ts`: zoom/pan clamping;
-- `input.ts`: drag, paint, glider drop, wheel and pinch;
-- `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back;
-- `minimap.ts`: minimap rendering.
+- `index.ts`: bootstrap, layout (re-run on resize), generation loop, dive and return, list;
+- `layout.ts`: pure geometry: orientation, cell size, anchors, footprints, keep-clear boxes;
+- `slots.ts`: pure free-rectangle finder for projects outside the overlay;
+- `life.ts`: world stepping and heat, seeding, keep-clear, the glider fed from an edge;
+- `structures.ts`: private boards per pattern, intrusion, release, regrowth, healing, the gun;
+- `patterns.ts`: Life patterns (pulsar, penta, blinkers, galaxy, beacon, toad, beehive, gun);
+- `input.ts`: drag to draw (continuous strokes), tap for a glider;
+- `render.ts`: canvas drawing;
+- `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back.
 
-Controls: drag to explore, wheel/pinch to zoom, click an empty cell to drop a
-glider, `[✎ dessiner]` to paint, project/CV text to dive. Activating contact goes
-to `mailto:` or the first profile. `?from=<slug>` starts zoomed on that project
-and plays the reverse zoom-out. A browser Back finds the same slug in `sessionStorage`
-(`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back replays it again.
+Names and links are server-rendered: each pattern has a real `<a>` (hit area over the
+pattern, name in Shantell Sans, joke line in mono) that the script positions. Hover or focus
+underlines the name and tints the pattern.
 
-The theme is stored under `jpc-theme` and applied inline before paint so night
-mode does not flash. `prefers-reduced-motion` disables the intro and dives.
+Controls: drag to draw, click empty space to drop a glider, click a name to dive. A dive
+scales the stage 16× toward the pattern (about 750 ms), then navigates. `?from=<slug>` starts
+at that scale on that pattern and animates back to 1. A browser Back finds the same slug in
+`sessionStorage` (`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back
+replays it again. Contact goes to `mailto:` or the first profile, no dive.
+
+`prefers-reduced-motion` disables the simulation steps (the board is static, drawing still
+works), the intro and the dive: links navigate directly.
+
+The theme is stored under `jpc-theme` and applied inline before paint so night mode does not
+flash (19:00–6:59 by default). The HUD and every page bar carry the same two flags (FR / EN,
+linking to the other language's equivalent page) and the 7×7 pixel sun/moon toggle, which
+shows the theme you switch to.
+
+### Pixelated previews
+
+Project pages draw the capture into a 160-px-wide canvas and quantise it to five ink levels
+between paper and ink (light is paper on the paper theme, ink at night) plus the accent for
+saturated colours (`src/scripts/pixel/quantize.ts`, pure and tested), shown upscaled with
+`image-rendering: pixelated` and re-coloured when the theme changes. The lab page does the
+same with the three.js render (`src/scripts/lab/model.ts`).
 
 ## Tests and screenshots
 
@@ -148,7 +167,7 @@ npm run check
 ```
 
 The optional screenshot script compares the Astro home page with
-`design/board.html`:
+`design/board-v2.html`:
 
 ```bash
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs \
@@ -199,8 +218,8 @@ This script:
 1. Runs `npm run build`
 2. Starts a preview server on port 4411
 3. Opens the home page in headless Chromium at 1200×630
-4. Waits for the intro animation to finish (~4 seconds)
-5. Hides the HUD/minimap
+4. Waits for the intro (cells fade in over about 1.4 s)
+5. Hides the HUD and the list panel
 6. Screenshots the result to `public/og.png`
 
 The Playwright binary is at `/tmp/shot/node_modules/playwright/index.mjs`
