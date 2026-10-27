@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
-import { getBoardPages, getBoardProjects } from '../data/board';
+import { getBoardEntities, getBoardPages, getBoardProjects } from '../data/board';
 import { site } from '../data/site';
 import { strings } from '../i18n';
 import { getResume, htmlToText, type Lang } from '../lib/resume';
@@ -20,52 +20,15 @@ const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = site.cvPdf[lang];
 const [first, ...rest] = resume.name.split(' ');
 const nameText = rest.length ? `${first}\n${rest.join(' ')}` : first;
+// on a phone the surname breaks after its hyphen
+const nameNarrow = nameText.replace(/-/g, '-\n');
 const contactHref = resume.email ? `mailto:${resume.email}` : resume.profiles[0]?.url ?? '';
-const projectHref = (slug: string) => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
+const entities = getBoardEntities(resume, { cvHref, contactHref });
 
 const boardData = {
-  home: { text: nameText, k: 2 },
-  cv: {
-    text: 'cv',
-    k: 1,
-    label: cvPdf ? t.board.cvLabelPdf : t.board.cvLabel,
-    note: { t: t.board.cvNote, r: -0.05 },
-    url: cvHref,
-  },
-  contact: {
-    text: 'contact',
-    k: 1,
-    x: 150,
-    y: 22,
-    gun: true,
-    label: contactHref ? t.board.contactLabel : undefined,
-    note: contactHref ? { t: t.board.contactNote, r: 0.03 } : undefined,
-    url: contactHref,
-  },
-  projects: projects.map((project) => ({
-    id: project.slug,
-    text: project.text,
-    x: project.x,
-    y: project.y,
-    emblem: project.emblem,
-    pad: project.pad,
-    label: project.label,
-    note: project.note ? { t: project.note.text, r: project.note.r } : undefined,
-    media: project.media,
-    url: projectHref(project.slug),
-  })),
-  pages: pages.map((page) => ({
-    id: page.id,
-    text: page.text,
-    x: page.x,
-    y: page.y,
-    emblem: page.emblem,
-    pad: page.pad,
-    label: page.label,
-    note: { t: page.note.text, r: page.note.r },
-    url: page.url,
-  })),
-  nameNote: t.board.nameNote,
+  name: { l: nameText, p: nameNarrow },
+  nameNote: { l: t.board.nameNote, p: t.board.nameNoteNarrow },
+  entities: entities.map(({ id, kind, pattern, pad, at }) => ({ id, kind, pattern, pad, at })),
 };
 
 const json = JSON.stringify(boardData).replace(/</g, '\\u003c');
@@ -74,14 +37,30 @@ const description = htmlToText(resume.summary) || resume.headline;
 ---
 
 <Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }}>
-  <canvas id="board" aria-label={title}></canvas>
+  <h1 class="sr-only">{resume.name}</h1>
+  <div id="stage">
+    <canvas id="board" aria-label={title}></canvas>
+    <div id="labels">
+      <div class="name-note" id="name-note">{t.board.nameNote}</div>
+      {entities.map((entity) => {
+        const Tag = entity.url ? 'a' : 'span';
+        return (
+          <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
+            <span class="hit"></span>
+            <span class="name">{entity.name}</span>
+            <span class="meta">{entity.meta}</span>
+          </Tag>
+        );
+      })}
+    </div>
+  </div>
 
   <BoardHud lang={lang} t={t} />
   <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
 
   <noscript>
     <style>
-      #board, .hud { display: none; }
+      #stage, .hud { display: none; }
       #list { position: static; transform: none; width: auto; border-left: 0; }
       html, body { overflow: auto; }
     </style>

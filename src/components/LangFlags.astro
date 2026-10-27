@@ -1,0 +1,44 @@
+---
+import type { UIStrings } from '../i18n/fr';
+import type { Lang } from '../lib/resume';
+
+interface Props {
+  t: UIStrings;
+  /** The page's own language; none on the bilingual 404. */
+  lang?: Lang;
+  frHref: string;
+  enHref: string;
+}
+
+const { t, lang, frHref, enHref } = Astro.props;
+const flags = [
+  { code: 'fr', title: 'Français', href: frHref },
+  { code: 'en', title: 'English', href: enHref },
+] as const;
+---
+
+<span class="flags" role="group" aria-label={t.nav.language}>
+  {flags.map(({ code, title, href }) => {
+    const Tag = lang === code ? 'span' : 'a';
+    const props = lang === code ? { 'aria-current': 'page' as const } : { href, hreflang: code };
+    return (
+      <Tag class:list={['flag', { on: lang === code }]} title={title} aria-label={title} {...props}>
+        {code === 'fr' ? (
+          <svg viewBox="0 0 3 2" aria-hidden="true">
+            <rect width="1" height="2" fill="#2440a8" />
+            <rect x="1" width="1" height="2" fill="#f4f1ea" />
+            <rect x="2" width="1" height="2" fill="#d63a3a" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 60 40" aria-hidden="true">
+            <rect width="60" height="40" fill="#24306e" />
+            <path d="M0 0L60 40M60 0L0 40" stroke="#f4f1ea" stroke-width="8" />
+            <path d="M0 0L60 40M60 0L0 40" stroke="#c8303a" stroke-width="3" />
+            <path d="M30 0V40M0 20H60" stroke="#f4f1ea" stroke-width="12" />
+            <path d="M30 0V40M0 20H60" stroke="#c8303a" stroke-width="7" />
+          </svg>
+        )}
+      </Tag>
+    );
+  })}
+</span>

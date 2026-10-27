@@ -1,28 +1,24 @@
 import { idx, stepBox, type World } from './life';
-import type { Entity, Structure } from './types';
+import type { Footprint } from './layout';
+import type { Structure } from './types';
 
-export interface StructureInput {
+interface StructureInput {
   cells: number[][];
-  x: number;
-  y: number;
-  pad?: number;
+  footprint: Footprint;
+  /** Offset of the pattern inside its board. */
+  pad: number;
   kind: Structure['kind'];
-  entity: Entity;
-  core?: Structure['core'];
+  id: string | null;
 }
 
 /** Adds a structure with its own private, bounded Life simulation. */
-export function addStructure(structures: Structure[], input: StructureInput): Structure {
-  const { cells, x, y, pad = 0, kind, entity, core } = input;
-  const h0 = cells.length;
-  const w0 = cells[0].length;
-  const w = w0 + pad * 2;
-  const h = h0 + pad * 2;
+export function addStructure(structures: Structure[], { cells, footprint, pad, kind, id }: StructureInput): Structure {
+  const { x, y, w, h, core } = footprint;
   const cur = new Uint8Array(w * h);
   cells.forEach((row, j) => row.forEach((value, i) => (cur[(j + pad) * w + i + pad] = value)));
   const structure: Structure = {
-    x: x - pad,
-    y: y - pad,
+    x,
+    y,
     w,
     h,
     cur,
@@ -30,8 +26,8 @@ export function addStructure(structures: Structure[], input: StructureInput): St
     hidden: new Uint16Array(w * h),
     born: new Float32Array(w * h).map(() => Math.random()),
     kind,
-    entity,
-    core: core ?? { x: 0, y: 0, w, h },
+    id,
+    core: { ...core },
     hurt: false,
     shots: 0,
   };
@@ -39,50 +35,32 @@ export function addStructure(structures: Structure[], input: StructureInput): St
   return structure;
 }
 
-/** The gun needs a wider private box so gliders can leave before being handed to the world. */
-export function widenGun(structure: Structure, core: Structure['core']): void {
-  const w = 52;
-  const h = 34;
-  const cur = new Uint8Array(w * h);
-  for (let j = 0; j < structure.h; j++) {
-    for (let i = 0; i < structure.w; i++) cur[j * w + i] = structure.cur[j * structure.w + i];
-  }
-  structure.w = w;
-  structure.h = h;
-  structure.cur = cur;
-  structure.nxt = new Uint8Array(w * h);
-  structure.hidden = new Uint16Array(w * h);
-  structure.born = new Float32Array(w * h).map(() => Math.random());
-  structure.core = core;
-}
-
-/** Advances every private structure and handles intrusion / healing. */
+/** Advances every private structure and handles intrusion, release, regrowth and healing. */
 export function stepStructures(world: World, structures: Structure[], gen: number): void {
   for (const structure of structures) {
-    if (structure.kind === 'osc' || structure.kind === 'gun') {
+    if (structure.kind !== 'name') {
       stepBox(structure.cur, structure.nxt, structure.w, structure.h);
       [structure.cur, structure.nxt] = [structure.nxt, structure.cur];
     }
     if (structure.kind === 'gun') emitGliders(world, structure);
 
     // intrusion: free cells inside the core knock structure cells loose
-    const core = structure.core;
+    const { core } = structure;
     for (let j = core.y; j < core.y + core.h; j++) {
       for (let i = core.x; i < core.x + core.w; i++) {
-        const worldIndex = idx(world.w, world.h, structure.x + i, structure.y + j);
-        if (!world.cells[worldIndex]) continue;
+        if (!world.cells[idx(world.w, world.h, structure.x + i, structure.y + j)]) continue;
         structure.hurt = true;
-        for (let dj = -3; dj <= 3; dj++) {
-          for (let di = -3; di <= 3; di++) {
+        for (let dj = -2; dj <= 2; dj++) {
+          for (let di = -2; di <= 2; di++) {
             const ii = i + di;
             const jj = j + dj;
             if (ii < 0 || jj < 0 || ii >= structure.w || jj >= structure.h) continue;
             const k = jj * structure.w + ii;
-            if (structure.cur[k] && !structure.hidden[k] && Math.random() < 0.7) {
-              structure.hidden[k] = 25 + Math.random() * 45;
-              const worldIndex2 = idx(world.w, world.h, structure.x + ii, structure.y + jj);
-              world.cells[worldIndex2] = 1;
-              world.heat[worldIndex2] = 255;
+            if (structure.cur[k] && !structure.hidden[k] && Math.random() < 0.6) {
+              structure.hidden[k] = 20 + Math.random() * 40;
+              const at = idx(world.w, world.h, structure.x + ii, structure.y + jj);
+              world.cells[at] = 1;
+              world.heat[at] = 255;
             }
           }
         }
@@ -97,19 +75,17 @@ export function stepStructures(world: World, structures: Structure[], gen: numbe
         still = true;
       }
     }
-    // once a wound is old enough, the structure absorbs whatever debris is left in its box
-    if (structure.hurt && (!still || gen % 45 === 0)) {
-      for (let j = 0; j < structure.core.h; j++) {
-        for (let i = 0; i < structure.core.w; i++) {
-          world.cells[idx(world.w, world.h, structure.x + i, structure.y + j)] = 0;
-        }
+    // heal: once the wound is old enough, the structure absorbs whatever debris is left in its core
+    if (structure.hurt && (!still || gen % 40 === 0)) {
+      for (let j = 0; j < core.h; j++) {
+        for (let i = 0; i < core.w; i++) world.cells[idx(world.w, world.h, structure.x + i, structure.y + j)] = 0;
       }
       if (!still) structure.hurt = false;
     }
   }
 }
 
-/** The gun hands finished gliders to the world one time in three, so it doesn't flood. */
+/** Gliders leave the gun's board column by column; every other one is handed to the world. */
 function emitGliders(world: World, structure: Structure): void {
   const seen = new Uint8Array(structure.w * structure.h);
   for (let k = 0; k < structure.cur.length; k++) {
@@ -136,7 +112,7 @@ function emitGliders(world: World, structure: Structure): void {
       }
     }
     if (component.every((q) => q % structure.w >= 38)) {
-      const keep = structure.shots++ % 3 === 0;
+      const keep = structure.shots++ % 2 === 0;
       for (const q of component) {
         structure.cur[q] = 0;
         if (keep) world.cells[idx(world.w, world.h, structure.x + (q % structure.w), structure.y + ((q / structure.w) | 0))] = 1;

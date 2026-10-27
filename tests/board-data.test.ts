@@ -145,7 +145,7 @@ describe('board entities', () => {
       expect(ids).toEqual(expect.arrayContaining(['labo', 'story', 'cv', 'contact', ...resume.projects.map((project) => project.slug)]));
       for (const entity of entities) {
         expect(entity.name.length, entity.id).toBeGreaterThan(0);
-        expect(PATTERNS[entity.pattern as keyof typeof PATTERNS] ?? entity.pattern, entity.id).toBeDefined();
+        expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
       }
       expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, meta: t.cvMeta, url: lang === 'fr' ? '/cv/' : '/en/cv/' });
       expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
@@ -177,7 +177,7 @@ describe('board entities', () => {
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
       const boxes = entities.map((entity) => {
-        const dims = entity.pattern === 'gun' ? { w: 36, h: 9 } : { w: PATTERNS[entity.pattern][0].length, h: PATTERNS[entity.pattern].length };
+        const dims = { w: PATTERNS[entity.pattern][0].length, h: PATTERNS[entity.pattern].length };
         const fp = footprint(dims, entity.pad, anchorFor(entity.at?.[orientation], grid, place), entity.pattern === 'gun');
         return { id: entity.id, box: coreBox(fp) };
       });

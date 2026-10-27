@@ -1,0 +1,27 @@
+---
+import { iconPixels } from '../data/pixel-icons';
+import type { UIStrings } from '../i18n/fr';
+
+interface Props {
+  t: UIStrings;
+}
+
+const { t } = Astro.props;
+---
+
+<button
+  type="button"
+  class="theme-toggle"
+  data-theme-toggle
+  data-label-night={t.board.themeNight}
+  data-label-paper={t.board.themePaper}
+  title={t.board.themeNight}
+  aria-label={t.board.themeNight}
+>
+  <svg class="ic-moon" viewBox="0 0 7 7" aria-hidden="true">
+    {iconPixels('moon').map(({ x, y }) => <rect x={x} y={y} width="1" height="1" />)}
+  </svg>
+  <svg class="ic-sun" viewBox="0 0 7 7" aria-hidden="true">
+    {iconPixels('sun').map(({ x, y }) => <rect x={x} y={y} width="1" height="1" />)}
+  </svg>
+</button>

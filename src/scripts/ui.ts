@@ -5,8 +5,12 @@ export const isNight = (): boolean => document.documentElement.dataset.theme ===
 const apply = (night: boolean, persist: boolean) => {
   document.documentElement.dataset.theme = night ? 'night' : 'paper';
   document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((button) => {
+    // the button shows the theme you switch to
     const label = night ? button.dataset.labelPaper : button.dataset.labelNight;
-    if (label) button.textContent = label;
+    if (label) {
+      button.title = label;
+      button.setAttribute('aria-label', label);
+    }
   });
   if (persist) {
     try {

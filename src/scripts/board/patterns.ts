@@ -116,6 +116,7 @@ export const PATTERNS = {
   beacon: BEACON,
   toad: TOAD,
   beehive: BEEHIVE,
+  gun: GUN,
 } as const;
 
 export type PatternName = keyof typeof PATTERNS;

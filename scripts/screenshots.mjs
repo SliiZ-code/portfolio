@@ -112,7 +112,7 @@ await visit('/projets/blink/', { label: 'project-blink-desktop', viewport: { wid
 await visit('/projets/blink/', { label: 'project-blink-mobile', viewport: { width: 390, height: 844 }, settle: 2800 });
 
 const asciiReady = async (page) => {
-  await page.waitForSelector('.ascii-box[data-state="ready"]', { timeout: 15000 });
+  await page.waitForSelector('.pix-box[data-state="ready"]', { timeout: 15000 });
   await page.waitForTimeout(600);
 };
 

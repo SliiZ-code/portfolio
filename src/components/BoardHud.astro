@@ -1,4 +1,6 @@
 ---
+import LangFlags from './LangFlags.astro';
+import ThemeToggle from './ThemeToggle.astro';
 import type { UIStrings } from '../i18n/fr';
 import type { Lang } from '../lib/resume';
 
@@ -8,29 +10,21 @@ interface Props {
 }
 
 const { lang, t } = Astro.props;
-const frHref = '/';
-const enHref = '/en/';
 ---
 
-<div class="hud tl"><button type="button" data-go="name">{t.board.home}</button></div>
+<div class="hud tl">{t.board.home}</div>
 
 <div class="hud tr">
-  <span aria-label={t.nav.language}>
-    {lang === 'fr' ? <span class="on" aria-current="page">FR</span> : <a href={frHref} hreflang="fr">FR</a>}
-    /
-    {lang === 'en' ? <span class="on" aria-current="page">EN</span> : <a href={enHref} hreflang="en">EN</a>}
-  </span>
-  <button type="button" data-theme-toggle data-label-night={t.board.themeNight} data-label-paper={t.board.themePaper}>
-    {t.board.themeNight}
-  </button>
+  <LangFlags t={t} lang={lang} frHref="/" enHref="/en/" />
+  <span class="sep"></span>
+  <ThemeToggle t={t} />
 </div>
 
 <div class="hud bl">
   <span>{t.board.generation} <b id="gen">0000</b> · <b id="pop">0</b> {t.board.cells}</span>
-  <span class="hint">{t.board.hint}<button type="button" id="pen">{t.board.pen}</button></span>
+  <span class="hint">{t.board.hint}</span>
 </div>
 
 <div class="hud br">
   <button type="button" id="list-btn" aria-controls="list" aria-expanded="false">{t.board.openList}</button>
-  <canvas id="mini" width="200" height="133" aria-label={t.board.minimap}></canvas>
 </div>

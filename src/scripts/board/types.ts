@@ -1,89 +1,20 @@
-import type { EmblemName } from './patterns';
+import type { At, Box } from './layout';
+import type { PatternName } from './patterns';
 
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Box {
-  x: number;
-  y: number;
-  x2: number;
-  y2: number;
-}
-
-export interface Cam {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export interface Viewport {
-  w: number;
-  h: number;
-}
-
-export interface NoteConfig {
-  t: string;
-  r: number;
-}
-
-export interface MediaConfig {
-  video?: string;
-  image?: string;
-}
-
-export interface BoardProjectConfig {
+export interface EntityConfig {
   id: string;
-  text: string;
-  x: number;
-  y: number;
-  emblem: EmblemName;
+  kind: 'project' | 'page' | 'cv' | 'contact';
+  pattern: PatternName;
   pad: number;
-  label: string;
-  note?: NoteConfig;
-  media?: MediaConfig;
-  url: string;
+  /** Null: the board looks for a free slot at runtime. */
+  at: At | null;
 }
-
-/** A hand-placed page (lab, story): same shape as a project, but not backed by the resume. */
-export type BoardPageConfig = Omit<BoardProjectConfig, 'media'>;
 
 export interface BoardConfig {
-  home: { text: string; k: number };
-  cv: { text: string; k: number; label: string; note: NoteConfig; url: string };
-  contact: {
-    text: string;
-    k: number;
-    x: number;
-    y: number;
-    gun: boolean;
-    label?: string;
-    note?: NoteConfig;
-    url: string;
-  };
-  projects: BoardProjectConfig[];
-  pages: BoardPageConfig[];
-  nameNote: string[];
-}
-
-export interface Entity {
-  id: string;
-  x: number;
-  y: number;
-  text: string;
-  k: number;
-  label?: string;
-  note?: NoteConfig;
-  emblem?: EmblemName;
-  pad?: number;
-  gun?: boolean;
-  url?: string;
-  media?: MediaConfig;
-  cx?: number;
-  parts?: Structure[];
-  box: Box;
-  labelAt: Point;
+  /** The text rasterised into cells, per orientation. */
+  name: { l: string; p: string };
+  nameNote: { l: string; p: string };
+  entities: EntityConfig[];
 }
 
 export interface Structure {
@@ -95,17 +26,12 @@ export interface Structure {
   nxt: Uint8Array;
   hidden: Uint16Array;
   born: Float32Array;
-  kind: 'osc' | 'gun' | 'text';
-  entity: Entity;
+  kind: 'name' | 'osc' | 'gun';
+  /** The entity this structure belongs to; null for the name. */
+  id: string | null;
   core: { x: number; y: number; w: number; h: number };
   hurt: boolean;
   shots: number;
 }
 
-export interface Dive {
-  entity: Entity | null;
-  t0: number;
-  from: Cam;
-  to: Cam;
-  dir: 1 | -1;
-}
+export type { Box };
