@@ -31,7 +31,7 @@ export function bindInput({ canvas, cell, paint, glider, onChange }: InputOption
 
   canvas.addEventListener('pointerdown', (event) => {
     // a stroke already in progress, a second finger and a right/ctrl click must not start or restart one
-    if (drag || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (drag || (event.pointerType === 'mouse' && (event.button !== 0 || event.ctrlKey))) return;
     try {
       canvas.setPointerCapture(event.pointerId);
     } catch {
@@ -54,6 +54,10 @@ export function bindInput({ canvas, cell, paint, glider, onChange }: InputOption
     onChange?.();
   });
   canvas.addEventListener('pointercancel', (event) => {
+    if (drag && event.pointerId === drag.id) drag = null;
+  });
+  // capture lost without a pointerup (a context menu, an alert): never leave a stroke stuck open
+  canvas.addEventListener('lostpointercapture', (event) => {
     if (drag && event.pointerId === drag.id) drag = null;
   });
 }

@@ -302,8 +302,10 @@ export async function initBoard(): Promise<void> {
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {
       location.href = el.href;
-      // if the navigation never happens (offline, blocked), the board must come back
-      setTimeout(resetStage, 1200);
+      // if the navigation never happens (offline, blocked), the board must come back;
+      // a slow navigation that does happen unloads the page first, which cancels this
+      const fallback = setTimeout(resetStage, 3000);
+      addEventListener('pagehide', () => clearTimeout(fallback), { once: true });
     }, DIVE_MS);
   });
   labels.addEventListener('pointerover', (event) => {
