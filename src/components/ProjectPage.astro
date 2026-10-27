@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import DocActions from './DocActions.astro';
-import { boardMedia, boardNote, findAlternateProject, overlayFor } from '../data/board';
+import { boardMedia, boardNote, findAlternateProject, overlayFor, projectPath } from '../data/board';
 import { strings, otherLang } from '../i18n';
 import { getResume, htmlToText, type Lang, type Project } from '../lib/resume';
 
@@ -17,8 +17,6 @@ const other = otherLang(lang);
 const otherResume = getResume(other);
 const alt = findAlternateProject(project, resume.projects, otherResume);
 const boardHref = lang === 'fr' ? '/' : '/en/';
-const projectPath = (language: Lang, slug: string) =>
-  language === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`;
 const overlay = overlayFor(project);
 const media = boardMedia(project);
 const note = boardNote(project, lang);
@@ -41,9 +39,10 @@ const description = htmlToText(project.description) || meta || resume.headline;
     <div class="page-inner">
       <figure class="page-media">
         <canvas
-          id="dither"
-          width="240"
-          height="150"
+          id="pix"
+          class="pix"
+          width="160"
+          height="100"
           data-src={media?.video ?? media?.image ?? ''}
           data-kind={media?.video ? 'video' : media?.image ? 'image' : ''}
         ></canvas>
@@ -66,9 +65,9 @@ const description = htmlToText(project.description) || meta || resume.headline;
   </article>
 
   <script>
-    import { initDither } from '../scripts/board/dither';
+    import { initPixelPreview } from '../scripts/pixel/preview';
     import { initBackLink } from '../scripts/back';
-    initDither();
+    initPixelPreview();
     initBackLink();
   </script>
 </Base>
