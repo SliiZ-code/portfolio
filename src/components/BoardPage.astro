@@ -49,7 +49,7 @@ const description = htmlToText(resume.summary) || resume.headline;
             <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
               <span class="hit"></span>
               <span class="name">{entity.name}</span>
-              <span class="meta">{entity.meta}</span>
+              {entity.tag && <span class="tag">{entity.tag}</span>}
             </Tag>
           );
         })}

@@ -20,15 +20,15 @@ export interface BoardOverlay {
   name?: string;
   /** Short tag for the list and the project page. */
   label: { fr: string; en: string };
-  /** The line under the name on the board: the tag, then the joke. */
-  meta: { fr: string; en: string };
+  /** The language or tool shown under the name on the board. */
+  tag: string;
   /** Margin note on the project page. */
   note?: OverlayNote;
   media?: { video?: string; image?: string };
 }
 
 /**
- * Site-only layer: where a project sits on the screen, which pattern it is, its joke line, its
+ * Site-only layer: where a project sits on the screen, which pattern it is, its tag, its
  * page note and its capture. Keyed by the slug of the RxResume project name.
  */
 export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
@@ -38,7 +38,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     at: { l: [0.14, 0.66], p: [0.26, 0.57] },
     aliases: ['game-of-life'],
     label: { fr: 'C++ · projet CESI', en: 'C++ · CESI project' },
-    meta: { fr: 'C++ · un pulsar, forcément', en: 'C++ · a pulsar, obviously' },
+    tag: 'C++',
     note: { fr: 'un pulsar. forcément.', en: 'a pulsar. obviously.', r: 0.04 },
     media: { video: '/media/conway.mp4' },
   },
@@ -47,7 +47,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pad: 4,
     at: { l: [0.38, 0.71], p: [0.74, 0.68] },
     label: { fr: 'Flutter · multiplateforme', en: 'Flutter · cross-platform' },
-    meta: { fr: 'Flutter · il grandit, il rétrécit, il tient', en: 'Flutter · it grows, it shrinks, it holds' },
+    tag: 'Flutter',
     note: {
       fr: 'un pentadécathlon :\nil grandit, il rétrécit, il tient',
       en: 'a pentadecathlon:\nit grows, it shrinks, it holds',
@@ -61,7 +61,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     at: { l: [0.62, 0.68], p: [0.26, 0.79] },
     name: 'Weather Watcher',
     label: { fr: 'Arduino · capteurs · RTC', en: 'Arduino · sensors · RTC' },
-    meta: { fr: 'Arduino · tourne comme une trotteuse', en: 'Arduino · turns like a clock hand' },
+    tag: 'Arduino',
     note: {
       fr: 'une galaxie de Kok :\nelle tourne comme une trotteuse',
       en: "a Kok's galaxy:\nit turns like a clock hand",
@@ -73,7 +73,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pad: 2,
     at: { l: [0.84, 0.12], p: [0.74, 0.15] },
     label: { fr: 'Python · vidéo générée', en: 'Python · generated video' },
-    meta: { fr: 'Python · des clignotants', en: 'Python · blinkers' },
+    tag: 'Python',
     note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
     media: { video: '/media/blink.mp4' },
   },
@@ -94,7 +94,8 @@ export interface BoardProject extends Project {
   /** Null for a project outside the overlay: the board finds it a free slot at runtime. */
   at: At | null;
   label: string;
-  meta: string;
+  /** Empty for a project outside the overlay. */
+  tag: string;
   note?: BoardNote;
   media?: { video?: string; image?: string };
 }
@@ -156,7 +157,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
         pad: 2,
         at: null,
         label: project.period,
-        meta: project.period,
+        tag: '',
       };
     }
     return {
@@ -166,7 +167,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       pad: overlay.pad,
       at: overlay.at,
       label: overlay.label[resume.lang],
-      meta: overlay.meta[resume.lang],
+      tag: overlay.tag,
       note: boardNote(project, resume.lang),
       media: overlay.media,
     };
@@ -215,7 +216,6 @@ export interface BoardPage extends BoardPageDef {
   /** Short name for the server-rendered list. */
   name: string;
   label: string;
-  meta: string;
   note: BoardNote;
   url: string;
 }
@@ -230,7 +230,6 @@ export const getBoardPages = (lang: Lang): BoardPage[] =>
       boardName: t.text,
       name: t.name,
       label: t.label,
-      meta: t.meta,
       note: { text: t.note, r: PAGE_NOTE_TILT[page.id] },
       url: pagePath(page.id, lang),
     };
@@ -240,7 +239,8 @@ export interface BoardEntity {
   id: string;
   kind: 'project' | 'page' | 'cv' | 'contact';
   name: string;
-  meta: string;
+  /** The project's language or tool; empty for everything else. */
+  tag: string;
   /** Empty for a contact with no address: drawn, but not a link. */
   url: string;
   pattern: PatternName;
@@ -259,7 +259,7 @@ export function getBoardEntities(resume: Resume, links: { cvHref: string; contac
     id: project.slug,
     kind: 'project',
     name: project.boardName,
-    meta: project.meta,
+    tag: project.tag,
     url: projectPath(resume.lang, project.slug),
     pattern: project.pattern,
     pad: project.pad,
@@ -269,18 +269,18 @@ export function getBoardEntities(resume: Resume, links: { cvHref: string; contac
     id: page.id,
     kind: 'page',
     name: page.boardName,
-    meta: page.meta,
+    tag: '',
     url: page.url,
     pattern: page.pattern,
     pad: page.pad,
     at: page.at,
   }));
-  const cv: BoardEntity = { id: 'cv', kind: 'cv', name: t.cvName, meta: t.cvMeta, url: links.cvHref, ...CV_LAYOUT };
+  const cv: BoardEntity = { id: 'cv', kind: 'cv', name: t.cvName, tag: '', url: links.cvHref, ...CV_LAYOUT };
   const contact: BoardEntity = {
     id: 'contact',
     kind: 'contact',
     name: t.contactName,
-    meta: t.contactMeta,
+    tag: '',
     url: links.contactHref,
     ...CONTACT_LAYOUT,
   };

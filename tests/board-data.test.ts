@@ -44,16 +44,11 @@ describe('known project overlay', () => {
     expect(bySlug['jeu-de-la-vie'].boardName).toBe('Jeu de la vie');
   });
 
-  it('carries the joke line under each name, in both languages', () => {
-    expect(bySlug['jeu-de-la-vie'].meta).toBe('C++ · un pulsar, forcément');
-    expect(bySlug.thrive.meta).toBe('Flutter · il grandit, il rétrécit, il tient');
-    expect(bySlug['worldwide-weather-watcher'].meta).toBe('Arduino · tourne comme une trotteuse');
-    expect(bySlug.blink.meta).toBe('Python · des clignotants');
-    for (const [key, overlay] of Object.entries(BOARD_OVERLAY)) {
-      expect(overlay.meta.fr.length, key).toBeGreaterThan(0);
-      expect(overlay.meta.en.length, key).toBeGreaterThan(0);
-      expect(overlay.meta.en, key).not.toBe(overlay.meta.fr);
-    }
+  it('shows only the language under each name', () => {
+    expect(bySlug['jeu-de-la-vie'].tag).toBe('C++');
+    expect(bySlug.thrive.tag).toBe('Flutter');
+    expect(bySlug['worldwide-weather-watcher'].tag).toBe('Arduino');
+    expect(bySlug.blink.tag).toBe('Python');
   });
 
   it('keeps the media and the page notes', () => {
@@ -80,9 +75,9 @@ describe('projects outside the overlay', () => {
     expect(auto.boardName).toBe('Unlisted Project');
   });
 
-  it('get a deterministic oscillator and the period as meta', () => {
+  it('get a deterministic oscillator and no tag', () => {
     expect(OSCILLATORS).toContain(auto.pattern);
-    expect(auto.meta).toBe('[placeholder] 2026');
+    expect(auto.tag).toBe('');
     expect(auto.note).toBeUndefined();
     const again = getBoardProjects(withProjects(base, [...base.projects, extra('Unlisted Project')])).find((p) => p.slug === 'extra-0')!;
     expect(again.pattern).toBe(auto.pattern);
@@ -96,7 +91,7 @@ describe('overlay aliases', () => {
     const conway = projects.find((project) => project.slug === 'game-of-life')!;
     expect(conway).toBeDefined();
     expect(conway.pattern).toBe('pulsar');
-    expect(conway.meta).toBe('C++ · a pulsar, obviously');
+    expect(conway.tag).toBe('C++');
     expect(conway.at).toEqual(BOARD_OVERLAY['jeu-de-la-vie'].at);
   });
 });
@@ -108,18 +103,16 @@ describe('lab, story, CV and contact', () => {
     expect(BOARD_PAGES.story).toMatchObject({ pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } });
   });
 
-  it('builds localised pages with their own urls and joke lines', () => {
+  it('builds localised pages with their own urls', () => {
     const fr = getBoardPages('fr');
     const en = getBoardPages('en');
     expect(fr.map((page) => page.url).sort()).toEqual(['/histoire/', '/labo/']);
     expect(en.map((page) => page.url).sort()).toEqual(['/en/lab/', '/en/story/']);
     expect(pagePath('labo', 'fr')).toBe('/labo/');
     expect(pagePath('story', 'en')).toBe('/en/story/');
-    expect(fr.find((page) => page.id === 'labo')?.meta).toBe('des expériences sans place ailleurs');
     expect(en.find((page) => page.id === 'story')?.boardName).toBe('my story');
     for (const page of [...fr, ...en]) {
       expect(page.boardName.length).toBeGreaterThan(0);
-      expect(page.meta.length).toBeGreaterThan(0);
       expect(page.label.length).toBeGreaterThan(0);
       expect(page.note.text.length).toBeGreaterThan(0);
     }
@@ -147,7 +140,7 @@ describe('board entities', () => {
         expect(entity.name.length, entity.id).toBeGreaterThan(0);
         expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
       }
-      expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, meta: t.cvMeta, url: lang === 'fr' ? '/cv/' : '/en/cv/' });
+      expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, tag: '', url: lang === 'fr' ? '/cv/' : '/en/cv/' });
       expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
       expect(entities.find((entity) => entity.id === 'blink')).toMatchObject({ kind: 'project', url: projectPath(lang, 'blink') });
     }

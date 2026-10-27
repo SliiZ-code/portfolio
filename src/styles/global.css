@@ -132,17 +132,13 @@ button {
   box-shadow: 0 0 0 3px var(--paper);
 }
 
-.ent .meta {
+.ent .tag {
   font-size: 11px;
   color: var(--mute);
   margin-top: 3px;
   background: var(--paper);
   box-shadow: 0 0 0 2px var(--paper);
   white-space: nowrap;
-}
-
-.ent .meta:empty {
-  display: none;
 }
 
 a.ent,
@@ -752,7 +748,7 @@ a.flag:hover {
 @media (max-width: 760px) {
 
   .hint,
-  .ent .meta {
+  .ent .tag {
     display: none;
   }
 
@@ -796,9 +792,9 @@ a.flag:hover {
   }
 }
 
-/* landscape phones: the joke line and the full-size note do not fit between the labels */
+/* landscape phones: the tags and the full-size note do not fit between the labels */
 @media (max-height: 620px) {
-  .ent .meta {
+  .ent .tag {
     display: none;
   }
 
@@ -812,9 +808,9 @@ a.flag:hover {
   }
 }
 
-/* small tablets: keep the joke lines, but shorter than the name */
+/* small tablets: keep the tags, but smaller than the name */
 @media (min-width: 761px) and (max-width: 1150px) and (max-height: 900px) {
-  .ent .meta {
+  .ent .tag {
     font-size: 9px;
   }
 }

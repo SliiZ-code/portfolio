@@ -185,7 +185,7 @@ export async function initBoard(): Promise<void> {
       return result;
     };
     const addLabelBoxes = (el: HTMLElement) => {
-      for (const part of el.querySelectorAll<HTMLElement>('.name, .meta')) {
+      for (const part of el.querySelectorAll<HTMLElement>('.name, .tag')) {
         const r = part.getBoundingClientRect();
         if (r.width && r.height) keepClear.push(rectToBox(r, cell));
       }
