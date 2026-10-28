@@ -109,7 +109,7 @@ time, not rendered on the client.
 
 Two hand-placed patterns sit on the board next to the projects: the lab (`labo`, a beacon)
 and "mon histoire" / "my story" (a toad). Their position and pattern live in `BOARD_PAGES`
-in `src/data/board.ts`; their name, joke line, label and margin note in `src/i18n`.
+in `src/data/board.ts`; their name, label and margin note in `src/i18n`.
 
 - The lab page lists the experiments of `src/data/lab.ts`. The first one renders
   `public/media/arduino.glb` with three.js at 320×200, then pixelates it (see below); drag to
@@ -119,9 +119,10 @@ in `src/data/board.ts`; their name, joke line, label and margin note in `src/i18
 
 ## Board
 
-The board fits the viewport exactly: no pan, no zoom. The cell size comes from the name
-(about 60% of the width on desktop, 72% on phones), the grid covers the screen, and every
-structure is placed by screen fractions. The engine lives in `src/scripts/board/`:
+The board fits the viewport exactly: no pan, no zoom. The name is rasterized at the font's
+half-pixel resolution and sets the cell size (about 40% of the width in landscape, two thirds
+on phones, cells between 3 and 8px), the grid covers the screen, and every structure is
+placed by screen fractions. The engine lives in `src/scripts/board/`:
 
 - `index.ts`: bootstrap, layout (re-run on resize), generation loop, dive and return;
 - `layout.ts`: pure geometry: orientation, cell size, anchors, footprints, keep-clear boxes;
@@ -133,9 +134,10 @@ structure is placed by screen fractions. The engine lives in `src/scripts/board/
 - `render.ts`: canvas drawing;
 - `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back.
 
-Names and links are server-rendered: each pattern has a real `<a>` (hit area over the
-pattern, name in Shantell Sans, joke line in mono) that the script positions. Hover or focus
-underlines the name and tints the pattern.
+Names and links are server-rendered: each pattern has a real `<a>` that the script positions:
+a hit area over the pattern framed by pixel corners, the name in a small ink tab and, for
+projects, the language tag under it. Hover or focus turns the corners, the tab and the
+pattern to the accent colour.
 
 Controls: drag to draw, click empty space to drop a glider, click a name to dive. A dive
 scales the stage 16× toward the pattern (about 750 ms), then navigates. `?from=<slug>` starts

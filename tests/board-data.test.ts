@@ -123,7 +123,7 @@ describe('lab, story, CV and contact', () => {
   });
 
   it('puts the gun at the top, with no padding', () => {
-    expect(CONTACT_LAYOUT).toMatchObject({ pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.5, 0.025] } });
+    expect(CONTACT_LAYOUT).toMatchObject({ pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.44, 0.025] } });
   });
 });
 

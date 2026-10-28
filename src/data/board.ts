@@ -197,7 +197,7 @@ export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85
 };
 
 /** The gun, at the top edge. */
-export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.5, 0.025] } } as const satisfies {
+export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.44, 0.025] } } as const satisfies {
   pattern: PatternName;
   pad: number;
   at: At;
