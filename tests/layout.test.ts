@@ -33,10 +33,17 @@ describe('orientation, cell size and name resolution', () => {
     expect(cellSizeFor(320, 568)).toBe(4);
   });
 
-  it('draws the name at half-pixel resolution only when it still fits', () => {
-    expect(fineNameFits({ cols: 75, rows: 23 }, 1440, 900, 6, 'l')).toBe(true);
+  it('draws the name at half-pixel resolution only when it stays modest', () => {
+    // 1440×900: the fine raster would be 900px wide, 62% of the screen, so the coarse one is used
+    expect(fineNameFits({ cols: 75, rows: 23 }, 1440, 900, 6, 'l')).toBe(false);
     expect(fineNameFits({ cols: 75, rows: 23 }, 844, 390, 4, 'l')).toBe(false);
-    expect(fineNameFits({ cols: 41, rows: 31 }, 390, 844, 4, 'p')).toBe(true);
+    // a 390px phone would spend 84% of its width on the fine raster
+    expect(fineNameFits({ cols: 41, rows: 31 }, 390, 844, 4, 'p')).toBe(false);
+    // only a very large screen earns it, and there it stays around half the width
+    expect(fineNameFits({ cols: 75, rows: 23 }, 2560, 1440, 8, 'l')).toBe(true);
+    expect(fineNameFits({ cols: 41, rows: 31 }, 768, 1024, 4, 'p')).toBe(true);
+    // the height still has the last word
+    expect(fineNameFits({ cols: 75, rows: 40 }, 2560, 1440, 8, 'l')).toBe(false);
   });
 
   it('covers the viewport with whole cells', () => {

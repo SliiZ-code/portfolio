@@ -33,10 +33,14 @@ export const orientationFor = (vw: number, vh: number): Orientation => (vh > vw 
  */
 export const cellSizeFor = (vw: number, vh: number): number => Math.max(4, Math.min(8, Math.round(Math.min(vw / 240, vh / 150))));
 
-/** The name at the font's half-pixel resolution when it fits, so it keeps its presence on a fine board. */
+/**
+ * The name at the font's half-pixel resolution when it stays modest: half the width at most in
+ * landscape, a bit more on a narrow phone, where the coarse raster would almost vanish. Everywhere
+ * else the double raster is too loud, so the name keeps the coarse one.
+ */
 export const fineNameFits = (coarse: Grid, vw: number, vh: number, cell: number, orientation: Orientation): boolean => {
   const portrait = orientation === 'p';
-  return coarse.cols * 2 * cell <= vw * (portrait ? 0.88 : 0.64) && coarse.rows * 2 * cell <= vh * (portrait ? 0.3 : 0.32);
+  return coarse.cols * 2 * cell <= vw * (portrait ? 0.62 : 0.5) && coarse.rows * 2 * cell <= vh * (portrait ? 0.3 : 0.32);
 };
 
 export const gridFor = (vw: number, vh: number, cell: number): Grid => ({

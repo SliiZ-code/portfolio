@@ -169,6 +169,8 @@ describe('board entities', () => {
       const cell = cellSizeFor(vw, vh);
       const fine = fineNameFits(coarse, vw, vh, cell, orientation);
       const name = fine ? { cols: coarse.cols * 2, rows: coarse.rows * 2 } : coarse;
+      // whatever the raster, the name stays around half the width (a little more on a phone)
+      expect((name.cols * cell) / vw, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.62 : 0.5);
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
       const boxes = entities.map((entity) => {
