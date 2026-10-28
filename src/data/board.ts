@@ -189,8 +189,8 @@ export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
   story: { id: 'story', pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } },
 };
 
-/** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait. */
-export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.55] } } as const satisfies {
+/** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait, under the note. */
+export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } } as const satisfies {
   pattern: PatternName;
   pad: number;
   at: At;

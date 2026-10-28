@@ -12,7 +12,7 @@ import {
 } from '../src/data/board';
 import { strings } from '../src/i18n';
 import { getResume, type Project, type Resume } from '../src/lib/resume';
-import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, fineNameFits, type Box } from '../src/scripts/board/layout';
+import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
 import { OSCILLATORS, PATTERNS } from '../src/scripts/board/patterns';
 
 const extra = (name: string, index = 0): Project => ({
@@ -119,7 +119,7 @@ describe('lab, story, CV and contact', () => {
   });
 
   it('hangs the CV off the name in landscape and gives it a fixed slot in portrait', () => {
-    expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.55] } });
+    expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } });
   });
 
   it('puts the gun at the top, with no padding', () => {
@@ -161,24 +161,28 @@ describe('board entities', () => {
 
   it('does not collide: structures never overlap and stay on screen, in both orientations', () => {
     const entities = getBoardEntities(getResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' }).filter((entity) => entity.at);
-    // coarse name raster of "Julien / Petit-Colboc" is about 75 × 23 cells; check a spread of screens
+    // the fine name raster: "Julien / Petit-Colboc" is 150 × 41 cells, "Julien / Petit- / Colboc" 82 × 63
     const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740]];
     for (const [vw, vh] of screens) {
       const orientation = orientationFor(vw, vh);
-      const coarse = orientation === 'p' ? { cols: 41, rows: 31 } : { cols: 75, rows: 23 };
-      const cell = cellSizeFor(vw, vh);
-      const fine = fineNameFits(coarse, vw, vh, cell, orientation);
-      const name = fine ? { cols: coarse.cols * 2, rows: coarse.rows * 2 } : coarse;
-      // whatever the raster, the name stays around half the width (a little more on a phone)
-      expect((name.cols * cell) / vw, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.62 : 0.5);
+      const name = orientation === 'p' ? { cols: 82, rows: 63 } : { cols: 150, rows: 41 };
+      const cell = cellSizeFor(name, vw, vh, orientation);
+      // the name stays around half the width (a little more on a phone)
+      const ratio = (name.cols * cell) / vw;
+      expect(ratio, `name width @ ${vw}x${vh}`).toBeGreaterThanOrEqual(orientation === 'p' ? 0.4 : 0.43);
+      expect(ratio, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.72 : 0.56);
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
+      // in landscape the note sits on one line 10px under the name (15px handwritten line)
+      const noteBottom = orientation === 'l' ? place.y + place.h + Math.ceil(30 / cell) : place.y + place.h;
       const boxes = entities.map((entity) => {
         const dims = { w: PATTERNS[entity.pattern][0].length, h: PATTERNS[entity.pattern].length };
-        const fp = footprint(dims, entity.pad, anchorFor(entity.at?.[orientation], grid, place), entity.pattern === 'gun');
+        const fp = footprint(dims, entity.pad, anchorFor(entity.at?.[orientation], grid, place, noteBottom), entity.pattern === 'gun');
         return { id: entity.id, box: coreBox(fp) };
       });
       const nameBox = { x: place.x, y: place.y, x2: place.x + place.w, y2: place.y + place.h };
+      const cv = boxes.find(({ id }) => id === 'cv')!;
+      if (orientation === 'l') expect(cv.box.y, `CV / note @ ${vw}x${vh}`).toBeGreaterThan(noteBottom);
       for (const { id, box } of boxes) {
         expect(box.x, `${id} @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);
         expect(box.y, `${id} @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);

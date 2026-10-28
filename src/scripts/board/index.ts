@@ -5,7 +5,6 @@ import { addStructure, stepStructures, structurePopulation } from './structures'
 import {
   anchorFor,
   cellSizeFor,
-  fineNameFits,
   coreBox,
   footprint,
   gridFor,
@@ -91,19 +90,18 @@ export async function initBoard(): Promise<void> {
   const protectedBoxes = () => [...keepClear, ...structures.map((s) => coreBox(s))];
   const isFree = (x: number, y: number) => !isProtected(x, y, 0, protectedBoxes());
 
-  /** Lays the board out for the current screen: cell size from the screen, then everything in screen fractions. */
+  /** Lays the board out for the current screen: the fine name sets the cell, then everything in screen fractions. */
   function layout(): void {
     const vw = innerWidth;
     const vh = innerHeight;
     lastSize = `${vw}x${vh}`;
     const dpr = Math.min(2, devicePixelRatio || 1);
     const orientation = orientationFor(vw, vh);
-    cell = cellSizeFor(vw, vh);
-    const coarse = rasterize(data.name[orientation]);
-    if (!coarse.length) return;
-    const fine = fineNameFits({ cols: coarse[0].length, rows: coarse.length }, vw, vh, cell, orientation);
-    const nameCells = fine ? rasterize(data.name[orientation], true) : coarse;
+    // the fine raster (half-pixel steps) is the only one that keeps the curves legible
+    const nameCells = rasterize(data.name[orientation], true);
+    if (!nameCells.length) return;
     const nameDims = { cols: nameCells[0].length, rows: nameCells.length };
+    cell = cellSizeFor(nameDims, vw, vh, orientation);
     grid = gridFor(vw, vh, cell);
     stage!.style.setProperty('--c', `${cell}px`);
     canvas!.width = vw * dpr;
@@ -128,11 +126,12 @@ export async function initBoard(): Promise<void> {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
       note.style.top = `${(at.y + at.h) * cell + 10}px`;
-      // the note stays under the name but out of the CV's way: inside 70% of a phone's width,
-      // and off the name's bottom-right corner, where the CV hangs in landscape
-      note.style.maxWidth =
-        orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : `${(at.w - 12) * cell}px`;
+      // one line under the name wherever it fits (the CV hangs below it); inside the name's width on a phone
+      note.style.maxWidth = orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : 'none';
     }
+    // the CV hangs under the name, and under the note when the note is on one line
+    const noteRect = note?.getBoundingClientRect();
+    const below = noteRect?.height ? Math.ceil(noteRect.bottom / cell) : at.y + at.h;
 
     const place = (config: EntityConfig, anchor: { cx: number; ty: number }): Placed | null => {
       const el = anchors.get(config.id);
@@ -172,7 +171,7 @@ export async function initBoard(): Promise<void> {
     const nameRect = at;
     const fixed = data.entities.filter((entity) => entity.at?.[orientation]);
     const loose = data.entities.filter((entity) => !entity.at?.[orientation]);
-    for (const config of fixed) place(config, anchorFor(config.at![orientation], grid, nameRect));
+    for (const config of fixed) place(config, anchorFor(config.at![orientation], grid, nameRect, below));
     if (note) {
       const r = note.getBoundingClientRect();
       keepClear.push(rectToBox(r, cell));

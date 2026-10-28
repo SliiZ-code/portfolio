@@ -28,20 +28,18 @@ export interface Box {
 export const orientationFor = (vw: number, vh: number): Orientation => (vh > vw * 1.1 ? 'p' : 'l');
 
 /**
- * Cells have a size of their own, about 6px on a laptop: a bigger screen shows more board,
- * not bigger cells.
+ * The name is always drawn at the font's half-pixel resolution, so the cell size is chosen from
+ * that raster: about half the width in landscape and two thirds on a phone, small enough to leave
+ * room for the board, never below 3px (the fine curves need it) or above 8px (more screen = more board).
  */
-export const cellSizeFor = (vw: number, vh: number): number => Math.max(4, Math.min(8, Math.round(Math.min(vw / 240, vh / 150))));
+const NAME_WIDTH: Record<Orientation, number> = { l: 0.55, p: 0.7 };
+const NAME_HEIGHT: Record<Orientation, number> = { l: 0.3, p: 0.25 };
 
-/**
- * The name at the font's half-pixel resolution when it stays modest: half the width at most in
- * landscape, a bit more on a narrow phone, where the coarse raster would almost vanish. Everywhere
- * else the double raster is too loud, so the name keeps the coarse one.
- */
-export const fineNameFits = (coarse: Grid, vw: number, vh: number, cell: number, orientation: Orientation): boolean => {
-  const portrait = orientation === 'p';
-  return coarse.cols * 2 * cell <= vw * (portrait ? 0.62 : 0.5) && coarse.rows * 2 * cell <= vh * (portrait ? 0.3 : 0.32);
-};
+export const cellSizeFor = (name: Grid, vw: number, vh: number, orientation: Orientation = orientationFor(vw, vh)): number =>
+  Math.max(
+    3,
+    Math.min(8, Math.floor(Math.min((vw * NAME_WIDTH[orientation]) / name.cols, (vh * NAME_HEIGHT[orientation]) / name.rows))),
+  );
 
 export const gridFor = (vw: number, vh: number, cell: number): Grid => ({
   cols: Math.ceil(vw / cell),
@@ -50,14 +48,18 @@ export const gridFor = (vw: number, vh: number, cell: number): Grid => ({
 
 export const namePlacement = (grid: Grid, name: Grid, orientation: Orientation): Rect => ({
   x: Math.round(grid.cols / 2 - name.cols / 2),
-  y: Math.round(grid.rows * (orientation === 'p' ? 0.37 : 0.38) - name.rows / 2),
+  // portrait sits a touch higher: the fine name and its note need the room above the fixed patterns
+  y: Math.round(grid.rows * (orientation === 'p' ? 0.34 : 0.38) - name.rows / 2),
   w: name.cols,
   h: name.rows,
 });
 
-/** Centre column and pattern top row of a structure. */
-export const anchorFor = (at: Anchor | undefined, grid: Grid, name: Rect): { cx: number; ty: number } => {
-  if (at === 'name' || at === undefined) return { cx: name.x + name.w - 4, ty: name.y + name.h + 3 };
+/**
+ * Centre column and pattern top row of a structure. 'name' hangs the CV off the name's bottom-right,
+ * its board (`pad` 2) three cells below the name or the note's last row (`below`, in cells).
+ */
+export const anchorFor = (at: Anchor | undefined, grid: Grid, name: Rect, below = name.y + name.h): { cx: number; ty: number } => {
+  if (at === 'name' || at === undefined) return { cx: name.x + name.w - 4, ty: below + 5 };
   return { cx: Math.round(grid.cols * at[0]), ty: Math.round(grid.rows * at[1]) };
 };
 
