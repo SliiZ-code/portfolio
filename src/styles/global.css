@@ -145,6 +145,7 @@ button {
   margin-top: 6px;
   padding: 2px 6px;
   background: var(--ink);
+  white-space: nowrap;
 }
 
 .ent .tag {
