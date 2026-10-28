@@ -135,9 +135,9 @@ placed by screen fractions. The engine lives in `src/scripts/board/`:
 - `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back.
 
 Names and links are server-rendered: each pattern has a real `<a>` that the script positions:
-a hit area over the pattern framed by pixel corners, the name in a small ink tab and, for
-projects, the language tag under it. Hover or focus turns the corners, the tab and the
-pattern to the accent colour.
+a hit area over the pattern framed by accent pixel corners, the name in a small ink tab and,
+for projects, the language tag under it. Hover or focus turns the tab and the pattern to the
+accent colour.
 
 Controls: drag to draw, click empty space to drop a glider, click a name to dive. A dive
 scales the stage 16× toward the pattern (about 750 ms), then navigates. `?from=<slug>` starts

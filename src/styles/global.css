@@ -125,7 +125,8 @@ button {
   margin: -4px;
   padding: 4px;
   box-sizing: content-box;
-  --frame: var(--ink);
+  /* the riso blue at rest: the one touch of colour on the board besides the note */
+  --frame: var(--accent);
   background:
     linear-gradient(var(--frame), var(--frame)) top left / 10px 2px no-repeat,
     linear-gradient(var(--frame), var(--frame)) top left / 2px 10px no-repeat,
@@ -168,11 +169,6 @@ a.ent .name {
 a.ent:hover .name,
 a.ent:focus-visible .name {
   background: var(--accent);
-}
-
-a.ent:hover .hit,
-a.ent:focus-visible .hit {
-  --frame: var(--accent);
 }
 
 .ent:focus-visible {
