@@ -4,6 +4,7 @@ import { addFeedGlider, clearBoxes, createWorld, idx, seedWorld, stepWorld, type
 import { addStructure, stepStructures, structurePopulation } from './structures';
 import {
   anchorFor,
+  boxMinus,
   cellSizeFor,
   coreBox,
   footprint,
@@ -84,11 +85,15 @@ export async function initBoard(): Promise<void> {
   let world: World = createWorld(1, 1);
   let structures: Structure[] = [];
   let keepClear: Box[] = [];
+  // the name's keep-clear box without the name: the soup dies there, visitors may draw on the name
+  let nameRing: Box[] = [];
   let placed = new Map<string, Placed>();
   let lastSize = '';
 
-  const protectedBoxes = () => [...keepClear, ...structures.map((s) => coreBox(s))];
-  const isFree = (x: number, y: number) => !isProtected(x, y, 0, protectedBoxes());
+  const protectedBoxes = () => [...keepClear, ...nameRing, ...structures.map((s) => coreBox(s))];
+  // visitors may draw on the name, so only labels, HUD and the other structures' cores stay off limits
+  const isFree = (x: number, y: number) =>
+    !isProtected(x, y, 0, [...keepClear, ...structures.filter((s) => s.kind !== 'name').map((s) => coreBox(s))]);
 
   /** Lays the board out for the current screen: the fine name sets the cell, then everything in screen fractions. */
   function layout(): void {
@@ -109,6 +114,7 @@ export async function initBoard(): Promise<void> {
     world = createWorld(grid.cols, grid.rows);
     structures = [];
     keepClear = [];
+    nameRing = [];
     placed = new Map();
     anchors.forEach((el) => el.classList.remove('placed'));
 
@@ -120,7 +126,10 @@ export async function initBoard(): Promise<void> {
       kind: 'name',
       id: null,
     });
-    keepClear.push({ x: at.x - 1, y: at.y - 1, x2: at.x + at.w + 1, y2: at.y + at.h + 1 });
+    nameRing = boxMinus(
+      { x: at.x - 1, y: at.y - 1, x2: at.x + at.w + 1, y2: at.y + at.h + 1 },
+      { x: at.x, y: at.y, x2: at.x + at.w, y2: at.y + at.h },
+    );
 
     if (note) {
       note.textContent = data.nameNote[orientation];
@@ -198,7 +207,7 @@ export async function initBoard(): Promise<void> {
       el.style.top = '0px';
       const r = el.getBoundingClientRect();
       const need = { w: Math.ceil(r.width / cell) + 2, h: Math.ceil(r.height / cell) + 1 };
-      const occupied = [...keepClear, ...hud, ...structures.map((s) => coreBox(s))];
+      const occupied = [...protectedBoxes(), ...hud];
       const slot = findFreeSlot(need, occupied, grid, { margin: 2 });
       if (!slot) {
         console.warn(`[board] no free slot for "${config.id}": left off the board (its page still exists)`);
@@ -382,7 +391,7 @@ export async function initBoard(): Promise<void> {
   function tick(): void {
     gen++;
     stepWorld(world);
-    clearBoxes(world, keepClear);
+    clearBoxes(world, [...keepClear, ...nameRing]);
     stepStructures(world, structures, gen);
     if (gen % FEED_EVERY === 0) addFeedGlider(world);
     updateCounters(gen);

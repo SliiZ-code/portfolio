@@ -95,6 +95,14 @@ export const rectToBox = (r: { left: number; top: number; right: number; bottom:
   y2: Math.ceil(r.bottom / cell),
 });
 
+/** The part of `outer` that `inner` does not cover, as four boxes: top, bottom, left and right. */
+export const boxMinus = (outer: Box, inner: Box): Box[] => [
+  { x: outer.x, y: outer.y, x2: outer.x2, y2: inner.y },
+  { x: outer.x, y: inner.y2, x2: outer.x2, y2: outer.y2 },
+  { x: outer.x, y: inner.y, x2: inner.x, y2: inner.y2 },
+  { x: inner.x2, y: inner.y, x2: outer.x2, y2: inner.y2 },
+];
+
 export const inBox = (box: Box, x: number, y: number, margin = 0): boolean =>
   x >= box.x - margin && x < box.x2 + margin && y >= box.y - margin && y < box.y2 + margin;
 

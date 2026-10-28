@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   anchorFor,
+  boxMinus,
   cellSizeFor,
   coreBox,
   footprint,
   gridFor,
+  inBox,
   isProtected,
   namePlacement,
   orientationFor,
@@ -126,5 +128,17 @@ describe('boxes', () => {
     expect(isProtected(25, 15, 5, boxes)).toBe(false);
     expect(isProtected(24, 15, 5, boxes)).toBe(true);
     expect(isProtected(15, 15, 0, boxes)).toBe(true);
+  });
+
+  it('splits a box around its core into four strips that leave the core out', () => {
+    const outer = { x: 9, y: 9, x2: 21, y2: 21 };
+    const core = { x: 10, y: 10, x2: 20, y2: 20 };
+    const strips = boxMinus(outer, core);
+    for (let y = 9; y < 21; y++) {
+      for (let x = 9; x < 21; x++) {
+        const hits = strips.filter((box) => inBox(box, x, y)).length;
+        expect(hits).toBe(inBox(core, x, y) ? 0 : 1);
+      }
+    }
   });
 });
