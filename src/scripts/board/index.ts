@@ -128,7 +128,10 @@ export async function initBoard(): Promise<void> {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
       note.style.top = `${(at.y + at.h) * cell + 10}px`;
-      note.style.maxWidth = orientation === 'p' ? `${at.w * cell}px` : '';
+      // the note stays under the name but out of the CV's way: inside 70% of a phone's width,
+      // and off the name's bottom-right corner, where the CV hangs in landscape
+      note.style.maxWidth =
+        orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : `${(at.w - 12) * cell}px`;
     }
 
     const place = (config: EntityConfig, anchor: { cx: number; ty: number }): Placed | null => {
@@ -152,6 +155,14 @@ export async function initBoard(): Promise<void> {
       return result;
     };
     const addLabelBoxes = (el: HTMLElement) => {
+      // the frame sits 4px outside the pattern: keep the browser's own one-cell margin beyond it
+      const frame = el.querySelector<HTMLElement>('.hit');
+      if (frame) {
+        const r = frame.getBoundingClientRect();
+        if (r.width && r.height) {
+          keepClear.push(rectToBox({ left: r.left - 4, top: r.top - 4, right: r.right + 4, bottom: r.bottom + 4 }, cell));
+        }
+      }
       for (const part of el.querySelectorAll<HTMLElement>('.name, .tag')) {
         const r = part.getBoundingClientRect();
         if (r.width && r.height) keepClear.push(rectToBox(r, cell));

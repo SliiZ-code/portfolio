@@ -119,7 +119,7 @@ describe('lab, story, CV and contact', () => {
   });
 
   it('hangs the CV off the name in landscape and gives it a fixed slot in portrait', () => {
-    expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.76, 0.55] } });
+    expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.55] } });
   });
 
   it('puts the gun at the top, with no padding', () => {

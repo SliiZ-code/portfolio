@@ -121,23 +121,40 @@ button {
 
 .ent .hit {
   display: block;
+  /* the frame is drawn 4px outside the pattern: four L corners made of eight 10×2px arms */
+  margin: -4px;
+  padding: 4px;
+  box-sizing: content-box;
+  --frame: var(--ink);
+  background:
+    linear-gradient(var(--frame), var(--frame)) top left / 10px 2px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) top left / 2px 10px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) top right / 10px 2px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) top right / 2px 10px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) bottom left / 10px 2px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) bottom left / 2px 10px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) bottom right / 10px 2px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) bottom right / 2px 10px no-repeat;
 }
 
 .ent .name {
-  font: 500 clamp(17px, 1.6vw, 23px)/1.1 "Shantell Sans", cursive;
-  color: var(--accent);
+  font: 500 12px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--paper);
   margin-top: 6px;
-  padding: 0 6px;
-  background: var(--paper);
-  box-shadow: 0 0 0 3px var(--paper);
+  padding: 2px 6px;
+  background: var(--ink);
 }
 
 .ent .tag {
-  font-size: 11px;
+  font: 500 10px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
   color: var(--mute);
-  margin-top: 3px;
+  margin-top: 2px;
+  padding: 0 3px;
   background: var(--paper);
-  box-shadow: 0 0 0 2px var(--paper);
   white-space: nowrap;
 }
 
@@ -149,9 +166,12 @@ a.ent .name {
 
 a.ent:hover .name,
 a.ent:focus-visible .name {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+  background: var(--accent);
+}
+
+a.ent:hover .hit,
+a.ent:focus-visible .hit {
+  --frame: var(--accent);
 }
 
 .ent:focus-visible {
@@ -729,6 +749,10 @@ a.flag:hover {
     display: none;
   }
 
+  .ent .name {
+    font-size: 11px;
+  }
+
   /* phones: the bottom edge is too narrow for the counters and the profile links */
   .hud.bl {
     display: none;
@@ -781,7 +805,7 @@ a.flag:hover {
   }
 
   .ent .name {
-    font-size: 15px;
+    font-size: 11px;
   }
 
   .name-note {

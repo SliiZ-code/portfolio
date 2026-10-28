@@ -190,7 +190,7 @@ export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
 };
 
 /** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait. */
-export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.76, 0.55] } } as const satisfies {
+export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.55] } } as const satisfies {
   pattern: PatternName;
   pad: number;
   at: At;
