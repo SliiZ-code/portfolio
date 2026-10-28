@@ -29,10 +29,10 @@ export const orientationFor = (vw: number, vh: number): Orientation => (vh > vw 
 
 /**
  * The name is always drawn at the font's half-pixel resolution, so the cell size is chosen from
- * that raster: about half the width in landscape and two thirds on a phone, small enough to leave
+ * that raster: about 40% of the width in landscape and two thirds on a phone, small enough to leave
  * room for the board, never below 3px (the fine curves need it) or above 8px (more screen = more board).
  */
-const NAME_WIDTH: Record<Orientation, number> = { l: 0.55, p: 0.7 };
+const NAME_WIDTH: Record<Orientation, number> = { l: 0.42, p: 0.7 };
 const NAME_HEIGHT: Record<Orientation, number> = { l: 0.3, p: 0.25 };
 
 export const cellSizeFor = (name: Grid, vw: number, vh: number, orientation: Orientation = orientationFor(vw, vh)): number =>

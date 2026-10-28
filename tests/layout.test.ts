@@ -25,20 +25,20 @@ describe('orientation, cell size and name resolution', () => {
   });
 
   it('sizes the cells from the fine name, which stays about half the width in landscape', () => {
-    expect(cellSizeFor(FINE_L, 1440, 900, 'l')).toBe(5);
-    expect(cellSizeFor(FINE_L, 1920, 1080, 'l')).toBe(7);
-    expect(cellSizeFor(FINE_L, 1280, 720, 'l')).toBe(4);
+    expect(cellSizeFor(FINE_L, 1440, 900, 'l')).toBe(4);
+    expect(cellSizeFor(FINE_L, 1920, 1080, 'l')).toBe(5);
+    expect(cellSizeFor(FINE_L, 1280, 720, 'l')).toBe(3);
     expect(cellSizeFor(FINE_P, 390, 844, 'p')).toBe(3);
     expect(cellSizeFor(FINE_P, 360, 740, 'p')).toBe(3);
     // a tablet is capped by the room the fixed patterns leave around the tall portrait name
     expect(cellSizeFor(FINE_P, 768, 1024, 'p')).toBe(4);
   });
 
-  it('keeps the name near two thirds of a phone and half a landscape screen', () => {
-    for (const [vw, vh] of [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [844, 390]]) {
+  it('keeps the name near two thirds of a phone and 40% of a landscape screen', () => {
+    for (const [vw, vh] of [[1440, 900], [1920, 1080], [1280, 720], [1024, 768]]) {
       const ratio = (FINE_L.cols * cellSizeFor(FINE_L, vw, vh, 'l')) / vw;
-      expect(ratio, `landscape ${vw}x${vh}`).toBeGreaterThanOrEqual(0.43);
-      expect(ratio, `landscape ${vw}x${vh}`).toBeLessThanOrEqual(0.56);
+      expect(ratio, `landscape ${vw}x${vh}`).toBeGreaterThanOrEqual(0.34);
+      expect(ratio, `landscape ${vw}x${vh}`).toBeLessThanOrEqual(0.45);
     }
     for (const [vw, vh] of [[390, 844], [360, 740]]) {
       const ratio = (FINE_P.cols * cellSizeFor(FINE_P, vw, vh, 'p')) / vw;

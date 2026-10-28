@@ -169,8 +169,8 @@ describe('board entities', () => {
       const cell = cellSizeFor(name, vw, vh, orientation);
       // the name stays around half the width (a little more on a phone)
       const ratio = (name.cols * cell) / vw;
-      expect(ratio, `name width @ ${vw}x${vh}`).toBeGreaterThanOrEqual(orientation === 'p' ? 0.4 : 0.43);
-      expect(ratio, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.72 : 0.56);
+      expect(ratio, `name width @ ${vw}x${vh}`).toBeGreaterThanOrEqual(orientation === 'p' ? 0.4 : 0.34);
+      expect(ratio, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.72 : 0.45);
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
       // in landscape the note sits on one line 10px under the name (15px handwritten line)

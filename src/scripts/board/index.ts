@@ -208,9 +208,9 @@ export async function initBoard(): Promise<void> {
       if (result) addLabelBoxes(result.el);
     }
 
-    // the board starts busy, but not noisy: one free cell in seven is seeded
+    // the board starts busy, but not noisy: about one free cell in twelve is seeded
     const boxes = protectedBoxes();
-    seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.14);
+    seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.08);
     updateCounters(0);
   }
 
