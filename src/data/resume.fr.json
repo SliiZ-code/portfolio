@@ -1,17 +1,14 @@
 {
   "basics": {
-    "name": "Julien Petit-Colboc",
-    "headline": "Étudiant en deuxième année de cycle préparatoire · CESI Rouen",
-    "email": "",
+    "name": "Julien Petit--Colboc",
+    "headline": "Élève ingénieur en informatique – IA, VR et robotique",
+    "email": "julien.petitcolboc@gmail.com",
     "location": "Rouen, France",
     "website": {
-      "url": "",
-      "label": ""
+      "url": "https://sliiz.com",
+      "label": "Portfolio – sliiz.com",
+      "inlineLink": false
     }
-  },
-  "summary": {
-    "title": "Profil",
-    "content": "<p>Étudiant en informatique à CESI Rouen. C++, Python, Flutter, Arduino.</p>"
   },
   "sections": {
     "profiles": {
@@ -19,7 +16,7 @@
       "hidden": false,
       "items": [
         {
-          "id": "profile-github",
+          "id": "h321sprjmoptspa9lxl9bte9",
           "hidden": false,
           "network": "GitHub",
           "username": "SliiZ-code",
@@ -30,12 +27,12 @@
           }
         },
         {
-          "id": "profile-linkedin",
+          "id": "r9p8gdq8d6ih29obyjtvyinl",
           "hidden": false,
           "network": "LinkedIn",
           "username": "julien-petit-colboc",
           "website": {
-            "url": "https://linkedin.com/in/julien-petit-colboc",
+            "url": "https://www.linkedin.com/in/julien-petit-colboc/",
             "label": "",
             "inlineLink": false
           }
@@ -43,22 +40,37 @@
       ]
     },
     "experience": {
-      "title": "Expérience",
+      "title": "Expériences",
       "hidden": false,
       "items": [
         {
-          "id": "exp-placeholder",
+          "id": "ad3cbf72-4fbb-4050-b8af-63d5deb136bd",
           "hidden": false,
-          "company": "[placeholder] Entreprise",
-          "position": "[placeholder] Stage — développement",
-          "location": "[placeholder] Rouen",
-          "period": "[placeholder] 2025",
+          "company": "CAPFI",
+          "position": "Ingénieur d'études en alternance (R&D, IA)",
+          "location": "Paris",
+          "period": "janv. 2026 – Aujourd’hui",
           "website": {
             "url": "",
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>[placeholder] Description de la mission à remplacer par les données RxResume.</p>",
+          "description": "<p>Développeur principal de Cerebro, un outil interne qui rapproche les profils des consultants des appels d'offres clients grâce aux LLM.</p><ul><li><p>Conçu un pipeline IA qui extrait, catégorise et score les couples appel d'offres × profil, avec un traitement asynchrone par lots fiabilisé ; mis en production après plusieurs centaines d'appels d'offres traités.</p></li><li><p>Calibré le prompt de scoring (température, compétences requises ou souhaitées, trois sous-scores) et ajouté des justifications courtes pour que les utilisateurs puissent vérifier chaque score.</p></li><li><p>Lancé un jeu de référence annoté pour mesurer les faux positifs et les faux négatifs.</p></li><li><p>Développé le rapport quotidien envoyé à une dizaine de commerciaux ; sécurisé l'API et l'interface web par authentification et SSO. <em>Stack : Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
+          "roles": []
+        },
+        {
+          "id": "bub41xoydm6ih9qjf5oc14cn",
+          "hidden": false,
+          "company": "CESI LINEACT",
+          "position": "Stagiaire de recherche",
+          "location": "Rouen",
+          "period": "avr. 2025 – juil. 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Application VR de téléopération de robots (Scrum ; C#, .NET, Unity, API REST).</p><ul><li><p>Intégré le flux d'une caméra 360° placée sur le robot dans une vue VR immersive.</p></li><li><p>Sécurisé l'accès aux robots avec un chiffrement AES-256.</p></li><li><p>Conçu une interface temps réel pour éditer les points de passage.</p></li></ul>",
           "roles": []
         }
       ]
@@ -68,20 +80,36 @@
       "hidden": false,
       "items": [
         {
-          "id": "edu-cesi",
+          "id": "9bbfb84b-9a52-42d9-b0ff-2e49be5b2042",
           "hidden": false,
-          "school": "CESI Rouen",
-          "degree": "Cycle préparatoire",
-          "area": "Informatique",
+          "school": "CESI École d'Ingénieurs",
+          "degree": "Diplôme d'ingénieur (grade de master)",
+          "area": "Informatique, en alternance",
           "grade": "",
-          "location": "Rouen, France",
-          "period": "[placeholder] 2024 — aujourd’hui",
+          "location": "Rouen",
+          "period": "oct. 2025 – sept. 2028",
           "website": {
             "url": "",
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Deuxième année du cycle préparatoire à CESI Rouen.</p>"
+          "description": ""
+        },
+        {
+          "id": "gnga2opimsa3s0uiys09xsgi",
+          "hidden": false,
+          "school": "CESI",
+          "degree": "Classe préparatoire intégrée",
+          "area": "Informatique",
+          "grade": "",
+          "location": "Rouen",
+          "period": "sept. 2023 – juil. 2025",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<ul><li><p>Jeu de la vie de Conway en C++ (projet en binôme, contributeur principal) : architecture MVC, modes console et graphique SFML, grille torique, cellules obstacles.</p></li></ul>"
         }
       ]
     },
@@ -90,52 +118,28 @@
       "hidden": false,
       "items": [
         {
-          "id": "project-conway",
-          "hidden": false,
-          "name": "Jeu de la vie",
-          "period": "[placeholder] 2024",
-          "website": {
-            "url": "https://github.com/Lucacist/jeu-de-Conway-projet",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>Projet scolaire en C++ avec interface graphique : grille modifiable en temps réel, ajout d’obstacles, vitesse modifiable, import/export de grilles.</p>"
-        },
-        {
-          "id": "project-blink",
+          "id": "lb4mf4eeck6jgali322zvy6w",
           "hidden": false,
           "name": "Blink",
-          "period": "[placeholder] 2025 — en cours",
+          "period": "2024",
           "website": {
-            "url": "https://github.com/SliiZ-code/Blink",
-            "label": "",
+            "url": "https://github.com/SliiZ-code/blink",
+            "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Création automatisée asynchrone de vidéos courtes verticales en Python : OpenAI, Stable Diffusion, MoviePy, PIL. En développement.</p>"
+          "description": "<p>Pipeline Python qui génère des vidéos courtes à partir d'un simple sujet : GPT-3.5 écrit le script, Stable Diffusion XL crée les images, OpenAI TTS enregistre la voix off et Whisper génère les sous-titres. Appels API asynchrones, montage automatisé avec MoviePy.</p>"
         },
         {
-          "id": "project-thrive",
+          "id": "xzqf6qmt2htvrapycrr0p1qe",
           "hidden": false,
           "name": "Thrive",
-          "period": "[placeholder] 2025 — en cours",
+          "period": "2024",
           "website": {
-            "url": "https://github.com/SliiZ-code/Thrive",
-            "label": "",
+            "url": "https://github.com/SliiZ-code/thrive",
+            "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Application multiplateforme de liste de tâches réalisée avec Flutter. En développement.</p>"
-        },
-        {
-          "id": "project-www",
-          "hidden": false,
-          "name": "Worldwide Weather Watcher",
-          "period": "[placeholder] 2024",
-          "website": {
-            "url": "https://github.com/enzogilles/Projet-World-wide-weather-watcher",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>Projet scolaire Arduino : quatre modes d’utilisation, enregistrement sur carte SD, capteurs de température et de pression, horloge RTC, gestion d’interruptions.</p>"
+          "description": "<p>Gestionnaire de tâches multiplateforme (Android, iOS, Windows, macOS, Web) développé avec Flutter/Dart : base de données locale Isar, catégories, notifications.</p>"
         }
       ]
     },
@@ -144,43 +148,72 @@
       "hidden": false,
       "items": [
         {
-          "id": "skill-cpp",
+          "id": "j17njc40zzcbgaa2sivcg7zi",
           "hidden": false,
-          "name": "C++",
-          "proficiency": "[placeholder] avancé",
-          "level": 4,
+          "name": "IA et LLM",
+          "proficiency": "",
+          "level": 0,
           "keywords": [
-            "Jeu de la vie"
+            "Pipelines LLM",
+            "Prompt engineering",
+            "Sorties structurées",
+            "API OpenAI et Gemini",
+            "Stable Diffusion",
+            "Whisper"
           ]
         },
         {
-          "id": "skill-python",
+          "id": "emu9jsua9btdtjedvsvyx27v",
           "hidden": false,
-          "name": "Python",
-          "proficiency": "[placeholder] avancé",
-          "level": 4,
+          "name": "Langages",
+          "proficiency": "",
+          "level": 0,
           "keywords": [
-            "Blink"
+            "Python",
+            "C#",
+            "C++",
+            "Dart",
+            "JavaScript"
           ]
         },
         {
-          "id": "skill-flutter",
+          "id": "5ddd1066-51f9-49ae-8aac-d73c18e84899",
           "hidden": false,
-          "name": "Flutter",
-          "proficiency": "[placeholder] intermédiaire",
-          "level": 3,
+          "name": "Back-end",
+          "proficiency": "",
+          "level": 0,
           "keywords": [
-            "Thrive"
+            "FastAPI",
+            ".NET",
+            "API REST",
+            "SQLite",
+            "Pydantic"
           ]
         },
         {
-          "id": "skill-arduino",
+          "id": "80d89060-5637-4ae9-bfdf-feb5bb3dd349",
           "hidden": false,
-          "name": "Arduino",
-          "proficiency": "[placeholder] intermédiaire",
-          "level": 3,
+          "name": "VR, 3D et électronique",
+          "proficiency": "",
+          "level": 0,
           "keywords": [
-            "Worldwide Weather Watcher"
+            "Unity",
+            "Arduino"
+          ]
+        },
+        {
+          "id": "lnf1cqkir0isxkhn7c1mqdjn",
+          "hidden": false,
+          "name": "DevOps et systèmes",
+          "proficiency": "",
+          "level": 0,
+          "keywords": [
+            "Docker",
+            "GitLab CI",
+            "Git Flow",
+            "Linux/WSL",
+            "VMware",
+            "Wireshark"
           ]
         }
       ]
@@ -190,58 +223,86 @@
       "hidden": false,
       "items": [
         {
-          "id": "lang-fr",
+          "id": "xbjrxygmdwynsyrtiszqto5y",
           "hidden": false,
           "language": "Français",
-          "fluency": "[placeholder] langue maternelle",
+          "fluency": "Langue maternelle",
           "level": 5
         },
         {
-          "id": "lang-en",
+          "id": "mhp81i8jhxccxq7zhpn6ve2e",
           "hidden": false,
           "language": "Anglais",
-          "fluency": "[placeholder] intermédiaire",
-          "level": 3
+          "fluency": "Professionnel, TOEIC prévu",
+          "level": 4
+        },
+        {
+          "id": "fe86s4nix608bt3xpuioxktq",
+          "hidden": false,
+          "language": "Allemand",
+          "fluency": "Débutant",
+          "level": 2
+        }
+      ]
+    },
+    "volunteer": {
+      "title": "Activités",
+      "hidden": false,
+      "items": [
+        {
+          "id": "fgg0aybtho8byyc1w2drwcdr",
+          "hidden": false,
+          "organization": "BDE CESI Rouen – Responsable communication",
+          "location": "",
+          "period": "oct. 2025 – Aujourd’hui",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Pilotage de la communication du BDE : contenus Instagram, affiches d'événements, couverture photo et vidéo.</p>"
+        },
+        {
+          "id": "ek6hzd2ri77vmwa3gwao7asg",
+          "hidden": false,
+          "organization": "Club robotique CESI",
+          "location": "",
+          "period": "2023 – 2024",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Développé le pilotage à distance d'une réplique de BB-8 : joystick web (HTML, JS) et serveur Flask qui commande l'Arduino par liaison série.</p>"
+        }
+      ]
+    },
+    "interests": {
+      "title": "Centres d'intérêt",
+      "hidden": false,
+      "items": [
+        {
+          "id": "328edb6c-a45f-4f9e-ac12-51dbd7b833b9",
+          "hidden": false,
+          "name": "Course à pied (semi-marathon, mars 2027), callisthénie, graphisme, voyages",
+          "keywords": []
         }
       ]
     },
     "certifications": {
       "title": "Certifications",
       "hidden": false,
-      "items": [
-        {
-          "id": "cert-placeholder",
-          "hidden": false,
-          "title": "[placeholder] Certification",
-          "issuer": "[placeholder] Organisme",
-          "date": "[placeholder] 2025",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>[placeholder] Détail de la certification à remplacer par les données RxResume.</p>"
-        }
-      ]
+      "items": []
     },
     "awards": {
-      "title": "Distinctions",
+      "title": "Awards",
       "hidden": false,
-      "items": [
-        {
-          "id": "award-placeholder",
-          "hidden": false,
-          "title": "[placeholder] Prix",
-          "awarder": "[placeholder] CESI",
-          "date": "[placeholder] 2025",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>[placeholder] Détail de la distinction à remplacer par les données RxResume.</p>"
-        }
-      ]
+      "items": []
     }
+  },
+  "summary": {
+    "title": "Résumé",
+    "hidden": false,
+    "content": "<p>Élève ingénieur en 4e année d'informatique (alternance) à CESI, apprenti chez CAPFI depuis janvier 2026. Développeur principal de Cerebro, un système de matching par LLM en production, sur lequel j'ai travaillé à rendre les scores explicables et mesurables. Auparavant stagiaire de recherche au CESI LINEACT sur la téléopération de robots en réalité virtuelle. Je recherche un stage à l'étranger à partir de juin 2027 (12 à 17 semaines) en IA, VR ou robotique, idéalement au sein d'une équipe de recherche.</p>"
   }
 }
