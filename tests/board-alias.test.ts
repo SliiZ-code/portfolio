@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boardMedia, boardNote, findAlternateProject, overlayFor, overlayKeyFor } from '../src/data/board';
-import { getResume, type Project, type Resume } from '../src/lib/resume';
+import type { Project, Resume } from '../src/lib/resume';
+import { sampleResume } from './fixtures';
 
 const project = (name: string, slug: string): Project => ({
   id: slug,
@@ -11,7 +12,7 @@ const project = (name: string, slug: string): Project => ({
   website: { url: '', label: '' },
 });
 
-const withProjects = (lang: Resume['lang'], projects: Project[]): Resume => ({ ...getResume(lang), lang, projects });
+const withProjects = (lang: Resume['lang'], projects: Project[]): Resume => ({ ...sampleResume(lang), lang, projects });
 
 describe('overlay aliases', () => {
   it('resolves the overlay through an alias slug', () => {

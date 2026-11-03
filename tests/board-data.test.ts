@@ -11,7 +11,8 @@ import {
   projectPath,
 } from '../src/data/board';
 import { strings } from '../src/i18n';
-import { getResume, type Project, type Resume } from '../src/lib/resume';
+import type { Project, Resume } from '../src/lib/resume';
+import { sampleResume } from './fixtures';
 import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
 import { OSCILLATORS, PATTERNS } from '../src/scripts/board/patterns';
 
@@ -28,7 +29,7 @@ const withProjects = (resume: Resume, projects: Project[]): Resume => ({ ...resu
 const overlap = (a: Box, b: Box) => a.x < b.x2 && a.x2 > b.x && a.y < b.y2 && a.y2 > b.y;
 
 describe('known project overlay', () => {
-  const projects = getBoardProjects(getResume('fr'));
+  const projects = getBoardProjects(sampleResume('fr'));
   const bySlug = Object.fromEntries(projects.map((project) => [project.slug, project]));
 
   it('places the four known projects exactly like the prototype', () => {
@@ -58,13 +59,13 @@ describe('known project overlay', () => {
   });
 
   it('ignores overlay entries that are not in the resume', () => {
-    const only = getBoardProjects(withProjects(getResume('fr'), [getResume('fr').projects[0]]));
+    const only = getBoardProjects(withProjects(sampleResume('fr'), [sampleResume('fr').projects[0]]));
     expect(only).toHaveLength(1);
   });
 });
 
 describe('projects outside the overlay', () => {
-  const base = getResume('fr');
+  const base = sampleResume('fr');
   const projects = getBoardProjects(withProjects(base, [...base.projects, extra('Unlisted Project')]));
   const auto = projects.find((project) => project.slug === 'extra-0')!;
 
@@ -86,7 +87,7 @@ describe('projects outside the overlay', () => {
 
 describe('overlay aliases', () => {
   it('resolves the overlay of the French project through the English slug', () => {
-    const en = getResume('en');
+    const en = sampleResume('en');
     const projects = getBoardProjects(withProjects(en, [{ ...en.projects[0], name: 'Game of Life', slug: 'game-of-life' }]));
     const conway = projects.find((project) => project.slug === 'game-of-life')!;
     expect(conway).toBeDefined();
@@ -130,7 +131,7 @@ describe('lab, story, CV and contact', () => {
 describe('board entities', () => {
   it('lists every entity once, in French and in English', () => {
     for (const lang of ['fr', 'en'] as const) {
-      const resume = getResume(lang);
+      const resume = sampleResume(lang);
       const entities = getBoardEntities(resume, { cvHref: lang === 'fr' ? '/cv/' : '/en/cv/', contactHref: 'mailto:x@y.z' });
       const t = strings(lang).board;
       const ids = entities.map((entity) => entity.id);
@@ -147,7 +148,7 @@ describe('board entities', () => {
   });
 
   it('puts the fixed entities before the ones that need a free slot', () => {
-    const base = getResume('fr');
+    const base = sampleResume('fr');
     const entities = getBoardEntities(withProjects(base, [extra('Alpha'), ...base.projects]), { cvHref: '/cv/', contactHref: '' });
     const firstFree = entities.findIndex((entity) => entity.at === null);
     expect(firstFree).toBeGreaterThan(0);
@@ -155,12 +156,12 @@ describe('board entities', () => {
   });
 
   it('keeps a contact without address inert', () => {
-    const entities = getBoardEntities(getResume('fr'), { cvHref: '/cv/', contactHref: '' });
+    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: '' });
     expect(entities.find((entity) => entity.id === 'contact')?.url).toBe('');
   });
 
   it('does not collide: structures never overlap and stay on screen, in both orientations', () => {
-    const entities = getBoardEntities(getResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' }).filter((entity) => entity.at);
+    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' }).filter((entity) => entity.at);
     // the fine name raster: "Julien / Petit-Colboc" is 150 × 41 cells, "Julien / Petit- / Colboc" 82 × 63
     const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740]];
     for (const [vw, vh] of screens) {

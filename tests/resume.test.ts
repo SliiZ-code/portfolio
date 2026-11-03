@@ -120,18 +120,13 @@ describe('parseResume', () => {
     expect(parsed.projects).toEqual([]);
   });
 
-  it('loads the committed FR/EN samples and slugifies project names', () => {
+  it('loads the committed FR/EN data, slugified, with the same entries (ids) in both languages', () => {
     const fr = getResume('fr');
     const en = getResume('en');
-    expect(fr.projects.map((project) => project.slug)).toEqual([
-      'jeu-de-la-vie',
-      'blink',
-      'thrive',
-      'worldwide-weather-watcher',
-    ]);
-    expect(en.projects.map((project) => project.slug)).toEqual(fr.projects.map((project) => project.slug));
-    expect(fr.name).toBe('Julien Petit-Colboc');
-    expect(fr.email).toBe('');
+    expect(fr.projects.length).toBeGreaterThan(0);
+    for (const project of fr.projects) expect(project.slug).toBe(slugify(project.name));
+    expect(en.projects.map((project) => project.id)).toEqual(fr.projects.map((project) => project.id));
+    expect(fr.name).toBe(en.name);
   });
 });
 
