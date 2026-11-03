@@ -5,6 +5,7 @@ import BoardList from './BoardList.astro';
 import { getBoardEntities, getBoardPages, getBoardProjects } from '../data/board';
 import { site } from '../data/site';
 import { strings } from '../i18n';
+import { boardName } from '../lib/name';
 import { getResume, htmlToText, type Lang } from '../lib/resume';
 
 interface Props {
@@ -18,10 +19,7 @@ const pages = getBoardPages(lang);
 const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = site.cvPdf[lang];
-const [first, ...rest] = resume.name.split(' ');
-const nameText = rest.length ? `${first}\n${rest.join(' ')}` : first;
-// on a phone the surname breaks after its hyphen
-const nameNarrow = nameText.replace(/-/g, '-\n');
+const { l: nameText, p: nameNarrow } = boardName(resume.name);
 const contactHref = resume.email ? `mailto:${resume.email}` : resume.profiles[0]?.url ?? '';
 const entities = getBoardEntities(resume, { cvHref, contactHref });
 
