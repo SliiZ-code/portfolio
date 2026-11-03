@@ -138,6 +138,8 @@ export const resumeFromResponse = (body) => sanitizeResume(body?.data ?? body);
 const getResume = async (id, baseUrl, key) => {
   const response = await fetch(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, {
     headers: { 'x-api-key': key },
+    // never forward the key to wherever a redirect points
+    redirect: 'error',
     // a hung RxResume must not hang a deploy
     signal: AbortSignal.timeout(30_000),
   });
@@ -148,6 +150,7 @@ const getResume = async (id, baseUrl, key) => {
 
 const main = async () => {
   const baseUrl = (process.env.RXRESUME_URL || 'https://rxresu.me').replace(/\/+$/, '');
+  if (!baseUrl.startsWith('https://')) throw new Error('RXRESUME_URL must use https://');
   const key = process.env.RXRESUME_API_KEY;
   if (!key) throw new Error('RXRESUME_API_KEY is required');
   const langs = ['fr', 'en'];

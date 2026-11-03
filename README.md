@@ -202,16 +202,19 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
 - The builder stage runs `npm run sync:resume` before `npm run build` when
   `RXRESUME_API_KEY` is set. If the sync fails it prints a warning and builds with the
   committed JSON, so a RxResume outage never breaks a deploy
-- The four build arguments below exist only in the builder stage, never in the Caddy image
+- The settings below exist only in the builder stage, never in the Caddy image. The API
+  key is mounted as a build secret, so it stays out of the image history and build cache
 - Runs on port 80
 
 **Build variables** (Coolify → Configuration → Environment Variables, tick
-"Build Variable"; with plain Docker use `--build-arg`):
+"Build Variable", and turn on "Use Docker Build Secrets" in the advanced settings so the
+key arrives as a secret; with plain Docker use `--build-arg` for the URL and IDs and
+`--secret id=RXRESUME_API_KEY,env=RXRESUME_API_KEY` for the key):
 
 | Variable | Meaning |
 | --- | --- |
-| `RXRESUME_URL` | RxResume base URL (default `https://rxresu.me`) |
-| `RXRESUME_API_KEY` | API key; leave empty to skip the sync and use the committed JSON |
+| `RXRESUME_URL` | RxResume base URL, `https://` only (default `https://rxresu.me`) |
+| `RXRESUME_API_KEY` | API key, passed as a build secret; without it the sync is skipped and the committed JSON is used |
 | `RXRESUME_ID_FR` | ID of the French resume |
 | `RXRESUME_ID_EN` | ID of the English resume |
 
