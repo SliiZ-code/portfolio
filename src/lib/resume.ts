@@ -212,6 +212,25 @@ const languageItem = z
   })
   .catch({ id: '', hidden: true, language: '', fluency: '', level: 0 });
 
+const volunteerItem = z
+  .object({
+    ...item,
+    organization: text,
+    location: text,
+    period: text,
+    website,
+    description: text,
+  })
+  .catch({ id: '', hidden: true, organization: '', location: '', period: '', website: { url: '', label: '', inlineLink: false }, description: '' });
+
+const interestItem = z
+  .object({
+    ...item,
+    name: text,
+    keywords: z.array(z.string()).catch([]),
+  })
+  .catch({ id: '', hidden: true, name: '', keywords: [] });
+
 const timedItem = z
   .object({
     ...item,
@@ -241,6 +260,8 @@ const sectionsSchema = z
     projects: makeSection(projectItem).optional().catch(undefined),
     skills: makeSection(skillItem).optional().catch(undefined),
     languages: makeSection(languageItem).optional().catch(undefined),
+    volunteer: makeSection(volunteerItem).optional().catch(undefined),
+    interests: makeSection(interestItem).optional().catch(undefined),
     certifications: makeSection(timedItem).optional().catch(undefined),
     awards: makeSection(timedItem).optional().catch(undefined),
   })
@@ -323,6 +344,19 @@ export interface Language {
   level: number;
 }
 
+export interface Volunteer {
+  organization: string;
+  location: string;
+  period: string;
+  description: string;
+  website: Website;
+}
+
+export interface Interest {
+  name: string;
+  keywords: string[];
+}
+
 export interface Certification {
   title: string;
   issuer: string;
@@ -355,6 +389,8 @@ export interface Resume {
     projects: string;
     skills: string;
     languages: string;
+    volunteer: string;
+    interests: string;
     certifications: string;
     awards: string;
   };
@@ -364,6 +400,8 @@ export interface Resume {
   education: Education[];
   skills: Skill[];
   languages: Language[];
+  volunteer: Volunteer[];
+  interests: Interest[];
   certifications: Certification[];
   awards: Award[];
 }
@@ -421,6 +459,8 @@ export const parseResume = (input: unknown, lang: Lang): Resume => {
       projects: titles('projects', lang === 'fr' ? 'Projets' : 'Projects'),
       skills: titles('skills', lang === 'fr' ? 'Compétences' : 'Skills'),
       languages: titles('languages', lang === 'fr' ? 'Langues' : 'Languages'),
+      volunteer: titles('volunteer', lang === 'fr' ? 'Engagements' : 'Volunteering'),
+      interests: titles('interests', lang === 'fr' ? "Centres d'intérêt" : 'Interests'),
       certifications: titles('certifications', lang === 'fr' ? 'Certifications' : 'Certifications'),
       awards: titles('awards', lang === 'fr' ? 'Distinctions' : 'Awards'),
     },
@@ -473,6 +513,21 @@ export const parseResume = (input: unknown, lang: Lang): Resume => {
         language: entry.language.trim(),
         fluency: entry.fluency.trim(),
         level: entry.level,
+      })),
+    volunteer: visible(pickSection('volunteer')?.items ?? [])
+      .filter((entry) => entry.organization.trim())
+      .map((entry) => ({
+        organization: entry.organization.trim(),
+        location: entry.location.trim(),
+        period: entry.period.trim(),
+        description: cleanDescription(entry.description),
+        website: cleanWebsite(entry.website),
+      })),
+    interests: visible(pickSection('interests')?.items ?? [])
+      .filter((entry) => entry.name.trim())
+      .map((entry) => ({
+        name: entry.name.trim(),
+        keywords: entry.keywords.map((keyword) => keyword.trim()).filter(Boolean),
       })),
     certifications: visible(pickSection('certifications')?.items ?? [])
       .filter((entry) => entry.title.trim())

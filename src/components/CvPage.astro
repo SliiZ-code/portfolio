@@ -100,6 +100,29 @@ const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index 
         </section>
       )}
 
+      {resume.volunteer.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.volunteer}</h2>
+          <div class="cv-items">
+            {resume.volunteer.map((entry) => (
+              <div class="cv-item">
+                <h3>{entry.organization}</h3>
+                <div class="where">
+                  {where(entry.location, entry.period)}
+                  {entry.website.url && (
+                    <>
+                      {(entry.location || entry.period) && ' · '}
+                      <a href={entry.website.url}>{entry.website.label || t.cv.website}</a>
+                    </>
+                  )}
+                </div>
+                {entry.description && <div class="description" set:html={entry.description} />}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {resume.projects.length > 0 && (
         <section class="cv-section">
           <h2>{resume.sectionTitles.projects}</h2>
@@ -162,6 +185,20 @@ const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index 
                   )}
                 </h3>
                 {language.fluency && <div class="where">{language.fluency}</div>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {resume.interests.length > 0 && (
+        <section class="cv-section">
+          <h2>{resume.sectionTitles.interests}</h2>
+          <div class="cv-items">
+            {resume.interests.map((interest) => (
+              <div class="cv-item">
+                <h3>{interest.name}</h3>
+                {interest.keywords.length > 0 && <div class="where">{interest.keywords.join(', ')}</div>}
               </div>
             ))}
           </div>

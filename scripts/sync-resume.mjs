@@ -67,6 +67,8 @@ const ITEM_FIELDS = {
   projects: { name: 'string', period: 'string', website: 'website', description: 'string' },
   skills: { name: 'string', proficiency: 'string', level: 'number', keywords: 'strings' },
   languages: { language: 'string', fluency: 'string', level: 'number' },
+  volunteer: { organization: 'string', location: 'string', period: 'string', website: 'website', description: 'string' },
+  interests: { name: 'string', keywords: 'strings' },
   certifications: { title: 'string', issuer: 'string', date: 'string', website: 'website', description: 'string' },
   awards: { title: 'string', awarder: 'string', date: 'string', website: 'website', description: 'string' },
 };

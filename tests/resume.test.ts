@@ -135,6 +135,72 @@ describe('parseResume', () => {
   });
 });
 
+describe('volunteer and interests', () => {
+  const raw = {
+    sections: {
+      volunteer: {
+        title: 'Activités',
+        hidden: false,
+        items: [
+          {
+            id: 'v1',
+            hidden: false,
+            organization: ' BDE CESI Rouen ',
+            location: 'Rouen',
+            period: 'oct. 2025 – Aujourd’hui',
+            website: { url: 'https://example.com', label: 'site' },
+            description: '<p>Communication <script>x</script></p>',
+          },
+          { id: 'v2', hidden: false, organization: '  ' },
+        ],
+      },
+      interests: {
+        title: '',
+        hidden: false,
+        items: [{ id: 'i1', hidden: false, name: ' Course à pied ', keywords: ['trail', ' ', 'semi'] }, { id: 'i2', hidden: false, name: '' }],
+      },
+    },
+  };
+
+  it('parses volunteer entries and drops empty ones', () => {
+    const parsed = parseResume(raw, 'fr');
+    expect(parsed.volunteer).toEqual([
+      {
+        organization: 'BDE CESI Rouen',
+        location: 'Rouen',
+        period: 'oct. 2025 – Aujourd’hui',
+        description: '<p>Communication </p>',
+        website: { url: 'https://example.com', label: 'site' },
+      },
+    ]);
+    expect(parsed.sectionTitles.volunteer).toBe('Activités');
+  });
+
+  it('parses interests and drops empty ones', () => {
+    const parsed = parseResume(raw, 'fr');
+    expect(parsed.interests).toEqual([{ name: 'Course à pied', keywords: ['trail', 'semi'] }]);
+  });
+
+  it('falls back to a title in the resume language', () => {
+    expect(parseResume({}, 'fr').sectionTitles).toMatchObject({ volunteer: 'Engagements', interests: "Centres d'intérêt" });
+    expect(parseResume({}, 'en').sectionTitles).toMatchObject({ volunteer: 'Volunteering', interests: 'Interests' });
+  });
+
+  it('survives the sync with the same fields', () => {
+    const output = sanitizeResume(raw) as Record<string, any>;
+    expect(output.sections.volunteer.items[0]).toMatchObject({ organization: ' BDE CESI Rouen ', location: 'Rouen' });
+    expect(output.sections.interests.items[0]).toMatchObject({ name: ' Course à pied ', keywords: ['trail', ' ', 'semi'] });
+  });
+
+  it('keeps hidden volunteer entries off the site', () => {
+    const parsed = parseResume(
+      { sections: { volunteer: { title: '', hidden: false, items: [{ id: 'v', hidden: true, organization: 'Secret' }] } } },
+      'en',
+    );
+    expect(parsed.volunteer).toEqual([]);
+  });
+});
+
 describe('slugify', () => {
   it('handles accents, spaces and apostrophes', () => {
     expect(slugify('Jeu de la vie')).toBe('jeu-de-la-vie');
