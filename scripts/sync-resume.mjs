@@ -138,6 +138,8 @@ export const resumeFromResponse = (body) => sanitizeResume(body?.data ?? body);
 const getResume = async (id, baseUrl, key) => {
   const response = await fetch(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, {
     headers: { 'x-api-key': key },
+    // a hung RxResume must not hang a deploy
+    signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`RxResume ${id}: HTTP ${response.status} ${response.statusText}`);
   const body = await response.json();

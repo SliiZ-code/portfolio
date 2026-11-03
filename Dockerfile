@@ -12,6 +12,21 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# RxResume sync settings (Coolify "build variables"). They only exist in this stage:
+# the final image is built from /app/dist alone, so the key never reaches it.
+ARG RXRESUME_URL
+ARG RXRESUME_API_KEY
+ARG RXRESUME_ID_FR
+ARG RXRESUME_ID_EN
+
+# Refresh the resume data when a key is given. If RxResume is down or the sync fails,
+# build with the committed JSON instead of breaking the deploy.
+RUN if [ -n "$RXRESUME_API_KEY" ]; then \
+      npm run sync:resume || echo "WARNING: resume sync failed, building with the committed resume data"; \
+    else \
+      echo "RXRESUME_API_KEY not set, building with the committed resume data"; \
+    fi
+
 # Build the static site
 RUN npm run build
 

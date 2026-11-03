@@ -32,8 +32,9 @@ npm run screenshots # optional, needs Playwright (see below)
 
 ## Content flow
 
-The site never reads RxResume at build time. The public data is synced into two
-sanitised JSON files, which are then validated by Zod:
+RxResume is the source of truth. The public data is synced into two sanitised JSON
+files (on every Docker build when a key is configured, see Deployment), which are
+then validated by Zod:
 
 ```text
 RxResume API
@@ -57,7 +58,8 @@ Then run `npm run sync:resume`. The script calls
 site renders. It deliberately drops:
 
 - resume metadata and private notes;
-- hidden sections, hidden items and hidden custom fields;
+- hidden sections, hidden items and hidden custom fields (one exception: hiding a
+  *project* only keeps it off the PDF, the site still shows it);
 - the profile picture;
 - custom sections.
 
@@ -65,9 +67,9 @@ Descriptions are sanitised again at load time: only `p`, `ul`, `ol`, `li`,
 `strong`, `em`, `a[href]` and `br` survive; links are restricted to `http(s)`,
 `mailto`, `tel`, root-relative paths and fragments.
 
-The checked-in JSON files are samples: experience, certification and award
-entries are labelled `[placeholder]` and must be replaced by a real sync before
-publishing. Do not invent facts about Julien in this repository.
+The checked-in JSON files are the last real sync; they are what the build uses
+when no key is available or RxResume is unreachable. Do not invent facts about
+Julien in this repository.
 
 ### Project slugs
 
@@ -81,6 +83,14 @@ free rectangle that avoids every pattern, label, keep-clear zone and HUD corner)
 screen has no room left it is left off the board with a `[board] no free slot` console
 warning. An overlay entry without a matching RxResume project is ignored (RxResume stays the
 source of truth for projects).
+
+The FR and EN versions of a project are matched by the RxResume item `id` (a duplicated
+resume keeps the ids), then by overlay key, then by position.
+
+Captures need no overlay entry: drop `<slug>.mp4`, `.webm`, `.jpg`, `.jpeg`, `.png` or `.webp`
+in `public/media/` (video wins over image). The project's own slug is tried first, then its
+overlay key, then the slug of its other-language twin. An explicit `media` in the overlay
+still wins.
 
 ## Routes
 
@@ -189,8 +199,23 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
 
 **Docker image** (`Dockerfile`):
 - Multi-stage build: Node.js 24 builder → static site in Caddy 2 (Alpine)
-- No build-time secrets required; all data is committed JSON
+- The builder stage runs `npm run sync:resume` before `npm run build` when
+  `RXRESUME_API_KEY` is set. If the sync fails it prints a warning and builds with the
+  committed JSON, so a RxResume outage never breaks a deploy
+- The four build arguments below exist only in the builder stage, never in the Caddy image
 - Runs on port 80
+
+**Build variables** (Coolify → Configuration → Environment Variables, tick
+"Build Variable"; with plain Docker use `--build-arg`):
+
+| Variable | Meaning |
+| --- | --- |
+| `RXRESUME_URL` | RxResume base URL (default `https://rxresu.me`) |
+| `RXRESUME_API_KEY` | API key; leave empty to skip the sync and use the committed JSON |
+| `RXRESUME_ID_FR` | ID of the French resume |
+| `RXRESUME_ID_EN` | ID of the English resume |
+
+Since the resumes are only fetched at build time, redeploy after editing RxResume.
 
 **Caddyfile** configuration:
 - `encode zstd gzip` for compression
