@@ -1,5 +1,6 @@
 import type { Lang, Project, Resume } from '../lib/resume';
 import { strings } from '../i18n';
+import { findMedia } from '../lib/media';
 import type { At } from '../scripts/board/layout';
 import { OSCILLATORS, type PatternName } from '../scripts/board/patterns';
 
@@ -126,13 +127,27 @@ export const boardNote = (project: Project, lang: Lang): BoardNote | undefined =
   return note ? { text: note[lang], r: note.r } : undefined;
 };
 
-export const boardMedia = (project: Project): BoardOverlay['media'] => overlayFor(project)?.media;
+/**
+ * An explicit overlay media wins; otherwise a file in public/media named after the project's
+ * slug, its overlay key or the slug of its other-language twin is picked up by convention.
+ */
+export const boardMedia = (
+  project: Project,
+  alternate?: Project,
+  exists?: (file: string) => boolean,
+): BoardOverlay['media'] =>
+  overlayFor(project)?.media ?? findMedia([project.slug, overlayKeyFor(project) ?? '', alternate?.slug ?? ''], exists);
 
 /**
- * FR and EN resumes are separate documents. Prefer the project whose overlay key
- * matches, then fall back to the same index when both lists have the same size.
+ * FR and EN resumes are separate documents, but a duplicated entry keeps its id: match on
+ * that first, then on the overlay key, then fall back to the same index when both lists
+ * have the same size.
  */
 export function findAlternateProject(project: Project, projects: Project[], other: Resume): Project | undefined {
+  if (project.id) {
+    const same = other.projects.find((candidate) => candidate.id === project.id);
+    if (same) return same;
+  }
   const key = overlayKeyFor(project);
   if (key) {
     const matched = other.projects.find((candidate) => overlayKeyFor(candidate) === key);

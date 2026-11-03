@@ -27,6 +27,29 @@ describe('overlay aliases', () => {
   });
 });
 
+describe('findAlternateProject by id', () => {
+  const withId = (name: string, slug: string, id: string): Project => ({ ...project(name, slug), id });
+
+  it('matches the same entry across languages by id before anything else', () => {
+    const fr = [withId('Mon app', 'mon-app', 'a1'), withId('Autre', 'autre', 'b2')];
+    const en = withProjects('en', [withId('Other', 'other', 'b2'), withId('My app', 'my-app', 'a1')]);
+    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('my-app');
+    expect(findAlternateProject(fr[1], fr, en)?.slug).toBe('other');
+  });
+
+  it('prefers the id over the overlay key', () => {
+    const fr = [withId('Blink', 'blink', 'x1')];
+    const en = withProjects('en', [withId('Blink', 'blink', 'zzz'), withId('Blink bis', 'blink-bis', 'x1')]);
+    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('blink-bis');
+  });
+
+  it('ignores empty ids and falls back to the overlay key', () => {
+    const fr = [withId('Blink', 'blink', '')];
+    const en = withProjects('en', [withId('Other', 'other', ''), withId('Blink', 'blink', '')]);
+    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('blink');
+  });
+});
+
 describe('findAlternateProject', () => {
   const frProjects = [project('Jeu de la vie', 'jeu-de-la-vie'), project('Blink', 'blink')];
   const fr = withProjects('fr', frProjects);

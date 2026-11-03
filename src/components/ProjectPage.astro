@@ -18,7 +18,7 @@ const otherResume = getResume(other);
 const alt = findAlternateProject(project, resume.projects, otherResume);
 const boardHref = lang === 'fr' ? '/' : '/en/';
 const overlay = overlayFor(project);
-const media = boardMedia(project);
+const media = boardMedia(project, alt);
 const note = boardNote(project, lang);
 const meta = [overlay?.label?.[lang], project.period].filter(Boolean).join(' · ');
 const frProject = lang === 'fr' ? project : alt;
