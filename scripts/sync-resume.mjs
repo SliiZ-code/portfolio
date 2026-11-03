@@ -26,7 +26,11 @@ const str = (value) => (typeof value === 'string' ? value : '');
 const num = (value) => (typeof value === 'number' ? value : 0);
 const list = (value) => (Array.isArray(value) ? value : []);
 
-const visible = (items) => list(items).filter((item) => item && !item.hidden);
+const present = (items) => list(items).filter((item) => item && typeof item === 'object');
+const visible = (items) => present(items).filter((item) => !item.hidden);
+
+// A hidden project is left off the PDF but shown on the site; everything else hidden stays private.
+const publishable = (items, key) => (key === 'projects' ? present(items) : visible(items));
 
 const cleanItem = (item, fields) => {
   const source = item && typeof item === 'object' ? item : {};
@@ -73,7 +77,7 @@ const cleanSection = (section, key) => {
   return {
     title: str(section.title),
     hidden: false,
-    items: visible(section.items).map((item) => {
+    items: publishable(section.items, key).map((item) => {
       const clean = cleanItem(item, fields);
       if (key === 'experience') {
         clean.roles = list(item.roles).map((role) => ({
@@ -90,6 +94,8 @@ const cleanSection = (section, key) => {
 /**
  * Structural sanitiser: metadata (private notes), custom sections, the picture,
  * hidden sections, hidden items and hidden custom fields must never leave this function.
+ * The one exception is the items of the projects section: hiding a project keeps it off
+ * the PDF only, the site still shows it (a hidden projects section is dropped as usual).
  */
 export const sanitizeResume = (input) => {
   const source = input && typeof input === 'object' ? input : {};

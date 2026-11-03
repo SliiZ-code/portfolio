@@ -43,7 +43,6 @@ describe('sanitizeResume', () => {
 
     expect(text).not.toContain('private note');
     expect(text).not.toContain('private.png');
-    expect(text).not.toContain('Hidden project');
     expect(text).not.toContain('Hidden section item');
     expect(text).not.toContain('Hidden certification');
     expect(text).not.toContain('hidden custom field');
@@ -51,9 +50,31 @@ describe('sanitizeResume', () => {
     expect(text).not.toContain('metadata');
     expect(output.picture).toBeUndefined();
     expect(output.sections.publications).toBeUndefined();
-    expect(output.sections.projects.items).toHaveLength(1);
-    expect(output.sections.projects.items[0].name).toBe('Visible');
     expect(output.sections.certifications.items).toHaveLength(0);
+  });
+
+  it('keeps hidden projects: hidden means off the PDF, not off the site', () => {
+    const output = sanitizeResume(fixture) as Record<string, any>;
+    expect(output.sections.projects.items.map((entry: any) => entry.name)).toEqual(['Visible', 'Hidden project']);
+    expect(output.sections.projects.items.every((entry: any) => entry.hidden === false)).toBe(true);
+  });
+
+  it('still drops hidden items of every other section', () => {
+    const output = sanitizeResume({
+      sections: {
+        experience: { title: 'XP', hidden: false, items: [{ id: 'e1', hidden: true, company: 'Secret Corp' }] },
+        volunteer: { title: 'Vol', hidden: false, items: [{ id: 'v1', hidden: true, organization: 'Secret Club' }] },
+      },
+    }) as Record<string, any>;
+    expect(JSON.stringify(output)).not.toContain('Secret');
+    expect(output.sections.experience.items).toHaveLength(0);
+  });
+
+  it('drops the projects section itself when it is hidden', () => {
+    const output = sanitizeResume({
+      sections: { projects: { title: 'Projets', hidden: true, items: [{ id: 'p', hidden: false, name: 'Nope' }] } },
+    }) as Record<string, any>;
+    expect(output.sections.projects).toBeUndefined();
   });
 });
 
@@ -66,7 +87,7 @@ describe('resumeFromResponse', () => {
 
   it('accepts a bare resume body', () => {
     const output = resumeFromResponse(fixture) as Record<string, any>;
-    expect(output.sections.projects.items).toHaveLength(1);
+    expect(output.sections.projects.items).toHaveLength(2);
   });
 
   it('survives an empty or non-object body', () => {
@@ -77,9 +98,26 @@ describe('resumeFromResponse', () => {
 describe('parseResume', () => {
   it('drops hidden items/sections even if a raw resume slips through', () => {
     const parsed = parseResume(fixture, 'fr');
-    expect(parsed.projects.map((project) => project.name)).toEqual(['Visible']);
     expect(parsed.certifications).toHaveLength(0);
     expect(parsed.summary).toBe('<p>Bonjour</p>');
+  });
+
+  it('keeps hidden projects but not hidden items elsewhere', () => {
+    const parsed = parseResume(fixture, 'fr');
+    expect(parsed.projects.map((project) => project.name)).toEqual(['Visible', 'Hidden project']);
+    const experience = parseResume(
+      { sections: { experience: { title: '', hidden: false, items: [{ id: 'e', hidden: true, company: 'Secret Corp' }] } } },
+      'fr',
+    );
+    expect(experience.experience).toHaveLength(0);
+  });
+
+  it('drops the projects when their section is hidden', () => {
+    const parsed = parseResume(
+      { sections: { projects: { title: 'Projets', hidden: true, items: [{ id: 'p', hidden: false, name: 'Nope' }] } } },
+      'fr',
+    );
+    expect(parsed.projects).toEqual([]);
   });
 
   it('loads the committed FR/EN samples and slugifies project names', () => {

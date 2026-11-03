@@ -388,7 +388,8 @@ export const parseResume = (input: unknown, lang: Lang): Resume => {
     pickSection(key)?.title.trim() || fallback;
 
   const seen = new Map<string, number>();
-  const projects: Project[] = visible(pickSection('projects')?.items ?? [])
+  // hiding a project only removes it from the PDF: the site keeps it
+  const projects: Project[] = (pickSection('projects')?.items ?? [])
     .filter((entry) => entry.name.trim())
     .map((entry) => {
       const base = slugify(entry.name) || 'projet';
