@@ -87,7 +87,10 @@ like the JSON, so a build without RxResume still has them.
 Before writing a PDF the sync fetches the web resume's JSON and refuses it (that language fails,
 the previous file is kept, the script exits with an error) if `basics.phone` is not empty, if the
 phone of the main resume appears anywhere in the web resume, or if the response does not start
-with `%PDF-`. The other language is not affected.
+with `%PDF-`. The other language is not affected. The resume JSON is still updated, so until
+the web resume is fixed the PDF can lag behind the CV page; it never carries the phone number.
+The phone check compares against the main resume's `basics.phone`: keep the number there, not
+in a custom field, or the sync can't recognise it (it warns when that field is empty).
 
 The PDF link (board HUD, no-JavaScript list, CV page) shows up only when the file of that
 language exists at build time; without IDs there is no PDF link and the CV page offers print.

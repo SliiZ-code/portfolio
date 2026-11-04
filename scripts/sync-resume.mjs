@@ -159,10 +159,16 @@ const stringsOf = (value) => {
 export const assertWebResume = (main, web) => {
   if (str(web?.basics?.phone).trim()) throw new Error('the web resume has a phone number');
   const phone = str(main?.basics?.phone).trim();
-  if (!phone) return;
+  if (!phone) {
+    console.warn("WARNING: the main resume has no phone in basics.phone, so the web resume can't be checked against it");
+    return;
+  }
   // the last nine digits, so "+33 6 12..." and "06 12..." count as the same number
   const needle = digits(phone).slice(-9);
-  if (stringsOf(web).some((value) => value.includes(phone) || (needle && digits(value).includes(needle)))) {
+  const strings = stringsOf(web);
+  // also across fields, in case the number is split over two of them
+  const joined = digits(strings.join(''));
+  if (strings.some((value) => value.includes(phone)) || (needle && joined.includes(needle))) {
     throw new Error("the web resume contains the main resume's phone number");
   }
 };

@@ -42,6 +42,11 @@ describe('assertWebResume', () => {
     }
   });
 
+  it('refuses a phone split over two fields', () => {
+    const split = { ...web, basics: { ...web.basics, customFields: [{ text: '06 12' }, { text: '34 56 78' }] } };
+    expect(() => assertWebResume(main, split)).toThrow(/phone/);
+  });
+
   it('does not put the number in the error', () => {
     try {
       assertWebResume(main, { ...web, summary: { content: PHONE } });
