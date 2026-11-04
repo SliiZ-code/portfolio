@@ -15,14 +15,14 @@ Astro site is the port of that prototype.
 - Self-hosted Geist Pixel / Gambarino fonts; Geist Mono and Shantell Sans come
   from `@fontsource`
 
-three.js is used only by the lab page (loaded on demand); no GSAP, Lenis or client-side framework.
+three.js is used only by a project page that mounts a live 3D model (loaded on demand); no GSAP, Lenis or client-side framework.
 
 ## Commands
 
 ```bash
 npm install
 npm run dev        # http://localhost:4321
-npm run build      # 17 static pages in dist/
+npm run build      # static pages in dist/
 npm run preview    # serve dist/
 npm run check      # astro check
 npm test           # vitest run
@@ -44,13 +44,16 @@ RxResume API
   -> pages and components
 ```
 
-Create `.env` from `.env.example` and fill in the three required values:
+Create `.env` from `.env.example` and fill in the required values (the last two are
+optional, see "CV PDF" below):
 
 ```bash
 RXRESUME_URL=https://rxresu.me
 RXRESUME_API_KEY=...
 RXRESUME_ID_FR=...
 RXRESUME_ID_EN=...
+RXRESUME_PDF_ID_FR=...
+RXRESUME_PDF_ID_EN=...
 ```
 
 Then run `npm run sync:resume`. The script calls
@@ -69,13 +72,31 @@ Descriptions are sanitised again at load time: only `p`, `ul`, `ol`, `li`,
 
 The checked-in JSON files are the last real sync; they are what the build uses
 when no key is available or RxResume is unreachable. Do not invent facts about
-Julien in this repository.
+Julien in this repository: names, descriptions, periods and links come from RxResume, the
+board only adds its own voice (margin notes, hints, UI strings).
+
+### CV PDF
+
+The public PDF is not rendered from the main resumes, which carry a phone number. Create in
+RxResume a copy of each resume **without the phone number** (a "web resume"), used only for the
+PDF, and put their IDs in `RXRESUME_PDF_ID_FR` / `RXRESUME_PDF_ID_EN`. For each language that has
+an ID the sync downloads `GET /api/openapi/resumes/:id/pdf` into
+`public/cv/julien-petit-colboc-fr.pdf` / `julien-petit-colboc-en.pdf`. These files are committed
+like the JSON, so a build without RxResume still has them.
+
+Before writing a PDF the sync fetches the web resume's JSON and refuses it (that language fails,
+the previous file is kept, the script exits with an error) if `basics.phone` is not empty, if the
+phone of the main resume appears anywhere in the web resume, or if the response does not start
+with `%PDF-`. The other language is not affected.
+
+The PDF link (board HUD, no-JavaScript list, CV page) shows up only when the file of that
+language exists at build time; without IDs there is no PDF link and the CV page offers print.
 
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
 `Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, pattern, tag,
-page note and capture are a site-only overlay in `src/data/board.ts`, keyed by that slug
+page note, capture and optional live experiment are a site-only overlay in `src/data/board.ts`, keyed by that slug
 (positions are screen fractions per orientation, `l` landscape / `p` portrait). A project
 that exists in RxResume but not in the overlay is still rendered, in the no-JavaScript list and as a page:
 on the board it gets a deterministic pattern and a free slot found at runtime (a scan for a
@@ -86,6 +107,9 @@ source of truth for projects).
 
 The FR and EN versions of a project are matched by the RxResume item `id` (a duplicated
 resume keeps the ids), then by overlay key, then by position.
+
+A project's meta line (project page, no-JavaScript list) is the overlay tag and the RxResume
+period joined by ` · `; an empty part is skipped.
 
 Captures need no overlay entry: drop `<slug>.mp4`, `.webm`, `.jpg`, `.jpeg`, `.png` or `.webp`
 in `public/media/` (video wins over image). The project's own slug is tried first, then its
@@ -99,8 +123,9 @@ still wins.
 | `/` | `/en/` |
 | `/projets/<slug>/` | `/en/projects/<slug>/` |
 | `/cv/` | `/en/cv/` |
-| `/labo/` | `/en/lab/` |
-| `/histoire/` | `/en/story/` |
+
+`/labo/`, `/histoire/`, `/en/lab/` and `/en/story/` no longer exist: `redirects` in
+`astro.config.mjs` sends them to the board (they are not in the sitemap).
 
 `<html lang>` follows the route. Every page has a canonical URL, `hreflang`
 alternates and its own title/description. The project list is generated at build
@@ -112,20 +137,17 @@ time, not rendered on the client.
 
 - `url`: absolute site origin for canonical and `hreflang` URLs. Empty means
   relative URLs, which is fine for local/preview builds.
-- `cvPdf.fr` / `cvPdf.en`: public paths to PDF CVs. When empty, the HUD CV link
-  points to the `/cv/` page and the page offers print instead of a PDF download.
 
-## Lab and story
+## Live experiment on a project page
 
-Two hand-placed patterns sit on the board next to the projects: the lab (`labo`, a beacon)
-and "mon histoire" / "my story" (a toad). Their position and pattern live in `BOARD_PAGES`
-in `src/data/board.ts`; their name, label and margin note in `src/i18n`.
-
-- The lab page lists the experiments of `src/data/lab.ts`. The first one renders
-  `public/media/arduino.glb` with three.js at 320×200, then pixelates it (see below); drag to
-  rotate, it turns by itself unless reduced motion is requested, and it follows the theme.
-  three.js is imported only once the viewer is on screen.
-- The story page is a placeholder (`[placeholder]` copy) until the real text is written.
+A project can replace its pixelated capture with a live 3D viewer: give its overlay entry
+`experiment: { kind: 'pixel-model', src: '/media/arduino.glb' }`. "L'Arduino en pixels" /
+"The Arduino in pixels" (overlay key `larduino-en-pixels`, alias `the-arduino-in-pixels`, a
+beacon) uses it; name, description, period and link come from RxResume like any project, and it
+only appears once RxResume has the project. The page renders `public/media/arduino.glb` with
+three.js at 320×200, then pixelates it (see below); drag to rotate, it turns by itself unless
+reduced motion is requested, and it follows the theme. three.js is imported only once the
+viewer is on screen, and without WebGL the page shows a message instead.
 
 ## Board
 
@@ -168,7 +190,7 @@ shows the theme you switch to.
 Project pages draw the capture into a 160-px-wide canvas and quantise it to five ink levels
 between paper and ink (light is paper on the paper theme, ink at night) plus the accent for
 saturated colours (`src/scripts/pixel/quantize.ts`, pure and tested), shown upscaled with
-`image-rendering: pixelated` and re-coloured when the theme changes. The lab page does the
+`image-rendering: pixelated` and re-coloured when the theme changes. An experiment does the
 same with the three.js render (`src/scripts/pixel/model.ts`).
 
 ## Tests and screenshots
@@ -201,7 +223,7 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
 - Multi-stage build: Node.js 24 builder → static site in Caddy 2 (Alpine)
 - The builder stage runs `npm run sync:resume` before `npm run build` when
   `RXRESUME_API_KEY` is set. If the sync fails it prints a warning and builds with the
-  committed JSON, so a RxResume outage never breaks a deploy
+  committed JSON and PDFs, so a RxResume outage never breaks a deploy
 - The settings below exist only in the builder stage, never in the Caddy image. The API
   key is mounted as a build secret, so it stays out of the image history and build cache
 - Runs on port 80
@@ -217,6 +239,8 @@ key arrives as a secret; with plain Docker use `--build-arg` for the URL and IDs
 | `RXRESUME_API_KEY` | API key, passed as a build secret; without it the sync is skipped and the committed JSON is used |
 | `RXRESUME_ID_FR` | ID of the French resume |
 | `RXRESUME_ID_EN` | ID of the English resume |
+| `RXRESUME_PDF_ID_FR` | Optional. ID of the French web resume (without phone number), whose PDF is published |
+| `RXRESUME_PDF_ID_EN` | Optional. ID of the English web resume (without phone number), whose PDF is published |
 
 Since the resumes are only fetched at build time, redeploy after editing RxResume.
 
