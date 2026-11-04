@@ -497,12 +497,6 @@ a.flag:hover {
   text-transform: uppercase;
 }
 
-/* ---- story page ---- */
-.page-inner.solo {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 980px;
-}
-
 /* ---- live 3D model on a project page ---- */
 .pix-box {
   position: relative;

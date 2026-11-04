@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
-import { getBoardEntities, getBoardPages, getBoardProjects } from '../data/board';
+import { getBoardEntities, getBoardProjects } from '../data/board';
 import { site } from '../data/site';
 import { strings } from '../i18n';
 import { boardName } from '../lib/name';
@@ -15,7 +15,6 @@ interface Props {
 const { lang } = Astro.props;
 const resume = getResume(lang);
 const projects = getBoardProjects(resume);
-const pages = getBoardPages(lang);
 const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = site.cvPdf[lang];
@@ -62,7 +61,7 @@ const description = htmlToText(resume.summary) || resume.headline;
       #stage, .hud { display: none; }
       html, body { overflow: auto; }
     </style>
-    <BoardList lang={lang} t={t} resume={resume} projects={projects} pages={pages} cvHref={cvHref} cvPdf={cvPdf} />
+    <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
   </noscript>
 
   <script type="application/json" id="board-data" set:html={json}></script>

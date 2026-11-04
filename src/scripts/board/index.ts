@@ -262,7 +262,6 @@ export async function initBoard(): Promise<void> {
   // ---- dive and return ----
   const flag = createFromFlag(() => sessionStorage);
   const tracker = createReturnTracker(flag);
-  const diveKinds = new Set(['project', 'page']);
   let diving = false;
   let hoverId: string | null = null;
 
@@ -287,7 +286,7 @@ export async function initBoard(): Promise<void> {
 
   const replayZoomOut = (slug: string): boolean => {
     const target = placed.get(slug);
-    if (!target || !diveKinds.has(target.config.kind)) return false;
+    if (!target || target.config.kind !== 'project') return false;
     tracker.remember(slug);
     cleanUrl();
     if (reduced) return true;
@@ -309,7 +308,7 @@ export async function initBoard(): Promise<void> {
     const el = (event.target as Element).closest<HTMLElement>('.ent');
     const target = el && placed.get(el.dataset.id ?? '');
     if (!el || !target || !(el instanceof HTMLAnchorElement)) return;
-    if (!diveKinds.has(target.config.kind) && target.config.kind !== 'cv') return;
+    if (target.config.kind !== 'project' && target.config.kind !== 'cv') return;
     // leaving without a dive (reduced motion, new tab): no slug may survive to be replayed on a later Back
     if (reduced || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       tracker.forget();
@@ -318,7 +317,7 @@ export async function initBoard(): Promise<void> {
     event.preventDefault();
     if (diving) return;
     diving = true;
-    if (diveKinds.has(target.config.kind)) tracker.remember(target.config.id);
+    if (target.config.kind === 'project') tracker.remember(target.config.id);
     else tracker.forget();
     originOf(target);
     stage.style.transform = `scale(${DIVE_SCALE})`;

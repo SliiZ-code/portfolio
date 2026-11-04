@@ -113,8 +113,6 @@ await visit(`/projets/${arduino}/`, { label: 'arduino-fr', viewport: { width: 14
 await visit(`/projets/${arduino}/`, { label: 'arduino-night', viewport: { width: 1440, height: 900 }, theme: 'night', settle: 1500, before: asciiReady });
 await visit('/en/projects/the-arduino-in-pixels/', { label: 'arduino-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
 await visit(`/projets/${arduino}/`, { label: 'arduino-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
-await visit('/histoire/', { label: 'story-fr', viewport: { width: 1440, height: 900 }, settle: 800 });
-await visit('/en/story/', { label: 'story-en', viewport: { width: 390, height: 844 }, settle: 800 });
 
 // dive into a structure: the stage scales toward the pattern before the page changes
 await visit('/', {

@@ -3,7 +3,7 @@ import type { PatternName } from './patterns';
 
 export interface EntityConfig {
   id: string;
-  kind: 'project' | 'page' | 'cv' | 'contact';
+  kind: 'project' | 'cv' | 'contact';
   pattern: PatternName;
   pad: number;
   /** Null: the board looks for a free slot at runtime. */

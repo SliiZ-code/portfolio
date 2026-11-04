@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   BOARD_OVERLAY,
-  BOARD_PAGES,
   CONTACT_LAYOUT,
   CV_LAYOUT,
   getBoardEntities,
-  getBoardPages,
   getBoardProjects,
   overlayFor,
-  pagePath,
   projectMeta,
   projectPath,
 } from '../src/data/board';
@@ -156,26 +153,7 @@ describe('the Arduino experiment', () => {
   });
 });
 
-describe('story, CV and contact', () => {
-  it('has a story page with its own pattern and screen position', () => {
-    expect(Object.keys(BOARD_PAGES)).toEqual(['story']);
-    expect(BOARD_PAGES.story).toMatchObject({ pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } });
-  });
-
-  it('builds localised pages with their own urls', () => {
-    const fr = getBoardPages('fr');
-    const en = getBoardPages('en');
-    expect(fr.map((page) => page.url)).toEqual(['/histoire/']);
-    expect(en.map((page) => page.url)).toEqual(['/en/story/']);
-    expect(pagePath('story', 'en')).toBe('/en/story/');
-    expect(en.find((page) => page.id === 'story')?.boardName).toBe('my story');
-    for (const page of [...fr, ...en]) {
-      expect(page.boardName.length).toBeGreaterThan(0);
-      expect(page.label.length).toBeGreaterThan(0);
-      expect(page.note.text.length).toBeGreaterThan(0);
-    }
-  });
-
+describe('CV and contact', () => {
   it('hangs the CV off the name in landscape and gives it a fixed slot in portrait', () => {
     expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } });
   });
@@ -193,12 +171,15 @@ describe('board entities', () => {
       const t = strings(lang).board;
       const ids = entities.map((entity) => entity.id);
       expect(new Set(ids).size).toBe(ids.length);
-      expect(ids).toEqual(expect.arrayContaining(['story', 'cv', 'contact', ...resume.projects.map((project) => project.slug)]));
+      expect(ids).toEqual(expect.arrayContaining(['cv', 'contact', ...resume.projects.map((project) => project.slug)]));
       for (const entity of entities) {
         expect(entity.name.length, entity.id).toBeGreaterThan(0);
         expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
       }
+      // the lab and the story pages are gone: only projects, the CV and the contact are drawn
       expect(ids).not.toContain('labo');
+      expect(ids).not.toContain('story');
+      expect(new Set(entities.map((entity) => entity.kind))).toEqual(new Set(['project', 'cv', 'contact']));
       expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, tag: '', url: lang === 'fr' ? '/cv/' : '/en/cv/' });
       expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
       expect(entities.find((entity) => entity.id === 'blink')).toMatchObject({ kind: 'project', url: projectPath(lang, 'blink') });

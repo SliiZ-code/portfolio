@@ -20,14 +20,6 @@ const en = {
     home: 'jpc',
     themeNight: 'Night mode',
     themePaper: 'Paper mode',
-    pages: {
-      story: {
-        name: 'My story',
-        text: 'my story',
-        label: 'page to be written',
-        note: "what the CV doesn't say",
-      },
-    },
   },
   project: {
     back: '← back to the board',
@@ -39,13 +31,6 @@ const en = {
     noCapture: '[no capture yet]',
     visit: 'view the project ↗',
     backBoard: 'back to the board',
-  },
-  story: {
-    back: '← back to the board',
-    stamp: 'story page',
-    title: 'My story',
-    body: '[placeholder] My story is coming soon.',
-    description: '[placeholder] My story is coming soon.',
   },
   cv: {
     back: '← back to the board',

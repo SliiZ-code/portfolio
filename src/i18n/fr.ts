@@ -18,14 +18,6 @@ const fr = {
     home: 'jpc',
     themeNight: 'Mode nuit',
     themePaper: 'Mode papier',
-    pages: {
-      story: {
-        name: 'Mon histoire',
-        text: 'mon histoire',
-        label: 'page à écrire',
-        note: 'ce que le CV ne dit pas',
-      },
-    },
   },
   project: {
     back: '← retour au plateau',
@@ -37,13 +29,6 @@ const fr = {
     noCapture: '[pas encore de capture]',
     visit: 'voir le projet ↗',
     backBoard: 'retour au plateau',
-  },
-  story: {
-    back: '← retour au plateau',
-    stamp: 'page histoire',
-    title: 'Mon histoire',
-    body: '[placeholder] Mon histoire arrive bientôt.',
-    description: '[placeholder] Mon histoire arrive bientôt.',
   },
   cv: {
     back: '← retour au plateau',

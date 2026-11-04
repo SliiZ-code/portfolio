@@ -212,20 +212,6 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
   });
 }
 
-/** The story is hand-placed like the projects, but lives outside the RxResume data. */
-export type PageId = 'story';
-
-export interface BoardPageDef {
-  id: PageId;
-  pattern: PatternName;
-  pad: number;
-  at: Required<Pick<At, 'l' | 'p'>>;
-}
-
-export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
-  story: { id: 'story', pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } },
-};
-
 /** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait, under the note. */
 export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } } as const satisfies {
   pattern: PatternName;
@@ -240,40 +226,9 @@ export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p
   at: At;
 };
 
-const PAGE_PATHS: Record<PageId, Record<Lang, string>> = {
-  story: { fr: '/histoire/', en: '/en/story/' },
-};
-
-export const pagePath = (id: PageId, lang: Lang): string => PAGE_PATHS[id][lang];
-
-export interface BoardPage extends BoardPageDef {
-  /** Name drawn on the board. */
-  boardName: string;
-  /** Short name for the server-rendered list. */
-  name: string;
-  label: string;
-  note: BoardNote;
-  url: string;
-}
-
-const PAGE_NOTE_TILT: Record<PageId, number> = { story: -0.03 };
-
-export const getBoardPages = (lang: Lang): BoardPage[] =>
-  Object.values(BOARD_PAGES).map((page) => {
-    const t = strings(lang).board.pages[page.id];
-    return {
-      ...page,
-      boardName: t.text,
-      name: t.name,
-      label: t.label,
-      note: { text: t.note, r: PAGE_NOTE_TILT[page.id] },
-      url: pagePath(page.id, lang),
-    };
-  });
-
 export interface BoardEntity {
   id: string;
-  kind: 'project' | 'page' | 'cv' | 'contact';
+  kind: 'project' | 'cv' | 'contact';
   name: string;
   /** The project's language or tool; empty for everything else. */
   tag: string;
@@ -301,16 +256,6 @@ export function getBoardEntities(resume: Resume, links: { cvHref: string; contac
     pad: project.pad,
     at: project.at,
   }));
-  const pages = getBoardPages(resume.lang).map<BoardEntity>((page) => ({
-    id: page.id,
-    kind: 'page',
-    name: page.boardName,
-    tag: '',
-    url: page.url,
-    pattern: page.pattern,
-    pad: page.pad,
-    at: page.at,
-  }));
   const cv: BoardEntity = { id: 'cv', kind: 'cv', name: t.cvName, tag: '', url: links.cvHref, ...CV_LAYOUT };
   const contact: BoardEntity = {
     id: 'contact',
@@ -320,6 +265,6 @@ export function getBoardEntities(resume: Resume, links: { cvHref: string; contac
     url: links.contactHref,
     ...CONTACT_LAYOUT,
   };
-  const all = [...projects, ...pages, cv, contact];
+  const all = [...projects, cv, contact];
   return [...all.filter((entity) => entity.at), ...all.filter((entity) => !entity.at)];
 }
