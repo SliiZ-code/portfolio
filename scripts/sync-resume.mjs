@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Pull the two public resumes from RxResume and keep only what this site renders.
+// When RXRESUME_PDF_ID_FR / RXRESUME_PDF_ID_EN are set, also download the public CV PDFs from
+// the dedicated "web" resumes (the same resumes without the phone number).
 // Run with: npm run sync:resume
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 // `.env` is optional: CI and shells can provide the same variables directly.
@@ -15,6 +17,10 @@ const OUT = {
   fr: new URL('../src/data/resume.fr.json', import.meta.url),
   en: new URL('../src/data/resume.en.json', import.meta.url),
 };
+
+/** The file name must match src/lib/cv-pdf.ts, which links to it. */
+export const cvPdfFile = (lang) => `julien-petit-colboc-${lang}.pdf`;
+const pdfOut = (lang) => new URL(`../public/cv/${cvPdfFile(lang)}`, import.meta.url);
 
 const WEBSITE_KEYS = ['url', 'label', 'inlineLink'];
 const website = (value) => {
@@ -133,19 +139,74 @@ export const sanitizeResume = (input) => {
 };
 
 /** RxResume wraps the resume in `{ data }` on some versions; accept both shapes. */
-export const resumeFromResponse = (body) => sanitizeResume(body?.data ?? body);
+const dataOf = (body) => body?.data ?? body;
+export const resumeFromResponse = (body) => sanitizeResume(dataOf(body));
 
-const getResume = async (id, baseUrl, key) => {
-  const response = await fetch(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, {
+const digits = (value) => value.replace(/\D/g, '');
+
+const stringsOf = (value) => {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(stringsOf);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(stringsOf);
+  return [];
+};
+
+/**
+ * The PDF is public: refuse the web resume if it has a phone number of its own, or if it repeats
+ * the main resume's one anywhere (a summary, a custom field...), whatever the formatting.
+ * The messages never contain the number.
+ */
+export const assertWebResume = (main, web) => {
+  if (str(web?.basics?.phone).trim()) throw new Error('the web resume has a phone number');
+  const phone = str(main?.basics?.phone).trim();
+  if (!phone) return;
+  // the last nine digits, so "+33 6 12..." and "06 12..." count as the same number
+  const needle = digits(phone).slice(-9);
+  if (stringsOf(web).some((value) => value.includes(phone) || (needle && digits(value).includes(needle)))) {
+    throw new Error("the web resume contains the main resume's phone number");
+  }
+};
+
+export const assertPdf = (bytes) => {
+  if (new TextDecoder('latin1').decode(bytes.subarray(0, 5)) !== '%PDF-') throw new Error('the response is not a PDF');
+};
+
+const request = (url, key, fetchImpl) =>
+  fetchImpl(url, {
     headers: { 'x-api-key': key },
     // never forward the key to wherever a redirect points
     redirect: 'error',
     // a hung RxResume must not hang a deploy
     signal: AbortSignal.timeout(30_000),
   });
+
+const getBody = async (id, baseUrl, key, fetchImpl = fetch) => {
+  const response = await request(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, key, fetchImpl);
   if (!response.ok) throw new Error(`RxResume ${id}: HTTP ${response.status} ${response.statusText}`);
-  const body = await response.json();
-  return resumeFromResponse(body);
+  return response.json();
+};
+
+/** The PDF of the web resume `id`, only once its JSON has passed `assertWebResume`. */
+export const fetchCvPdf = async ({ id, main, baseUrl, key, fetchImpl = fetch }) => {
+  assertWebResume(main, dataOf(await getBody(id, baseUrl, key, fetchImpl)));
+  const response = await request(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}/pdf`, key, fetchImpl);
+  if (!response.ok) throw new Error(`RxResume ${id} (pdf): HTTP ${response.status} ${response.statusText}`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  assertPdf(bytes);
+  return bytes;
+};
+
+/** One job per language that has a web resume: a refused language never blocks the other. */
+export const collectPdfs = async (jobs, { baseUrl, key, fetchImpl }) => {
+  const results = await Promise.allSettled(jobs.map((job) => fetchCvPdf({ ...job, baseUrl, key, fetchImpl })));
+  const pdfs = new Map();
+  const errors = [];
+  results.forEach((result, index) => {
+    const { lang } = jobs[index];
+    if (result.status === 'fulfilled') pdfs.set(lang, result.value);
+    else errors.push(`${lang}: ${result.reason?.message ?? result.reason}`);
+  });
+  return { pdfs, errors };
 };
 
 const main = async () => {
@@ -160,11 +221,24 @@ const main = async () => {
     return id;
   });
   // fetch everything first so a failure on one language never leaves the two files out of sync
-  const resumes = await Promise.all(ids.map((id) => getResume(id, baseUrl, key)));
+  const bodies = await Promise.all(ids.map((id) => getBody(id, baseUrl, key)));
+  const resumes = bodies.map(resumeFromResponse);
+  const jobs = langs.flatMap((lang, index) => {
+    const id = process.env[`RXRESUME_PDF_ID_${lang.toUpperCase()}`];
+    return id ? [{ lang, id, main: dataOf(bodies[index]) }] : [];
+  });
+  const { pdfs, errors } = await collectPdfs(jobs, { baseUrl, key, fetchImpl: fetch });
   for (const [index, lang] of langs.entries()) {
     await writeFile(OUT[lang], `${JSON.stringify(resumes[index], null, 2)}\n`);
     console.log(`${lang}: ${resumes[index].basics.name || 'resume'} -> ${OUT[lang].pathname}`);
   }
+  await mkdir(new URL('../public/cv/', import.meta.url), { recursive: true });
+  for (const [lang, bytes] of pdfs) {
+    await writeFile(pdfOut(lang), bytes);
+    console.log(`${lang}: pdf -> ${pdfOut(lang).pathname}`);
+  }
+  // a refused PDF keeps the previous file; the failure still shows in the build log
+  if (errors.length) throw new Error(`PDF skipped, previous file kept: ${errors.join('; ')}`);
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

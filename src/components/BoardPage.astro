@@ -3,8 +3,8 @@ import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
 import { getBoardEntities, getBoardProjects } from '../data/board';
-import { site } from '../data/site';
 import { strings } from '../i18n';
+import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
 import { getResume, htmlToText, type Lang } from '../lib/resume';
 
@@ -17,7 +17,7 @@ const resume = getResume(lang);
 const projects = getBoardProjects(resume);
 const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
-const cvPdf = site.cvPdf[lang];
+const cvPdf = cvPdfPath(lang);
 const { l: nameText, p: nameNarrow } = boardName(resume.name);
 const contactHref = resume.email ? `mailto:${resume.email}` : resume.profiles[0]?.url ?? '';
 const entities = getBoardEntities(resume, { cvHref, contactHref });

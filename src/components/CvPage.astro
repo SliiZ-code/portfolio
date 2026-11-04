@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import DocActions from './DocActions.astro';
-import { site } from '../data/site';
+import { cvPdfPath } from '../lib/cv-pdf';
 import { strings } from '../i18n';
 import { getResume, type Lang } from '../lib/resume';
 
@@ -15,7 +15,7 @@ const t = strings(lang);
 const boardHref = lang === 'fr' ? '/' : '/en/';
 const cvPath = (language: Lang) => (language === 'fr' ? '/cv/' : '/en/cv/');
 const projectPath = (slug: string) => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
-const pdf = site.cvPdf[lang];
+const pdf = cvPdfPath(lang);
 const title = `CV — ${resume.name}`;
 const where = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' · ');
 const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index < level);

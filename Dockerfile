@@ -19,12 +19,15 @@ COPY . .
 ARG RXRESUME_URL
 ARG RXRESUME_ID_FR
 ARG RXRESUME_ID_EN
+ARG RXRESUME_PDF_ID_FR
+ARG RXRESUME_PDF_ID_EN
 
-# Refresh the resume data when a key is given. If RxResume is down or the sync fails,
-# build with the committed JSON instead of breaking the deploy.
+# Refresh the resume data (and the CV PDFs, when their IDs are given) when a key is given.
+# If RxResume is down or the sync fails, build with the committed files instead of breaking
+# the deploy.
 RUN --mount=type=secret,id=RXRESUME_API_KEY,env=RXRESUME_API_KEY \
     if [ -n "$RXRESUME_API_KEY" ]; then \
-      npm run sync:resume || echo "WARNING: resume sync failed, building with the committed resume data"; \
+      npm run sync:resume || echo "WARNING: resume sync failed, building with the committed or already synced files"; \
     else \
       echo "RXRESUME_API_KEY not set, building with the committed resume data"; \
     fi
