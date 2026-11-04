@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import DocActions from './DocActions.astro';
-import { boardMedia, boardNote, findAlternateProject, overlayFor, projectPath } from '../data/board';
+import { boardMedia, boardNote, findAlternateProject, projectMeta, projectPath } from '../data/board';
 import { strings, otherLang } from '../i18n';
 import { getResume, htmlToText, type Lang, type Project } from '../lib/resume';
 
@@ -17,10 +17,9 @@ const other = otherLang(lang);
 const otherResume = getResume(other);
 const alt = findAlternateProject(project, resume.projects, otherResume);
 const boardHref = lang === 'fr' ? '/' : '/en/';
-const overlay = overlayFor(project);
 const media = boardMedia(project, alt);
 const note = boardNote(project, lang);
-const meta = [overlay?.label?.[lang], project.period].filter(Boolean).join(' · ');
+const meta = projectMeta(project);
 const frProject = lang === 'fr' ? project : alt;
 const enProject = lang === 'en' ? project : alt;
 const frAlt = frProject ? projectPath('fr', frProject.slug) : '/';

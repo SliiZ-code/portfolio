@@ -8,6 +8,7 @@ import {
   getBoardPages,
   getBoardProjects,
   pagePath,
+  projectMeta,
   projectPath,
 } from '../src/data/board';
 import { strings } from '../src/i18n';
@@ -61,6 +62,29 @@ describe('known project overlay', () => {
   it('ignores overlay entries that are not in the resume', () => {
     const only = getBoardProjects(withProjects(sampleResume('fr'), [sampleResume('fr').projects[0]]));
     expect(only).toHaveLength(1);
+  });
+});
+
+describe('project meta line', () => {
+  const base = sampleResume('fr');
+  const dated = (period: string) => withProjects(base, base.projects.map((project) => ({ ...project, period })));
+
+  it('joins the overlay tag and the period from RxResume', () => {
+    const projects = getBoardProjects(dated('2024'));
+    expect(projects.find((project) => project.slug === 'jeu-de-la-vie')?.meta).toBe('C++ · 2024');
+    expect(projects.find((project) => project.slug === 'blink')?.meta).toBe('Python · 2024');
+    expect(projectMeta(dated('2024').projects[0])).toBe('C++ · 2024');
+  });
+
+  it('skips the parts that are empty', () => {
+    expect(getBoardProjects(dated('')).find((project) => project.slug === 'thrive')?.meta).toBe('Flutter');
+    const unlisted = withProjects(base, [{ ...extra('Unlisted'), period: '2023' }, extra('Bare', 1)]);
+    expect(getBoardProjects(unlisted).map((project) => project.meta)).toEqual(['2023', '[placeholder] 2026']);
+    expect(projectMeta({ ...extra('Bare'), period: '' })).toBe('');
+  });
+
+  it('has no hand-written label left in the overlay', () => {
+    for (const overlay of Object.values(BOARD_OVERLAY)) expect(overlay).not.toHaveProperty('label');
   });
 });
 

@@ -19,8 +19,6 @@ export interface BoardOverlay {
   aliases?: string[];
   /** Board-only abbreviation; the resume name stays authoritative. */
   name?: string;
-  /** Short tag for the list and the project page. */
-  label: { fr: string; en: string };
   /** The language or tool shown under the name on the board. */
   tag: string;
   /** Margin note on the project page. */
@@ -38,7 +36,6 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pad: 3,
     at: { l: [0.14, 0.66], p: [0.26, 0.57] },
     aliases: ['game-of-life'],
-    label: { fr: 'C++ · projet CESI', en: 'C++ · CESI project' },
     tag: 'C++',
     note: { fr: 'un pulsar. forcément.', en: 'a pulsar. obviously.', r: 0.04 },
     media: { video: '/media/conway.mp4' },
@@ -47,7 +44,6 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pattern: 'penta',
     pad: 4,
     at: { l: [0.38, 0.71], p: [0.74, 0.68] },
-    label: { fr: 'Flutter · multiplateforme', en: 'Flutter · cross-platform' },
     tag: 'Flutter',
     note: {
       fr: 'un pentadécathlon :\nil grandit, il rétrécit, il tient',
@@ -61,7 +57,6 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pad: 2,
     at: { l: [0.62, 0.68], p: [0.26, 0.79] },
     name: 'Weather Watcher',
-    label: { fr: 'Arduino · capteurs · RTC', en: 'Arduino · sensors · RTC' },
     tag: 'Arduino',
     note: {
       fr: 'une galaxie de Kok :\nelle tourne comme une trotteuse',
@@ -73,7 +68,6 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     pattern: 'blinkers',
     pad: 2,
     at: { l: [0.84, 0.12], p: [0.74, 0.15] },
-    label: { fr: 'Python · vidéo générée', en: 'Python · generated video' },
     tag: 'Python',
     note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
     media: { video: '/media/blink.mp4' },
@@ -94,9 +88,10 @@ export interface BoardProject extends Project {
   pad: number;
   /** Null for a project outside the overlay: the board finds it a free slot at runtime. */
   at: At | null;
-  label: string;
   /** Empty for a project outside the overlay. */
   tag: string;
+  /** Tag and period, for the list and the project page. */
+  meta: string;
   note?: BoardNote;
   media?: { video?: string; image?: string };
 }
@@ -121,6 +116,10 @@ const hash = (value: string): number => {
   for (const char of value) h = (h * 31 + char.charCodeAt(0)) >>> 0;
   return h;
 };
+
+/** The overlay tag and the RxResume period, whichever of the two exist. */
+export const projectMeta = (project: Project): string =>
+  [overlayFor(project)?.tag, project.period].filter(Boolean).join(' · ');
 
 export const boardNote = (project: Project, lang: Lang): BoardNote | undefined => {
   const note = overlayFor(project)?.note;
@@ -171,8 +170,8 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
         pattern: OSCILLATORS[hash(project.slug) % OSCILLATORS.length],
         pad: 2,
         at: null,
-        label: project.period,
         tag: '',
+        meta: projectMeta(project),
       };
     }
     return {
@@ -181,8 +180,8 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       pattern: overlay.pattern,
       pad: overlay.pad,
       at: overlay.at,
-      label: overlay.label[resume.lang],
       tag: overlay.tag,
+      meta: projectMeta(project),
       note: boardNote(project, resume.lang),
       media: overlay.media,
     };
