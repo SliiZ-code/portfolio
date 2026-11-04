@@ -7,12 +7,13 @@ import {
   getBoardEntities,
   getBoardPages,
   getBoardProjects,
+  overlayFor,
   pagePath,
   projectMeta,
   projectPath,
 } from '../src/data/board';
 import { strings } from '../src/i18n';
-import type { Project, Resume } from '../src/lib/resume';
+import { slugify, type Project, type Resume } from '../src/lib/resume';
 import { sampleResume } from './fixtures';
 import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
 import { OSCILLATORS, PATTERNS } from '../src/scripts/board/patterns';
@@ -121,19 +122,51 @@ describe('overlay aliases', () => {
   });
 });
 
-describe('lab, story, CV and contact', () => {
-  it('has a lab and a story page with their own patterns and screen positions', () => {
-    expect(Object.keys(BOARD_PAGES).sort()).toEqual(['labo', 'story']);
-    expect(BOARD_PAGES.labo).toMatchObject({ pattern: 'beacon', pad: 2, at: { l: [0.86, 0.7], p: [0.74, 0.84] } });
+describe('the Arduino experiment', () => {
+  const arduino = (lang: 'fr' | 'en'): Project => {
+    const name = lang === 'fr' ? "L'Arduino en pixels" : 'The Arduino in pixels';
+    return { ...extra(name), slug: slugify(name) };
+  };
+
+  it('resolves its overlay through the French and the English slug', () => {
+    for (const lang of ['fr', 'en'] as const) {
+      expect(overlayFor(arduino(lang))).toMatchObject({
+        pattern: 'beacon',
+        pad: 2,
+        at: { l: [0.86, 0.7], p: [0.74, 0.84] },
+        tag: 'three.js',
+        experiment: { kind: 'pixel-model', src: '/media/arduino.glb' },
+      });
+    }
+    expect(slugify("L'Arduino en pixels")).toBe('larduino-en-pixels');
+    expect(slugify('The Arduino in pixels')).toBe('the-arduino-in-pixels');
+  });
+
+  it('shows up on the board once RxResume has the project, and not before', () => {
+    const base = sampleResume('fr');
+    expect(getBoardProjects(base).map((project) => project.slug)).not.toContain('larduino-en-pixels');
+    const project = getBoardProjects(withProjects(base, [...base.projects, arduino('fr')])).find((entry) => entry.slug === 'larduino-en-pixels')!;
+    expect(project).toMatchObject({ pattern: 'beacon', tag: 'three.js' });
+    expect(project.note?.text.length).toBeGreaterThan(0);
+  });
+
+  it('is the only overlay entry with an experiment', () => {
+    const withExperiment = Object.keys(BOARD_OVERLAY).filter((key) => BOARD_OVERLAY[key].experiment);
+    expect(withExperiment).toEqual(['larduino-en-pixels']);
+  });
+});
+
+describe('story, CV and contact', () => {
+  it('has a story page with its own pattern and screen position', () => {
+    expect(Object.keys(BOARD_PAGES)).toEqual(['story']);
     expect(BOARD_PAGES.story).toMatchObject({ pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } });
   });
 
   it('builds localised pages with their own urls', () => {
     const fr = getBoardPages('fr');
     const en = getBoardPages('en');
-    expect(fr.map((page) => page.url).sort()).toEqual(['/histoire/', '/labo/']);
-    expect(en.map((page) => page.url).sort()).toEqual(['/en/lab/', '/en/story/']);
-    expect(pagePath('labo', 'fr')).toBe('/labo/');
+    expect(fr.map((page) => page.url)).toEqual(['/histoire/']);
+    expect(en.map((page) => page.url)).toEqual(['/en/story/']);
     expect(pagePath('story', 'en')).toBe('/en/story/');
     expect(en.find((page) => page.id === 'story')?.boardName).toBe('my story');
     for (const page of [...fr, ...en]) {
@@ -160,11 +193,12 @@ describe('board entities', () => {
       const t = strings(lang).board;
       const ids = entities.map((entity) => entity.id);
       expect(new Set(ids).size).toBe(ids.length);
-      expect(ids).toEqual(expect.arrayContaining(['labo', 'story', 'cv', 'contact', ...resume.projects.map((project) => project.slug)]));
+      expect(ids).toEqual(expect.arrayContaining(['story', 'cv', 'contact', ...resume.projects.map((project) => project.slug)]));
       for (const entity of entities) {
         expect(entity.name.length, entity.id).toBeGreaterThan(0);
         expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
       }
+      expect(ids).not.toContain('labo');
       expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, tag: '', url: lang === 'fr' ? '/cv/' : '/en/cv/' });
       expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
       expect(entities.find((entity) => entity.id === 'blink')).toMatchObject({ kind: 'project', url: projectPath(lang, 'blink') });

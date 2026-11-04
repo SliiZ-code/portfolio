@@ -102,15 +102,17 @@ await visit('/projets/jeu-de-la-vie/', {
 await visit('/projets/blink/', { label: 'project-blink-desktop', viewport: { width: 1440, height: 900 }, settle: 2800 });
 await visit('/projets/blink/', { label: 'project-blink-mobile', viewport: { width: 390, height: 844 }, settle: 2800 });
 
+// the project only exists once RxResume has it; without it these shots fail the wait
 const asciiReady = async (page) => {
   await page.waitForSelector('.pix-box[data-state="ready"]', { timeout: 15000 });
   await page.waitForTimeout(600);
 };
 
-await visit('/labo/', { label: 'lab-fr', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
-await visit('/labo/', { label: 'lab-night', viewport: { width: 1440, height: 900 }, theme: 'night', settle: 1500, before: asciiReady });
-await visit('/en/lab/', { label: 'lab-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
-await visit('/labo/', { label: 'lab-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
+const arduino = 'larduino-en-pixels';
+await visit(`/projets/${arduino}/`, { label: 'arduino-fr', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
+await visit(`/projets/${arduino}/`, { label: 'arduino-night', viewport: { width: 1440, height: 900 }, theme: 'night', settle: 1500, before: asciiReady });
+await visit('/en/projects/the-arduino-in-pixels/', { label: 'arduino-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
+await visit(`/projets/${arduino}/`, { label: 'arduino-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
 await visit('/histoire/', { label: 'story-fr', viewport: { width: 1440, height: 900 }, settle: 800 });
 await visit('/en/story/', { label: 'story-en', viewport: { width: 390, height: 844 }, settle: 800 });
 

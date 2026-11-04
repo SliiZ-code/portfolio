@@ -21,12 +21,6 @@ const en = {
     themeNight: 'Night mode',
     themePaper: 'Paper mode',
     pages: {
-      labo: {
-        name: 'Lab',
-        text: 'lab',
-        label: 'experiments · three.js',
-        note: "experiments that don't\nhave a place elsewhere",
-      },
       story: {
         name: 'My story',
         text: 'my story',
@@ -39,17 +33,12 @@ const en = {
     back: '← back to the board',
     stamp: 'project page',
     capture: 'capture · pixelated live',
+    live: '3D model · pixelated live · drag to rotate',
+    loading: 'loading…',
+    unavailable: '[WebGL unavailable: no experiment here]',
     noCapture: '[no capture yet]',
     visit: 'view the project ↗',
     backBoard: 'back to the board',
-  },
-  lab: {
-    back: '← back to the board',
-    stamp: 'laboratory',
-    title: 'Lab',
-    description: 'Experiments: an Arduino rendered live in pixels.',
-    loading: 'loading…',
-    unavailable: '[WebGL unavailable: no experiment here]',
   },
   story: {
     back: '← back to the board',

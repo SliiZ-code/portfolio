@@ -497,22 +497,13 @@ a.flag:hover {
   text-transform: uppercase;
 }
 
-/* ---- lab and story pages ---- */
+/* ---- story page ---- */
 .page-inner.solo {
   grid-template-columns: minmax(0, 1fr);
   max-width: 980px;
 }
 
-.page-text h2 {
-  font: 28px/1.05 "Geist Pixel";
-  font-weight: 400;
-  margin: 8px 0 12px;
-}
-
-.page-text .experiment+.experiment {
-  margin-top: 28px;
-}
-
+/* ---- live 3D model on a project page ---- */
 .pix-box {
   position: relative;
   width: 100%;

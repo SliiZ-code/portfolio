@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import DocActions from './DocActions.astro';
-import { boardMedia, boardNote, findAlternateProject, projectMeta, projectPath } from '../data/board';
+import { boardMedia, boardNote, findAlternateProject, overlayFor, projectMeta, projectPath } from '../data/board';
 import { strings, otherLang } from '../i18n';
 import { getResume, htmlToText, type Lang, type Project } from '../lib/resume';
 
@@ -18,6 +18,7 @@ const otherResume = getResume(other);
 const alt = findAlternateProject(project, resume.projects, otherResume);
 const boardHref = lang === 'fr' ? '/' : '/en/';
 const media = boardMedia(project, alt);
+const experiment = overlayFor(project)?.experiment;
 const note = boardNote(project, lang);
 const meta = projectMeta(project);
 const frProject = lang === 'fr' ? project : alt;
@@ -37,16 +38,24 @@ const description = htmlToText(project.description) || meta || resume.headline;
 
     <div class="page-inner">
       <figure class="page-media">
-        <canvas
-          id="pix"
-          class="pix"
-          width="160"
-          height="100"
-          aria-hidden="true"
-          data-src={media?.video ?? media?.image ?? ''}
-          data-kind={media?.video ? 'video' : media?.image ? 'image' : ''}
-        ></canvas>
-        <figcaption>{media ? t.project.capture : t.project.noCapture}</figcaption>
+        {experiment ? (
+          <div class="pix-box" data-src={experiment.src} data-kind={experiment.kind}>
+            <canvas class="pix" width="160" height="100"></canvas>
+            <span class="pix-loading">{t.project.loading}</span>
+            <span class="pix-error">{t.project.unavailable}</span>
+          </div>
+        ) : (
+          <canvas
+            id="pix"
+            class="pix"
+            width="160"
+            height="100"
+            aria-hidden="true"
+            data-src={media?.video ?? media?.image ?? ''}
+            data-kind={media?.video ? 'video' : media?.image ? 'image' : ''}
+          ></canvas>
+        )}
+        <figcaption>{experiment ? t.project.live : media ? t.project.capture : t.project.noCapture}</figcaption>
       </figure>
 
       <div class="page-text">
@@ -66,8 +75,10 @@ const description = htmlToText(project.description) || meta || resume.headline;
 
   <script>
     import { initPixelPreview } from '../scripts/pixel/preview';
+    import { initPixelModel } from '../scripts/pixel/model';
     import { initBackLink } from '../scripts/back';
     initPixelPreview();
+    document.querySelectorAll<HTMLElement>('.pix-box[data-kind="pixel-model"]').forEach(initPixelModel);
     initBackLink();
   </script>
 </Base>

@@ -169,7 +169,7 @@ Project pages draw the capture into a 160-px-wide canvas and quantise it to five
 between paper and ink (light is paper on the paper theme, ink at night) plus the accent for
 saturated colours (`src/scripts/pixel/quantize.ts`, pure and tested), shown upscaled with
 `image-rendering: pixelated` and re-coloured when the theme changes. The lab page does the
-same with the three.js render (`src/scripts/lab/model.ts`).
+same with the three.js render (`src/scripts/pixel/model.ts`).
 
 ## Tests and screenshots
 

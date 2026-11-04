@@ -1,4 +1,4 @@
-import { pixelateInto } from '../pixel/preview';
+import { pixelateInto } from './preview';
 
 const WIDTH = 320;
 const HEIGHT = 200;

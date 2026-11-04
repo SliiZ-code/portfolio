@@ -121,5 +121,5 @@ export const PATTERNS = {
 
 export type PatternName = keyof typeof PATTERNS;
 
-/** Deterministic list used for projects that only exist in RxResume; beacon, toad and beehive belong to the lab, the story and the CV. */
+/** Deterministic list used for projects that only exist in RxResume; beacon, toad and beehive belong to the Arduino project, the story and the CV. */
 export const OSCILLATORS: PatternName[] = ['clock', 'blinkers', 'penta', 'galaxy', 'pulsar'];

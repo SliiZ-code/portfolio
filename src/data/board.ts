@@ -10,6 +10,14 @@ interface OverlayNote {
   r: number;
 }
 
+/** A live demo shown on the project page instead of the pixelated capture. */
+export interface BoardExperiment {
+  /** `pixel-model`: a 3D model rendered with three.js, then pixelated like a capture. */
+  kind: 'pixel-model';
+  /** Source of the experiment's asset. */
+  src: string;
+}
+
 export interface BoardOverlay {
   pattern: PatternName;
   pad: number;
@@ -24,6 +32,8 @@ export interface BoardOverlay {
   /** Margin note on the project page. */
   note?: OverlayNote;
   media?: { video?: string; image?: string };
+  /** Replaces the capture on the project page. */
+  experiment?: BoardExperiment;
 }
 
 /**
@@ -71,6 +81,20 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
     tag: 'Python',
     note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
     media: { video: '/media/blink.mp4' },
+  },
+  // the slugs of "L'Arduino en pixels" and "The Arduino in pixels"
+  'larduino-en-pixels': {
+    pattern: 'beacon',
+    pad: 2,
+    at: { l: [0.86, 0.7], p: [0.74, 0.84] },
+    aliases: ['the-arduino-in-pixels'],
+    tag: 'three.js',
+    note: {
+      fr: 'un beacon :\ndeux blocs qui clignotent',
+      en: 'a beacon:\ntwo blocks that blink',
+      r: 0.03,
+    },
+    experiment: { kind: 'pixel-model', src: '/media/arduino.glb' },
   },
 };
 
@@ -188,8 +212,8 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
   });
 }
 
-/** The lab and the story are hand-placed like the projects, but live outside the RxResume data. */
-export type PageId = 'labo' | 'story';
+/** The story is hand-placed like the projects, but lives outside the RxResume data. */
+export type PageId = 'story';
 
 export interface BoardPageDef {
   id: PageId;
@@ -199,7 +223,6 @@ export interface BoardPageDef {
 }
 
 export const BOARD_PAGES: Record<PageId, BoardPageDef> = {
-  labo: { id: 'labo', pattern: 'beacon', pad: 2, at: { l: [0.86, 0.7], p: [0.74, 0.84] } },
   story: { id: 'story', pattern: 'toad', pad: 2, at: { l: [0.58, 0.1], p: [0.26, 0.145] } },
 };
 
@@ -218,7 +241,6 @@ export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p
 };
 
 const PAGE_PATHS: Record<PageId, Record<Lang, string>> = {
-  labo: { fr: '/labo/', en: '/en/lab/' },
   story: { fr: '/histoire/', en: '/en/story/' },
 };
 
@@ -234,7 +256,7 @@ export interface BoardPage extends BoardPageDef {
   url: string;
 }
 
-const PAGE_NOTE_TILT: Record<PageId, number> = { labo: 0.03, story: -0.03 };
+const PAGE_NOTE_TILT: Record<PageId, number> = { story: -0.03 };
 
 export const getBoardPages = (lang: Lang): BoardPage[] =>
   Object.values(BOARD_PAGES).map((page) => {

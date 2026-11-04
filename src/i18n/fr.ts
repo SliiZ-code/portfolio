@@ -19,12 +19,6 @@ const fr = {
     themeNight: 'Mode nuit',
     themePaper: 'Mode papier',
     pages: {
-      labo: {
-        name: 'Labo',
-        text: 'labo',
-        label: 'expériences · three.js',
-        note: "des expériences qui n'ont\npas de place ailleurs",
-      },
       story: {
         name: 'Mon histoire',
         text: 'mon histoire',
@@ -37,17 +31,12 @@ const fr = {
     back: '← retour au plateau',
     stamp: 'page projet',
     capture: 'capture · pixelisée en direct',
+    live: 'modèle 3D · pixelisé en direct · glisse pour le tourner',
+    loading: 'chargement…',
+    unavailable: "[WebGL indisponible : pas d'expérience ici]",
     noCapture: '[pas encore de capture]',
     visit: 'voir le projet ↗',
     backBoard: 'retour au plateau',
-  },
-  lab: {
-    back: '← retour au plateau',
-    stamp: 'laboratoire',
-    title: 'Labo',
-    description: 'Expériences : un Arduino en pixels, rendu en direct.',
-    loading: 'chargement…',
-    unavailable: "[WebGL indisponible : pas d'expérience ici]",
   },
   story: {
     back: '← retour au plateau',
