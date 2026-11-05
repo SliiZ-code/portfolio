@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Pull the two public resumes from RxResume and keep only what this site renders.
 // When RXRESUME_PDF_ID_FR / RXRESUME_PDF_ID_EN are set, also download the public CV PDFs from
-// the dedicated "web" resumes (the same resumes without the phone number).
+// the dedicated "web" resumes: copies of the main resumes without the phone number, overwritten
+// from the main ones at each sync (never edit them by hand).
 // Run with: npm run sync:resume
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -177,9 +178,54 @@ export const assertPdf = (bytes) => {
   if (new TextDecoder('latin1').decode(bytes.subarray(0, 5)) !== '%PDF-') throw new Error('the response is not a PDF');
 };
 
-const request = (url, key, fetchImpl) =>
+/** Same JSON whatever the order of the keys. */
+const stable = (value) =>
+  JSON.stringify(value, (_key, item) =>
+    item && typeof item === 'object' && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : item,
+  );
+
+/** Does `value` (a custom field...) hold `phone`, however it is written? Same test as assertWebResume. */
+const holdsPhone = (value, phone) => {
+  if (!phone) return false;
+  const needle = digits(phone).slice(-9);
+  const strings = stringsOf(value);
+  return strings.some((entry) => entry.includes(phone)) || Boolean(needle && digits(strings.join('')).includes(needle));
+};
+
+/**
+ * What the web resume must hold: the main resume's data, whole (basics, summary, sections, custom
+ * sections, metadata, picture...), except that `basics.phone` is empty and the custom fields that
+ * hold the phone are gone. Pure: the input is not modified.
+ */
+export const webDataFrom = (mainData) => {
+  const data = structuredClone(mainData && typeof mainData === 'object' ? mainData : {});
+  const basics = data.basics;
+  if (basics && typeof basics === 'object') {
+    const phone = str(basics.phone).trim();
+    basics.phone = '';
+    if (Array.isArray(basics.customFields)) basics.customFields = basics.customFields.filter((field) => !holdsPhone(field, phone));
+  }
+  return data;
+};
+
+/** JSON Patch operations that turn the top-level keys of `current` into those of `target`; empty when they are the same. */
+export const dataOperations = (current, target) => {
+  const from = current && typeof current === 'object' ? current : {};
+  const operations = [];
+  for (const key of Object.keys(target)) {
+    // `add` on an existing member replaces it
+    if (!(key in from) || stable(from[key]) !== stable(target[key])) operations.push({ op: 'add', path: `/${key}`, value: target[key] });
+  }
+  for (const key of Object.keys(from)) if (!(key in target)) operations.push({ op: 'remove', path: `/${key}` });
+  return operations;
+};
+
+const request = (url, key, fetchImpl, { method, body } = {}) =>
   fetchImpl(url, {
-    headers: { 'x-api-key': key },
+    ...(method ? { method, body } : {}),
+    headers: { 'x-api-key': key, ...(body ? { 'content-type': 'application/json' } : {}) },
     // never forward the key to wherever a redirect points
     redirect: 'error',
     // a hung RxResume must not hang a deploy
@@ -192,9 +238,32 @@ const getBody = async (id, baseUrl, key, fetchImpl = fetch) => {
   return response.json();
 };
 
-/** The PDF of the web resume `id`, only once its JSON has passed `assertWebResume`. */
-export const fetchCvPdf = async ({ id, main, baseUrl, key, fetchImpl = fetch }) => {
-  assertWebResume(main, dataOf(await getBody(id, baseUrl, key, fetchImpl)));
+/**
+ * Makes the web resume `id` a copy of the main resume without its phone. Reads it first, writes
+ * only when it differs (with its `updatedAt`, so a concurrent edit is refused rather than lost) and
+ * returns the web resume as read back afterwards. Refuses to write anything that still holds the phone.
+ */
+export const syncWebResume = async ({ id, main, baseUrl, key, lang = '', fetchImpl = fetch }) => {
+  const target = webDataFrom(main);
+  assertWebResume(main, target);
+  const current = await getBody(id, baseUrl, key, fetchImpl);
+  const operations = dataOperations(dataOf(current), target);
+  if (!operations.length) return current;
+  const body = { operations, ...(current?.updatedAt ? { expectedUpdatedAt: current.updatedAt } : {}) };
+  const response = await request(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}`, key, fetchImpl, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`RxResume ${id} (update): HTTP ${response.status} ${response.statusText}`);
+  console.log(`${lang ? `${lang}: ` : ''}web resume updated from the main one (${operations.length} change${operations.length > 1 ? 's' : ''})`);
+  // what the PDF will be made from is what is checked, not what was sent
+  return getBody(id, baseUrl, key, fetchImpl);
+};
+
+/** The PDF of the web resume `id`: brought up to date with the main resume, then checked, then downloaded. */
+export const fetchCvPdf = async ({ id, main, baseUrl, key, lang, fetchImpl = fetch }) => {
+  const web = await syncWebResume({ id, main, baseUrl, key, lang, fetchImpl });
+  assertWebResume(main, dataOf(web));
   const response = await request(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}/pdf`, key, fetchImpl);
   if (!response.ok) throw new Error(`RxResume ${id} (pdf): HTTP ${response.status} ${response.statusText}`);
   const bytes = new Uint8Array(await response.arrayBuffer());

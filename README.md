@@ -78,22 +78,29 @@ board only adds its own voice (margin notes, hints, UI strings).
 ### CV PDF
 
 The public PDF is not rendered from the main resumes, which carry a phone number. Create in
-RxResume a copy of each resume **without the phone number** (a "web resume"), used only for the
-PDF, and put their IDs in `RXRESUME_PDF_ID_FR` / `RXRESUME_PDF_ID_EN`. For each language that has
+RxResume a second resume per language (a "web resume"), used only for the PDF, and put their IDs
+in `RXRESUME_PDF_ID_FR` / `RXRESUME_PDF_ID_EN`. **The web resumes are overwritten from the main
+resumes at each sync: don't edit them by hand**, edit the main ones. Before downloading, the sync
+copies the main resume's whole `data` (basics, summary, sections, custom sections, metadata,
+picture) into the web resume through `PATCH /api/openapi/resumes/:id` (JSON Patch with
+`expectedUpdatedAt`, so a concurrent edit is refused instead of lost), with `basics.phone` emptied
+and any custom field that holds the phone removed. It writes only when something differs, and
+never writes data that still holds the phone. For each language that has
 an ID the sync downloads `GET /api/openapi/resumes/:id/pdf` into
 `public/cv/julien-petit-colboc-fr.pdf` / `julien-petit-colboc-en.pdf`. These files are committed
 like the JSON, so a build without RxResume still has them.
 
-Before writing a PDF the sync fetches the web resume's JSON and refuses it (that language fails,
-the previous file is kept, the script exits with an error) if `basics.phone` is not empty, if the
+Before writing a PDF the sync reads the web resume back after that copy and refuses it (that
+language fails, the previous file is kept, the script exits with an error and the deploy builds
+with the committed files) if `basics.phone` is not empty, if the
 phone of the main resume appears anywhere in the web resume, or if the response does not start
 with `%PDF-`. The other language is not affected. The resume JSON is still updated, so until
-the web resume is fixed the PDF can lag behind the CV page; it never carries the phone number.
+the problem is fixed the PDF can lag behind the CV page; it never carries the phone number.
 The phone check compares against the main resume's `basics.phone`: keep the number there, not
 in a custom field, or the sync can't recognise it (it warns when that field is empty).
 
-The PDF link (board HUD, no-JavaScript list, CV page) shows up only when the file of that
-language exists at build time; without IDs there is no PDF link and the CV page offers print.
+The PDF link (board HUD, no-JavaScript list, CV page) points to the file only when it exists at
+build time; without it the HUD and the list link to the HTML CV page, which offers print.
 
 ### Project slugs
 
@@ -158,17 +165,17 @@ viewer is on screen, and without WebGL the page shows a message instead.
 
 The board fits the viewport exactly: no pan, no zoom. The name is rasterized at the font's
 half-pixel resolution and sets the cell size (about 40% of the width in landscape, two thirds
-on phones, cells between 3 and 8px), the grid covers the screen, and the CV and the contact are
-placed by screen fractions. The engine lives in `src/scripts/board/`:
+on phones, cells between 3 and 8px) and the grid covers the screen. The name is the only drawing;
+the projects are an HTML list and the links (GitHub, LinkedIn, Contact, CV) are the bottom-right
+HUD. The engine lives in `src/scripts/board/`:
 
 - `index.ts`: bootstrap, layout (re-run on resize), generation loop, opening, seeds, dive and return;
-- `layout.ts`: pure geometry: orientation, cell size, anchors, footprints, keep-clear boxes;
+- `layout.ts`: pure geometry: orientation, cell size, name placement, keep-clear boxes;
 - `projects.ts`: pure geometry of the project list (where it sits), of the seeds (where one lands)
   and of the opening shockwave;
 - `life.ts`: world stepping and per-cell age, seeding, keep-clear, the glider fed from an edge;
-- `structures.ts`: private boards per pattern (the CV's beehive, the contact's gun): intrusion,
-  release, regrowth, healing;
-- `patterns.ts`: the beehive, the gun, gliders and the five methuselahs;
+- `structures.ts`: the name's own cells: intrusion, release, regrowth, healing;
+- `patterns.ts`: gliders and the five methuselahs;
 - `input.ts`: drag to draw (continuous strokes), tap for a glider;
 - `render.ts`: canvas drawing, colour buckets by age, the shockwave ring;
 - `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back.
@@ -178,13 +185,12 @@ or released by a structure), +1 for each generation it survives. A newborn cell 
 and fades through a warm-to-cool ramp (`--life-0` … `--life-3`, defined for both themes in
 `global.css`; ages 0–2, 3–6, 7–11, 12–17) to the calm resting grey, the ink at half opacity.
 Still lifes and old patterns are therefore grey; whatever moves or flickers shows colour (the
-ends of a blinker are reborn every generation, so they stay bright). The name, the CV and the
-contact are solid ink. The draw loop sorts the live cells into five buckets in one pass and sets
+ends of a blinker are reborn every generation, so they stay bright). The name is solid ink. The draw loop sorts the live cells into five buckets in one pass and sets
 one `fillStyle` per bucket; it allocates nothing per frame and redraws only when something changed.
 
 **Projects.** The projects are a real HTML list on the board (`#projects`, Geist Mono, name plus
 muted `tag · period`): a column hugging the right gutter, vertically centred and clear of the name,
-its note, the CV and the corners, in landscape; full width under the CV on a phone. If it does not
+its note and the corners, in landscape; full width under the name and its note on a phone. If it does not
 fit it tightens (`compact`), drops the meta column (`narrow`) and finally scrolls, but never overlaps
 anything. Its box is a keep-clear zone: the soup dies under it. Hovering or focusing a row (a touch
 on a phone) fires its seed as newborn cells just outside the list, on the side facing the open
@@ -194,20 +200,24 @@ advances one generation. Without JavaScript the same projects are in the plain l
 
 **Opening.** On a fresh load (`data-entry="intro"` on the canvas) the board starts empty and a
 shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells, with the
-seeded soup (age 0) appearing behind it, the name, the CV and the contact as it passes them, and
-the labels and project rows fading in once it has passed their position. The simulation starts when
+seeded soup (age 0) appearing behind it, the name as it passes it, and
+the note and project rows fading in once it has passed their position. The simulation starts when
 the ring has left. There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
 (`direct`).
 
-Names and links are server-rendered. The CV and the contact are real `<a>` that the script
-positions: a hit area over the pattern framed by accent pixel corners and the name in a small ink
-tab; hover or focus turns the tab and the pattern to the accent colour.
+**HUD.** Names and links are server-rendered. The bottom-right HUD reads GitHub · LinkedIn ·
+Contact · CV: the first two come from the resume's profiles, Contact is a `mailto:` to the resume's
+email (left out without one), and CV opens the PDF in the same tab (`type="application/pdf"`), or
+the HTML CV page (`/cv/`, `/en/cv/`) when the PDF is missing at build time. Contact and CV are
+drawn as ink chips (accent on hover or focus), the two calls to action. On a phone the four fit on
+one row and the bottom-left counters are hidden, so the HUD never overlaps; the project list
+is placed above the HUD's top edge.
 
-Controls: drag to draw, click empty space to drop a glider, click a project or the CV to dive. A dive
-scales the stage 16× toward the clicked row or pattern (about 750 ms), then navigates. `?from=<slug>`
+Controls: drag to draw, click empty space to drop a glider, click a project to dive. A dive
+scales the stage 16× toward the clicked row (about 750 ms), then navigates. `?from=<slug>`
 starts at that scale on that project's row and animates back to 1. A browser Back finds the same
 slug in `sessionStorage` (`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back
-replays it again. Contact goes to `mailto:` or the first profile, no dive.
+replays it again. The HUD links navigate directly, no dive.
 
 `prefers-reduced-motion` disables the simulation steps (the board only advances when the user draws
 or fires a seed), the opening and the dive: links navigate directly.
