@@ -383,9 +383,10 @@ export async function initBoard(): Promise<void> {
     const row = event.pointerType !== 'mouse' && rowOf(event.target);
     if (row) fire(row);
   });
+  // keyboard focus only: a mouse click focuses the row too, and a restored focus on Back must not fire
   list.addEventListener('focusin', (event) => {
     const row = rowOf(event.target);
-    if (row) fire(row);
+    if (row && (event.target as Element).matches(':focus-visible')) fire(row);
   });
 
   // ---- dive and return ----
@@ -537,6 +538,7 @@ export async function initBoard(): Promise<void> {
     const slug = flag.get();
     flag.clear();
     resetStage();
+    if (intro) endIntro();
     if (slug && replayZoomOut(slug)) canvas.dataset.entry = reduced ? 'direct' : 'zoom-out';
   });
   // Back → Forward → Back: the flag was consumed on arrival, put it back when the board is left
@@ -558,7 +560,11 @@ export async function initBoard(): Promise<void> {
     resizeTimer = setTimeout(() => {
       if (`${innerWidth}x${innerHeight}` === lastSize || diving) return;
       layout();
-      if (intro) startIntro();
+      // a new layout mid-opening: show the final state rather than re-timing the wave
+      if (intro) {
+        intro.forEach((item) => item.el.classList.remove('in'));
+        endIntro();
+      }
     }, 200);
   });
 

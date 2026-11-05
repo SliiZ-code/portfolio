@@ -68,7 +68,7 @@ interface SpotOptions {
  * Where a seed of `seed.w × seed.h` cells lands: just outside the list on the side with the
  * most open board, level with the row (`rowY`, in cells). When the row's own level is taken
  * (by the name, the CV…) it slides up or down to the nearest free rows, then tries the other
- * side. Null when nothing is free: the seed is not fired rather than drawn over something.
+ * side, then above and below the list (a full-width list on a phone). Null when nothing is free: the seed is not fired rather than drawn over something.
  */
 export function stampSpot(
   seed: { w: number; h: number },
@@ -88,6 +88,20 @@ export function stampSpot(
         if (y < 1 || y + seed.h > grid.rows - 1) continue;
         const hit = blocked.some((b) => x - margin < b.x2 && x + seed.w + margin > b.x && y - margin < b.y2 && y + seed.h + margin > b.y);
         if (!hit) return { x, y };
+      }
+    }
+  }
+  // a full-width list (phones) has no free side: try above it, then below, sliding outward from the middle
+  const free = (x: number, y: number) =>
+    !blocked.some((b) => x - margin < b.x2 && x + seed.w + margin > b.x && y - margin < b.y2 && y + seed.h + margin > b.y);
+  const x0 = Math.round((list.x + list.x2 - seed.w) / 2);
+  const rows = [list.y - gap - seed.h, list.y2 + gap].sort((a, b) => Math.abs(a - y0) - Math.abs(b - y0));
+  for (const y of rows) {
+    if (y < 1 || y + seed.h > grid.rows - 1) continue;
+    for (let d = 0; d <= grid.cols; d++) {
+      for (const x of d ? [x0 - d, x0 + d] : [x0]) {
+        if (x < 1 || x + seed.w > grid.cols - 1) continue;
+        if (free(x, y)) return { x, y };
       }
     }
   }

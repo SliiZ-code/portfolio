@@ -87,6 +87,29 @@ describe('placeProjects', () => {
   });
 });
 
+describe('stampSpot on a phone', () => {
+  it('fires above or below a full-width list instead of giving up', () => {
+    const grid = { cols: 98, rows: 211 };
+    const list: Box = { x: 4, y: 100, x2: 94, y2: 200 };
+    const seed = { w: 7, h: 3 };
+    const spot = stampSpot(seed, 120, list, [], grid);
+    expect(spot).not.toBeNull();
+    const { x, y } = spot!;
+    expect(y + seed.h <= list.y || y >= list.y2).toBe(true);
+    expect(x).toBeGreaterThanOrEqual(1);
+    expect(x + seed.w).toBeLessThanOrEqual(grid.cols - 1);
+  });
+
+  it('slides sideways around something blocking the middle above the list', () => {
+    const grid = { cols: 98, rows: 211 };
+    const list: Box = { x: 4, y: 100, x2: 94, y2: 208 };
+    const cv: Box = { x: 40, y: 88, x2: 60, y2: 98 };
+    const seed = { w: 7, h: 3 };
+    const { x, y } = stampSpot(seed, 120, list, [cv], grid)!;
+    expect(x - 3 < cv.x2 && x + seed.w + 3 > cv.x && y - 3 < cv.y2 && y + seed.h + 3 > cv.y).toBe(false);
+  });
+});
+
 describe('stampSpot', () => {
   const grid = { cols: 360, rows: 225 };
   const list: Box = { x: 264, y: 70, x2: 358, y2: 150 };
