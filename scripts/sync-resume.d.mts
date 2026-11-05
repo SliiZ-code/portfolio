@@ -10,6 +10,7 @@ export function dataOperations(
 ): ({ op: 'add'; path: string; value: unknown } | { op: 'remove'; path: string })[];
 export function syncWebResume(options: {
   id: string;
+  mainId?: string;
   main: unknown;
   baseUrl: string;
   key: string;
@@ -18,6 +19,7 @@ export function syncWebResume(options: {
 }): Promise<unknown>;
 export function fetchCvPdf(options: {
   id: string;
+  mainId?: string;
   main: unknown;
   baseUrl: string;
   key: string;
@@ -25,6 +27,7 @@ export function fetchCvPdf(options: {
   fetchImpl?: typeof fetch;
 }): Promise<Uint8Array>;
 export function collectPdfs(
-  jobs: { lang: string; id: string; main: unknown }[],
+  jobs: { lang: string; id: string; mainId?: string; main: unknown }[],
   options: { baseUrl: string; key: string; fetchImpl: typeof fetch },
 ): Promise<{ pdfs: Map<string, Uint8Array>; errors: string[] }>;
+export function assertDistinctIds(mainIds: (string | undefined)[], webIds: (string | undefined)[]): void;

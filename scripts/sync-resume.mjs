@@ -243,9 +243,10 @@ const getBody = async (id, baseUrl, key, fetchImpl = fetch) => {
  * only when it differs (with its `updatedAt`, so a concurrent edit is refused rather than lost) and
  * returns the web resume as read back afterwards. Refuses to write anything that still holds the phone.
  */
-export const syncWebResume = async ({ id, main, baseUrl, key, lang = '', fetchImpl = fetch }) => {
+export const syncWebResume = async ({ id, mainId = '', main, baseUrl, key, lang = '', fetchImpl = fetch }) => {
   const target = webDataFrom(main);
   assertWebResume(main, target);
+  if (mainId && id === mainId) throw new Error(`web resume ${id} is the main resume: refusing to overwrite it`);
   const current = await getBody(id, baseUrl, key, fetchImpl);
   const operations = dataOperations(dataOf(current), target);
   if (!operations.length) return current;
@@ -260,9 +261,22 @@ export const syncWebResume = async ({ id, main, baseUrl, key, lang = '', fetchIm
   return getBody(id, baseUrl, key, fetchImpl);
 };
 
+/**
+ * The web resumes get overwritten: refuse any set of IDs where a web ID is also a main ID (that
+ * would blank the phone on the main resume) or where both languages share one web resume.
+ */
+export const assertDistinctIds = (mainIds, webIds) => {
+  const mains = new Set(mainIds.filter(Boolean));
+  const webs = webIds.filter(Boolean);
+  for (const id of webs) {
+    if (mains.has(id)) throw new Error(`web resume ${id} is also a main resume: refusing to overwrite it`);
+  }
+  if (new Set(webs).size !== webs.length) throw new Error('RXRESUME_PDF_ID_FR and RXRESUME_PDF_ID_EN must be two different resumes');
+};
+
 /** The PDF of the web resume `id`: brought up to date with the main resume, then checked, then downloaded. */
-export const fetchCvPdf = async ({ id, main, baseUrl, key, lang, fetchImpl = fetch }) => {
-  const web = await syncWebResume({ id, main, baseUrl, key, lang, fetchImpl });
+export const fetchCvPdf = async ({ id, mainId = '', main, baseUrl, key, lang, fetchImpl = fetch }) => {
+  const web = await syncWebResume({ id, mainId, main, baseUrl, key, lang, fetchImpl });
   assertWebResume(main, dataOf(web));
   const response = await request(`${baseUrl}/api/openapi/resumes/${encodeURIComponent(id)}/pdf`, key, fetchImpl);
   if (!response.ok) throw new Error(`RxResume ${id} (pdf): HTTP ${response.status} ${response.statusText}`);
@@ -296,11 +310,12 @@ const main = async () => {
     return id;
   });
   // fetch everything first so a failure on one language never leaves the two files out of sync
+  assertDistinctIds(ids, langs.map((lang) => process.env[`RXRESUME_PDF_ID_${lang.toUpperCase()}`]));
   const bodies = await Promise.all(ids.map((id) => getBody(id, baseUrl, key)));
   const resumes = bodies.map(resumeFromResponse);
   const jobs = langs.flatMap((lang, index) => {
     const id = process.env[`RXRESUME_PDF_ID_${lang.toUpperCase()}`];
-    return id ? [{ lang, id, main: dataOf(bodies[index]) }] : [];
+    return id ? [{ lang, id, mainId: ids[index], main: dataOf(bodies[index]) }] : [];
   });
   const { pdfs, errors } = await collectPdfs(jobs, { baseUrl, key, fetchImpl: fetch });
   for (const [index, lang] of langs.entries()) {

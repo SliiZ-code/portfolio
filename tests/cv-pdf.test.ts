@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertPdf, assertWebResume, collectPdfs, cvPdfFile, dataOperations, fetchCvPdf, webDataFrom } from '../scripts/sync-resume.mjs';
+import { assertDistinctIds, assertPdf, assertWebResume, collectPdfs, cvPdfFile, dataOperations, fetchCvPdf, webDataFrom } from '../scripts/sync-resume.mjs';
 import { cvPdfFile as siteCvPdfFile, cvPdfPath } from '../src/lib/cv-pdf';
 
 const PHONE = '+33 6 12 34 56 78';
@@ -264,5 +264,29 @@ describe('cvPdfPath', () => {
 
   it('uses the same file name as the sync script', () => {
     for (const lang of ['fr', 'en'] as const) expect(siteCvPdfFile(lang)).toBe(cvPdfFile(lang));
+  });
+});
+
+describe('the web resume is never a main resume', () => {
+  it('refuses a web ID that is a main ID, in either language', () => {
+    expect(() => assertDistinctIds(['main-fr', 'main-en'], ['main-fr', 'web-en'])).toThrow(/main resume/);
+    expect(() => assertDistinctIds(['main-fr', 'main-en'], ['web-fr', 'main-fr'])).toThrow(/main resume/);
+  });
+
+  it('refuses one web resume shared by both languages', () => {
+    expect(() => assertDistinctIds(['main-fr', 'main-en'], ['web', 'web'])).toThrow(/two different/);
+  });
+
+  it('accepts distinct web resumes, or none', () => {
+    expect(() => assertDistinctIds(['main-fr', 'main-en'], ['web-fr', 'web-en'])).not.toThrow();
+    expect(() => assertDistinctIds(['main-fr', 'main-en'], [undefined, ''])).not.toThrow();
+  });
+
+  it('never calls the API when asked to overwrite the main resume', async () => {
+    const api = fakeApi();
+    await expect(
+      fetchCvPdf({ id: 'main-fr', mainId: 'main-fr', main, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: api.fetchImpl }),
+    ).rejects.toThrow(/main resume/);
+    expect(api.calls).toHaveLength(0);
   });
 });

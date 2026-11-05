@@ -80,7 +80,9 @@ board only adds its own voice (margin notes, hints, UI strings).
 The public PDF is not rendered from the main resumes, which carry a phone number. Create in
 RxResume a second resume per language (a "web resume"), used only for the PDF, and put their IDs
 in `RXRESUME_PDF_ID_FR` / `RXRESUME_PDF_ID_EN`. **The web resumes are overwritten from the main
-resumes at each sync: don't edit them by hand**, edit the main ones. Before downloading, the sync
+resumes at each sync: don't edit them by hand**, edit the main ones. A web ID must never be a
+main resume ID, and the two must differ: the sync refuses to run otherwise. A locked web resume
+can't be written, so its PDF stays at the previous version until it is unlocked. Before downloading, the sync
 copies the main resume's whole `data` (basics, summary, sections, custom sections, metadata,
 picture) into the web resume through `PATCH /api/openapi/resumes/:id` (JSON Patch with
 `expectedUpdatedAt`, so a concurrent edit is refused instead of lost), with `basics.phone` emptied
