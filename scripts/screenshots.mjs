@@ -114,13 +114,13 @@ await visit(`/projets/${arduino}/`, { label: 'arduino-night', viewport: { width:
 await visit('/en/projects/the-arduino-in-pixels/', { label: 'arduino-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
 await visit(`/projets/${arduino}/`, { label: 'arduino-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
 
-// dive into a structure: the stage scales toward the pattern before the page changes
+// dive into a project's row: the stage scales toward it before the page changes
 await visit('/', {
   label: 'dive',
   viewport: { width: 1440, height: 900 },
   settle: 2600,
   before: async (page) => {
-    await page.click('.ent[data-id="blink"] .name');
+    await page.click('.proj[data-id="blink"]');
     await page.waitForTimeout(450);
   },
 });

@@ -2,7 +2,7 @@ import type { Lang, Project, Resume } from '../lib/resume';
 import { strings } from '../i18n';
 import { findMedia } from '../lib/media';
 import type { At } from '../scripts/board/layout';
-import { OSCILLATORS, type PatternName } from '../scripts/board/patterns';
+import { METHUSELAHS, type MethuselahName, type PatternName } from '../scripts/board/patterns';
 
 interface OverlayNote {
   fr: string;
@@ -19,15 +19,13 @@ export interface BoardExperiment {
 }
 
 export interface BoardOverlay {
-  pattern: PatternName;
-  pad: number;
-  /** Screen fractions [centre x, pattern top y] per orientation: l landscape, p portrait. */
-  at: Required<Pick<At, 'l' | 'p'>>;
+  /** The methuselah the project fires onto the board; defaults to one picked from the slug. */
+  seed?: MethuselahName;
   /** Other language slugs that resolve to this same project. */
   aliases?: string[];
   /** Board-only abbreviation; the resume name stays authoritative. */
   name?: string;
-  /** The language or tool shown under the name on the board. */
+  /** The language or tool shown next to the name on the board. */
   tag: string;
   /** Margin note on the project page. */
   note?: OverlayNote;
@@ -37,61 +35,59 @@ export interface BoardOverlay {
 }
 
 /**
- * Site-only layer: where a project sits on the screen, which pattern it is, its tag, its
- * page note and its capture. Keyed by the slug of the RxResume project name.
+ * Site-only layer: a project's seed, tag, page note and capture. Keyed by the slug of the
+ * RxResume project name.
  */
 export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
   'jeu-de-la-vie': {
-    pattern: 'pulsar',
-    pad: 3,
-    at: { l: [0.14, 0.66], p: [0.26, 0.57] },
+    seed: 'r-pentomino',
     aliases: ['game-of-life'],
     tag: 'C++',
-    note: { fr: 'un pulsar. forcément.', en: 'a pulsar. obviously.', r: 0.04 },
+    note: {
+      fr: 'le R-pentomino : cinq cellules,\n1103 générations de chaos',
+      en: 'the R-pentomino: five cells,\n1103 generations of chaos',
+      r: 0.04,
+    },
     media: { video: '/media/conway.mp4' },
   },
   thrive: {
-    pattern: 'penta',
-    pad: 4,
-    at: { l: [0.38, 0.71], p: [0.74, 0.68] },
+    seed: 'acorn',
     tag: 'Flutter',
     note: {
-      fr: 'un pentadécathlon :\nil grandit, il rétrécit, il tient',
-      en: 'a pentadecathlon:\nit grows, it shrinks, it holds',
+      fr: 'un gland : sept cellules\nqui poussent 5206 générations',
+      en: 'an acorn: seven cells\nthat grow for 5206 generations',
       r: 0.03,
     },
     media: { image: '/media/thrive.jpg' },
   },
   'worldwide-weather-watcher': {
-    pattern: 'galaxy',
-    pad: 2,
-    at: { l: [0.62, 0.68], p: [0.26, 0.79] },
+    seed: 'pi-heptomino',
     name: 'Weather Watcher',
     tag: 'Arduino',
     note: {
-      fr: 'une galaxie de Kok :\nelle tourne comme une trotteuse',
-      en: "a Kok's galaxy:\nit turns like a clock hand",
+      fr: "un pi-heptomino :\nil s'agite, puis il se pose",
+      en: 'a pi-heptomino:\nit stirs, then it settles',
       r: -0.03,
     },
   },
   blink: {
-    pattern: 'blinkers',
-    pad: 2,
-    at: { l: [0.84, 0.12], p: [0.74, 0.15] },
+    seed: 'diehard',
     tag: 'Python',
-    note: { fr: 'Blink → des clignotants (blinkers)', en: 'Blink → blinkers', r: -0.04 },
+    note: {
+      fr: 'un diehard : il disparaît\naprès 130 générations',
+      en: 'a diehard: gone\nafter 130 generations',
+      r: -0.04,
+    },
     media: { video: '/media/blink.mp4' },
   },
   // the slugs of "L'Arduino en pixels" and "The Arduino in pixels"
   'larduino-en-pixels': {
-    pattern: 'beacon',
-    pad: 2,
-    at: { l: [0.86, 0.7], p: [0.74, 0.84] },
+    seed: 'b-heptomino',
     aliases: ['the-arduino-in-pixels'],
     tag: 'three.js',
     note: {
-      fr: 'un beacon :\ndeux blocs qui clignotent',
-      en: 'a beacon:\ntwo blocks that blink',
+      fr: "un B-heptomino :\nil fait naître des planeurs",
+      en: 'a B-heptomino:\nit gives birth to gliders',
       r: 0.03,
     },
     experiment: { kind: 'pixel-model', src: '/media/arduino.glb' },
@@ -108,10 +104,8 @@ export interface BoardProject extends Project {
   boardName: string;
   /** Full resume name, for the server-rendered list. */
   displayName: string;
-  pattern: PatternName;
-  pad: number;
-  /** Null for a project outside the overlay: the board finds it a free slot at runtime. */
-  at: At | null;
+  /** The methuselah this project fires onto the board. */
+  seed: MethuselahName;
   /** Empty for a project outside the overlay. */
   tag: string;
   /** Tag and period, for the list and the project page. */
@@ -140,6 +134,10 @@ const hash = (value: string): number => {
   for (const char of value) h = (h * 31 + char.charCodeAt(0)) >>> 0;
   return h;
 };
+
+/** The overlay's seed, or a methuselah picked from the slug so the same project always fires the same one. */
+export const seedFor = (project: Project): MethuselahName =>
+  overlayFor(project)?.seed ?? METHUSELAHS[hash(project.slug) % METHUSELAHS.length];
 
 /** The overlay tag and the RxResume period, whichever of the two exist. */
 export const projectMeta = (project: Project): string =>
@@ -191,9 +189,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       return {
         ...base,
         boardName: project.name,
-        pattern: OSCILLATORS[hash(project.slug) % OSCILLATORS.length],
-        pad: 2,
-        at: null,
+        seed: seedFor(project),
         tag: '',
         meta: projectMeta(project),
       };
@@ -201,9 +197,7 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
     return {
       ...base,
       boardName: overlay.name ?? project.name,
-      pattern: overlay.pattern,
-      pad: overlay.pad,
-      at: overlay.at,
+      seed: seedFor(project),
       tag: overlay.tag,
       meta: projectMeta(project),
       note: boardNote(project, resume.lang),
@@ -226,45 +220,22 @@ export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p
   at: At;
 };
 
+/** What is still drawn on the board as a structure besides the name: the CV and the contact. */
 export interface BoardEntity {
   id: string;
-  kind: 'project' | 'cv' | 'contact';
+  kind: 'cv' | 'contact';
   name: string;
-  /** The project's language or tool; empty for everything else. */
-  tag: string;
   /** Empty for a contact with no address: drawn, but not a link. */
   url: string;
   pattern: PatternName;
   pad: number;
-  at: At | null;
+  at: At;
 }
 
-/**
- * Everything that is drawn on the board besides the name, fixed positions first: the ones
- * without a position (projects outside the overlay) are placed at runtime, in this order,
- * once everything else has claimed its room.
- */
 export function getBoardEntities(resume: Resume, links: { cvHref: string; contactHref: string }): BoardEntity[] {
   const t = strings(resume.lang).board;
-  const projects = getBoardProjects(resume).map<BoardEntity>((project) => ({
-    id: project.slug,
-    kind: 'project',
-    name: project.boardName,
-    tag: project.tag,
-    url: projectPath(resume.lang, project.slug),
-    pattern: project.pattern,
-    pad: project.pad,
-    at: project.at,
-  }));
-  const cv: BoardEntity = { id: 'cv', kind: 'cv', name: t.cvName, tag: '', url: links.cvHref, ...CV_LAYOUT };
-  const contact: BoardEntity = {
-    id: 'contact',
-    kind: 'contact',
-    name: t.contactName,
-    tag: '',
-    url: links.contactHref,
-    ...CONTACT_LAYOUT,
-  };
-  const all = [...projects, cv, contact];
-  return [...all.filter((entity) => entity.at), ...all.filter((entity) => !entity.at)];
+  return [
+    { id: 'cv', kind: 'cv', name: t.cvName, url: links.cvHref, ...CV_LAYOUT },
+    { id: 'contact', kind: 'contact', name: t.contactName, url: links.contactHref, ...CONTACT_LAYOUT },
+  ];
 }

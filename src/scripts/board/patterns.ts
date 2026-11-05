@@ -1,4 +1,4 @@
-// Game of Life patterns. Everything here is a still life, an oscillator or the gun.
+// Game of Life patterns: the CV's beehive, the contact's gun, gliders and the methuselahs that seed the projects.
 export type Pattern = number[][];
 
 const P = (rows: string): Pattern =>
@@ -6,56 +6,6 @@ const P = (rows: string): Pattern =>
     .trim()
     .split('\n')
     .map((row) => [...row.trim()].map((cell) => (cell === 'O' ? 1 : 0)));
-
-export const PULSAR = P(`
-..OOO...OOO..
-.............
-O....O.O....O
-O....O.O....O
-O....O.O....O
-..OOO...OOO..
-.............
-..OOO...OOO..
-O....O.O....O
-O....O.O....O
-O....O.O....O
-.............
-..OOO...OOO..`);
-
-export const PENTA = P(`
-..O....O..
-OO.OOOO.OO
-..O....O..`);
-
-export const BLINKERS = P(`
-OOO...OOO...OOO`);
-
-export const CLOCK = P(`
-..O.
-O.O.
-.O.O
-.O..`);
-
-export const GALAXY = P(`
-OO.OOOOOO
-OO.OOOOOO
-OO.......
-OO.....OO
-OO.....OO
-OO.....OO
-.......OO
-OOOOOO.OO
-OOOOOO.OO`);
-
-export const BEACON = P(`
-OO..
-OO..
-..OO
-..OO`);
-
-export const TOAD = P(`
-.OOO
-OOO.`);
 
 export const BEEHIVE = P(`
 .OO.
@@ -107,19 +57,49 @@ O..
 
 export const GLIDERS: Pattern[] = GLIDER_HEADINGS.map((entry) => entry.cells);
 
+/** Structures drawn on the board in their own private world. */
 export const PATTERNS = {
-  pulsar: PULSAR,
-  blinkers: BLINKERS,
-  penta: PENTA,
-  galaxy: GALAXY,
-  clock: CLOCK,
-  beacon: BEACON,
-  toad: TOAD,
   beehive: BEEHIVE,
   gun: GUN,
 } as const;
 
 export type PatternName = keyof typeof PATTERNS;
 
-/** Deterministic list used for projects that only exist in RxResume; beacon and beehive are placed by hand for the Arduino project and the CV, and the toad is left free. */
-export const OSCILLATORS: PatternName[] = ['clock', 'blinkers', 'penta', 'galaxy', 'pulsar'];
+/** Small patterns that run for a long time before they settle (or vanish): one per project. */
+export const R_PENTOMINO = P(`
+.OO
+OO.
+.O.`);
+
+export const ACORN = P(`
+.O.....
+...O...
+OO..OOO`);
+
+export const DIEHARD = P(`
+......O.
+OO......
+.O...OOO`);
+
+export const B_HEPTOMINO = P(`
+O.OO
+OOO.
+.O..`);
+
+export const PI_HEPTOMINO = P(`
+OOO
+O.O
+O.O`);
+
+export const METHUSELAH_PATTERNS = {
+  'r-pentomino': R_PENTOMINO,
+  acorn: ACORN,
+  diehard: DIEHARD,
+  'b-heptomino': B_HEPTOMINO,
+  'pi-heptomino': PI_HEPTOMINO,
+} as const;
+
+export type MethuselahName = keyof typeof METHUSELAH_PATTERNS;
+
+/** Deterministic order: a project without a seed of its own takes `METHUSELAHS[hash(slug) % length]`. */
+export const METHUSELAHS: MethuselahName[] = ['r-pentomino', 'acorn', 'diehard', 'b-heptomino', 'pi-heptomino'];

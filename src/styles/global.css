@@ -24,6 +24,11 @@
   --mute: #75716a;
   --line: #1b1a1714;
   --accent: #2433ff;
+  /* newborn → young cells, warm to cool; older cells settle on the ink at half opacity */
+  --life-0: #ff8a00;
+  --life-1: #f0306a;
+  --life-2: #9a2fe0;
+  --life-3: #3c56ff;
 }
 
 [data-theme="night"] {
@@ -32,6 +37,10 @@
   --mute: #8a857c;
   --line: #e8e5dc12;
   --accent: #ff8a3d;
+  --life-0: #ffd62e;
+  --life-1: #ff6a5c;
+  --life-2: #c66cff;
+  --life-3: #6f8cff;
 }
 
 * {
@@ -149,17 +158,6 @@ button {
   white-space: nowrap;
 }
 
-.ent .tag {
-  font: 500 10px/1.2 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--mute);
-  margin-top: 2px;
-  padding: 0 3px;
-  background: var(--paper);
-  white-space: nowrap;
-}
-
 a.ent,
 a.ent .hit,
 a.ent .name {
@@ -183,6 +181,113 @@ a.ent:focus-visible .name {
   background: var(--paper);
   box-shadow: 0 0 0 3px var(--paper);
   pointer-events: none;
+}
+
+/* ---- the projects: a list of rows, each fires its seed onto the board ---- */
+#projects {
+  position: absolute;
+  z-index: 1;
+  /* the script sets left, top, width and the height it can take */
+  width: max-content;
+  pointer-events: none;
+}
+
+#projects:not(.placed) {
+  visibility: hidden;
+}
+
+#projects.scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+#projects ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+#projects.compact ul {
+  gap: 0;
+}
+
+.proj {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 14px;
+  padding: 4px 0;
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-user-drag: none;
+}
+
+#projects.compact .proj {
+  padding: 1px 0;
+}
+
+#projects.compact .pname {
+  padding: 1px 6px;
+  font-size: 11px;
+}
+
+.proj .pname {
+  font: 500 12px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 2px 6px;
+  margin-left: -6px;
+  background: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proj .pmeta {
+  font: 500 10px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--mute);
+  padding: 0 3px;
+  background: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-self: end;
+}
+
+#projects.narrow .pmeta {
+  display: none;
+}
+
+.proj:hover .pname {
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.proj:focus-visible {
+  outline: none;
+}
+
+.proj:focus-visible .pname {
+  color: var(--paper);
+  background: var(--accent);
+}
+
+/* the opening: labels and rows start hidden and appear as the shockwave passes them */
+#stage.intro .ent,
+#stage.intro .name-note,
+#stage.intro .proj {
+  opacity: 0;
+  transition: none;
+}
+
+#stage.intro .in {
+  opacity: 1;
+  transition: opacity .45s ease;
 }
 
 /* ---- HUD: four quiet corners ---- */
@@ -724,13 +829,13 @@ a.flag:hover {
   border-color: var(--accent);
 }
 
-/* phones and landscape phones: smaller tabs, no tags */
+/* phones and landscape phones: smaller tabs */
 @media (max-width: 760px), (max-height: 620px) {
-  .ent .tag {
-    display: none;
+  .ent .name {
+    font-size: 11px;
   }
 
-  .ent .name {
+  .proj .pname {
     font-size: 11px;
   }
 }
@@ -790,13 +895,6 @@ a.flag:hover {
 @media (max-height: 620px) {
   .name-note {
     font-size: 13px;
-  }
-}
-
-/* small tablets: keep the tags, but smaller than the name */
-@media (min-width: 761px) and (max-width: 1150px) and (max-height: 900px) {
-  .ent .tag {
-    font-size: 9px;
   }
 }
 

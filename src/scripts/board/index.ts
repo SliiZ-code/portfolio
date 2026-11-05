@@ -1,6 +1,6 @@
-import { PATTERNS, GLIDERS } from './patterns';
+import { GLIDERS, METHUSELAH_PATTERNS, PATTERNS, type MethuselahName } from './patterns';
 import { rasterize } from './rasterize';
-import { addFeedGlider, clearBoxes, createWorld, idx, seedWorld, stepWorld, type World } from './life';
+import { addFeedGlider, clearBoxes, createWorld, idx, seedWorld, spawn, stepWorld, type World } from './life';
 import { addStructure, stepStructures, structurePopulation } from './structures';
 import {
   anchorFor,
@@ -17,8 +17,8 @@ import {
   type Footprint,
   type Grid,
 } from './layout';
-import { findFreeSlot } from './slots';
-import { draw, type Colors } from './render';
+import { placeProjects, stampSpot, waveFront, waveTravel, type PxRect } from './projects';
+import { createRenderBuffers, draw, BUCKETS, type Colors, type RenderState, type Shockwave } from './render';
 import { createFromFlag, createReturnTracker, resolveFrom } from './return-flag';
 import { bindInput } from './input';
 import type { BoardConfig, EntityConfig, Structure } from './types';
@@ -27,12 +27,24 @@ const RATE = 120;
 const FEED_EVERY = 18;
 const DIVE_SCALE = 16;
 const DIVE_MS = 750;
-const INTRO_MS = 1400;
+/** The opening shockwave, from the centre of the name to past the farthest corner. */
+const INTRO_MS = 1800;
+/** Without an opening the first generation waits a moment, so the page settles first. */
+const START_DELAY = 500;
+const STAMP_COOLDOWN = 1500;
+/** Width of one band of the shockwave's ring, in pixels. */
+const BAND_PX = 11;
 
 interface Placed {
   config: EntityConfig;
   el: HTMLElement;
   fp: Footprint;
+}
+
+interface Row {
+  slug: string;
+  seed: MethuselahName;
+  el: HTMLAnchorElement;
 }
 
 export async function initBoard(): Promise<void> {
@@ -41,8 +53,9 @@ export async function initBoard(): Promise<void> {
   const stage = document.getElementById('stage');
   const labels = document.getElementById('labels');
   const note = document.getElementById('name-note');
+  const list = document.getElementById('projects');
   const ctx = canvas?.getContext('2d');
-  if (!source?.textContent || !canvas || !stage || !labels || !ctx) return;
+  if (!source?.textContent || !canvas || !stage || !labels || !list || !ctx) return;
 
   let data: BoardConfig;
   try {
@@ -57,11 +70,19 @@ export async function initBoard(): Promise<void> {
     reduced = event.matches;
   });
   const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  let colors: Colors = { paper: '', ink: '', mute: '', accent: '' };
+  let colors: Colors = { paper: '', ink: '', mute: '', accent: '', life: ['', '', '', ''] };
+  let dirty = true;
   const readColors = () => {
-    colors = { paper: css('--paper'), ink: css('--ink'), mute: css('--mute'), accent: css('--accent') };
+    colors = {
+      paper: css('--paper'),
+      ink: css('--ink'),
+      mute: css('--mute'),
+      accent: css('--accent'),
+      life: [css('--life-0'), css('--life-1'), css('--life-2'), css('--life-3')],
+    };
+    renderState.colors = colors;
+    dirty = true;
   };
-  readColors();
 
   try {
     // a font that never loads must not leave the stage at opacity 0 forever
@@ -79,6 +100,11 @@ export async function initBoard(): Promise<void> {
 
   const anchors = new Map<string, HTMLElement>();
   labels.querySelectorAll<HTMLElement>('.ent').forEach((el) => anchors.set(el.dataset.id ?? '', el));
+  const rows = new Map<string, Row>();
+  list.querySelectorAll<HTMLAnchorElement>('.proj').forEach((el) => {
+    const seed = el.dataset.seed as MethuselahName | undefined;
+    if (seed && METHUSELAH_PATTERNS[seed]) rows.set(el.dataset.id ?? '', { slug: el.dataset.id ?? '', seed, el });
+  });
 
   let cell = 10;
   let grid: Grid = { cols: 1, rows: 1 };
@@ -87,13 +113,42 @@ export async function initBoard(): Promise<void> {
   let keepClear: Box[] = [];
   // the name's keep-clear box without the name: the soup dies there, visitors may draw on the name
   let nameRing: Box[] = [];
+  // the project list: the soup dies under it too, and seeds are fired beside it
+  let listBox: Box | null = null;
   let placed = new Map<string, Placed>();
   let lastSize = '';
+  // the opening: where the shockwave starts and how far its front travels, in cells
+  let waveCentre = { x: 0, y: 0 };
+  let waveBand = 3;
+  let waveTotal = 1;
 
-  const protectedBoxes = () => [...keepClear, ...nameRing, ...structures.map((s) => coreBox(s))];
-  // visitors may draw on the name, so only labels, HUD and the other structures' cores stay off limits
+  const renderState: RenderState = {
+    ctx,
+    cell,
+    dpr: 1,
+    width: 0,
+    height: 0,
+    world,
+    structures,
+    colors,
+    buffers: createRenderBuffers(1),
+    hoverId: null,
+    wave: null,
+  };
+
+  const protectedBoxes = () => [...keepClear, ...(listBox ? [listBox] : []), ...nameRing, ...structures.map((s) => coreBox(s))];
+  // visitors may draw on the name, so only labels, the list, the HUD and the other structures' cores stay off limits
   const isFree = (x: number, y: number) =>
-    !isProtected(x, y, 0, [...keepClear, ...structures.filter((s) => s.kind !== 'name').map((s) => coreBox(s))]);
+    !isProtected(x, y, 0, [
+      ...keepClear,
+      ...(listBox ? [listBox] : []),
+      ...structures.filter((s) => s.kind !== 'name').map((s) => coreBox(s)),
+    ]);
+
+  const pxRect = (el: Element): PxRect | null => {
+    const r = el.getBoundingClientRect();
+    return r.width && r.height ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+  };
 
   /** Lays the board out for the current screen: the fine name sets the cell, then everything in screen fractions. */
   function layout(): void {
@@ -115,8 +170,10 @@ export async function initBoard(): Promise<void> {
     structures = [];
     keepClear = [];
     nameRing = [];
+    listBox = null;
     placed = new Map();
     anchors.forEach((el) => el.classList.remove('placed'));
+    list!.classList.remove('placed', 'compact', 'narrow', 'scroll');
 
     const at = namePlacement(grid, nameDims, orientation);
     addStructure(structures, {
@@ -131,12 +188,30 @@ export async function initBoard(): Promise<void> {
       { x: at.x, y: at.y, x2: at.x + at.w, y2: at.y + at.h },
     );
 
+    // the list, as wide as its text wants: the room it needs decides whether the note runs on one line
+    const measureList = () => {
+      const style = list!.style;
+      style.left = '0px';
+      style.top = '0px';
+      style.width = 'max-content';
+      style.maxHeight = '';
+      const r = list!.getBoundingClientRect();
+      return { w: Math.ceil(r.width), h: Math.ceil(r.height) };
+    };
+    let natural = measureList();
+
     if (note) {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
       note.style.top = `${(at.y + at.h) * cell + 10}px`;
-      // one line under the name wherever it fits (the CV hangs below it); inside the name's width on a phone
+      // one line under the name wherever it fits (the CV hangs below it); inside the name's width on a phone,
+      // and in landscape when the line would take the room the project list needs
       note.style.maxWidth = orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : 'none';
+      if (orientation === 'l') {
+        const oneLine = note.getBoundingClientRect().right;
+        const right = Math.max(oneLine, (at.x + at.w) * cell);
+        if (vw - 16 - right - 20 < Math.min(natural.w, 260)) note.style.maxWidth = `${at.w * cell}px`;
+      }
     }
     // the CV hangs under the name, and under the note when the note is on one line
     const noteRect = note?.getBoundingClientRect();
@@ -171,55 +246,76 @@ export async function initBoard(): Promise<void> {
           keepClear.push(rectToBox({ left: r.left - 4, top: r.top - 4, right: r.right + 4, bottom: r.bottom + 4 }, cell));
         }
       }
-      for (const part of el.querySelectorAll<HTMLElement>('.name, .tag')) {
+      for (const part of el.querySelectorAll<HTMLElement>('.name')) {
         const r = part.getBoundingClientRect();
         if (r.width && r.height) keepClear.push(rectToBox(r, cell));
       }
     };
 
-    const nameRect = at;
-    const fixed = data.entities.filter((entity) => entity.at?.[orientation]);
-    const loose = data.entities.filter((entity) => !entity.at?.[orientation]);
-    for (const config of fixed) place(config, anchorFor(config.at![orientation], grid, nameRect, below));
+    for (const config of data.entities) {
+      if (config.at[orientation]) place(config, anchorFor(config.at[orientation], grid, at, below));
+    }
     if (note) {
       const r = note.getBoundingClientRect();
       keepClear.push(rectToBox(r, cell));
     }
     placed.forEach(({ el }) => addLabelBoxes(el));
 
-    // a project the layout doesn't know: the first free rectangle, nearest the middle
-    const hud: Box[] = [];
-    document.querySelectorAll<HTMLElement>('.hud').forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width && r.height) hud.push(rectToBox(r, cell));
-    });
-    for (const config of loose) {
-      const el = anchors.get(config.id);
-      if (!el) continue;
-      const cells = PATTERNS[config.pattern];
-      const fp = footprint({ w: cells[0].length, h: cells.length }, config.pad, { cx: 0, ty: 0 });
-      const hit = el.querySelector<HTMLElement>('.hit');
-      if (hit) {
-        hit.style.width = `${fp.w * cell}px`;
-        hit.style.height = `${fp.h * cell}px`;
-      }
-      el.style.left = '0px';
-      el.style.top = '0px';
-      const r = el.getBoundingClientRect();
-      const need = { w: Math.ceil(r.width / cell) + 2, h: Math.ceil(r.height / cell) + 1 };
-      const occupied = [...protectedBoxes(), ...hud];
-      const slot = findFreeSlot(need, occupied, grid, { margin: 2 });
-      if (!slot) {
-        console.warn(`[board] no free slot for "${config.id}": left off the board (its page still exists)`);
-        continue;
-      }
-      const result = place(config, { cx: Math.round(slot.x + need.w / 2), ty: slot.y + config.pad });
-      if (result) addLabelBoxes(result.el);
+    // the list goes where the board has room: right of everything in landscape, under the CV on a phone
+    const obstacles: PxRect[] = [{ left: at.x * cell, top: at.y * cell, right: (at.x + at.w) * cell, bottom: (at.y + at.h) * cell }];
+    if (note) {
+      const r = pxRect(note);
+      if (r) obstacles.push(r);
     }
+    placed.forEach(({ el }) => {
+      for (const part of el.querySelectorAll<HTMLElement>('.hit, .name')) {
+        const r = pxRect(part);
+        if (r) obstacles.push({ left: r.left - 4, top: r.top - 4, right: r.right + 4, bottom: r.bottom + 4 });
+      }
+    });
+    const hudTop = document.querySelector('.hud.tr');
+    const hudBottom = document.querySelector('.hud.br');
+    const topLimit = Math.max(12, (hudTop ? pxRect(hudTop)?.bottom ?? 0 : 0) + 12);
+    const bottomRect = hudBottom ? pxRect(hudBottom) : null;
+    const bottomLimit = (bottomRect ? bottomRect.top - 12 : vh - 16);
+    const fit = () => {
+      natural = measureList();
+      return placeProjects({ vw, vh, orientation, natural, obstacles, topLimit, bottomLimit });
+    };
+    let spot = fit();
+    // too tall: tighter rows first, then a scroll; too narrow: the meta column goes
+    if (spot.overflow) {
+      list!.classList.add('compact');
+      spot = fit();
+    }
+    if (spot.narrow) {
+      list!.classList.add('narrow');
+      spot = fit();
+    }
+    list!.style.left = `${spot.left}px`;
+    list!.style.top = `${spot.top}px`;
+    list!.style.width = `${spot.width}px`;
+    list!.style.maxHeight = `${spot.height}px`;
+    list!.classList.toggle('scroll', spot.overflow);
+    list!.classList.add('placed');
+    const listRect = pxRect(list!);
+    if (listRect) listBox = rectToBox(listRect, cell);
 
     // the board starts busy, but not noisy: about one free cell in twelve is seeded
     const boxes = protectedBoxes();
     seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.08);
+
+    waveCentre = { x: at.x + at.w / 2, y: at.y + at.h / 2 };
+    waveBand = Math.max(2, Math.round(BAND_PX / cell));
+    waveTotal = waveTravel(waveCentre, grid, BUCKETS - 1, waveBand);
+    renderState.cell = cell;
+    renderState.width = vw;
+    renderState.height = vh;
+    renderState.dpr = dpr;
+    renderState.world = world;
+    renderState.structures = structures;
+    renderState.buffers = createRenderBuffers(world.cells.length);
+    dirty = true;
     updateCounters(0);
   }
 
@@ -233,20 +329,18 @@ export async function initBoard(): Promise<void> {
   // ---- drawing ----
   const paint = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= grid.cols || y >= grid.rows || !isFree(x, y)) return;
-    const k = idx(world.w, world.h, x, y);
-    world.cells[k] = 1;
-    world.heat[k] = 200;
+    spawn(world, idx(world.w, world.h, x, y));
+    dirty = true;
   };
   const dropGlider = (x: number, y: number) => {
     const glider = GLIDERS[(Math.random() * 4) | 0];
     glider.forEach((row, j) =>
       row.forEach((value, i) => {
         if (!value || !isFree(x + i - 1, y + j - 1)) return;
-        const k = idx(world.w, world.h, x + i - 1, y + j - 1);
-        world.cells[k] = 1;
-        world.heat[k] = 255;
+        spawn(world, idx(world.w, world.h, x + i - 1, y + j - 1));
       }),
     );
+    dirty = true;
   };
   bindInput({
     canvas,
@@ -257,6 +351,41 @@ export async function initBoard(): Promise<void> {
     onChange: () => {
       if (reduced) tick();
     },
+  });
+
+  // ---- seeds: a project row fires its methuselah beside the list ----
+  const lastFired = new Map<string, number>();
+  const fire = (row: Row) => {
+    const now = performance.now();
+    if (!listBox || now - (lastFired.get(row.slug) ?? -Infinity) < STAMP_COOLDOWN) return;
+    const pattern = METHUSELAH_PATTERNS[row.seed];
+    const rect = row.el.getBoundingClientRect();
+    const bounds = list.getBoundingClientRect();
+    const level = Math.min(Math.max(rect.top + rect.height / 2, bounds.top), bounds.bottom) / cell;
+    const blocked = [...keepClear, ...nameRing, ...structures.map((s) => coreBox(s))];
+    const spot = stampSpot({ w: pattern[0].length, h: pattern.length }, level, listBox, blocked, grid);
+    if (!spot) return;
+    lastFired.set(row.slug, now);
+    pattern.forEach((line, j) => line.forEach((value, i) => value && spawn(world, idx(world.w, world.h, spot.x + i, spot.y + j))));
+    dirty = true;
+    if (reduced) tick();
+  };
+  const rowOf = (target: EventTarget | null): Row | undefined => {
+    const el = (target as Element | null)?.closest?.<HTMLElement>('.proj');
+    return el ? rows.get(el.dataset.id ?? '') : undefined;
+  };
+  list.addEventListener('pointerover', (event) => {
+    const row = rowOf(event.target);
+    if (row && !row.el.contains(event.relatedTarget as Node | null)) fire(row);
+  });
+  // a finger never hovers: touching the row fires it before the tap navigates
+  list.addEventListener('pointerdown', (event) => {
+    const row = event.pointerType !== 'mouse' && rowOf(event.target);
+    if (row) fire(row);
+  });
+  list.addEventListener('focusin', (event) => {
+    const row = rowOf(event.target);
+    if (row) fire(row);
   });
 
   // ---- dive and return ----
@@ -271,9 +400,18 @@ export async function initBoard(): Promise<void> {
     url.searchParams.delete('from');
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   };
-  const originOf = (target: Placed) => {
+  const originAt = (x: number, y: number) => {
+    stage.style.transformOrigin = `${x}px ${y}px`;
+  };
+  /** The dive zooms toward the middle of a structure, or of a project's row. */
+  const originOfStructure = (target: Placed) => {
     const { fp } = target;
-    stage.style.transformOrigin = `${(fp.x + fp.core.x + fp.core.w / 2) * cell}px ${(fp.y + fp.core.y + fp.core.h / 2) * cell}px`;
+    originAt((fp.x + fp.core.x + fp.core.w / 2) * cell, (fp.y + fp.core.y + fp.core.h / 2) * cell);
+  };
+  const originOfRow = (row: Row) => {
+    const rect = row.el.getBoundingClientRect();
+    const bounds = list.getBoundingClientRect();
+    originAt(rect.left + rect.width / 2, Math.min(Math.max(rect.top + rect.height / 2, bounds.top), bounds.bottom));
   };
   /** Puts the stage back at scale 1 without animating (a page restored from the back/forward cache). */
   const resetStage = () => {
@@ -285,12 +423,12 @@ export async function initBoard(): Promise<void> {
   };
 
   const replayZoomOut = (slug: string): boolean => {
-    const target = placed.get(slug);
-    if (!target || target.config.kind !== 'project') return false;
+    const row = rows.get(slug);
+    if (!row) return false;
     tracker.remember(slug);
     cleanUrl();
     if (reduced) return true;
-    originOf(target);
+    originOfRow(row);
     stage.style.transition = 'none';
     stage.style.transform = `scale(${DIVE_SCALE})`;
     stage.getBoundingClientRect();
@@ -304,11 +442,8 @@ export async function initBoard(): Promise<void> {
     return true;
   };
 
-  labels.addEventListener('click', (event) => {
-    const el = (event.target as Element).closest<HTMLElement>('.ent');
-    const target = el && placed.get(el.dataset.id ?? '');
-    if (!el || !target || !(el instanceof HTMLAnchorElement)) return;
-    if (target.config.kind !== 'project' && target.config.kind !== 'cv') return;
+  /** A click on a link that dives: the stage scales toward `origin`, then the page changes. */
+  const dive = (event: MouseEvent, el: HTMLAnchorElement, slug: string | null, origin: () => void) => {
     // leaving without a dive (reduced motion, new tab): no slug may survive to be replayed on a later Back
     if (reduced || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       tracker.forget();
@@ -317,9 +452,9 @@ export async function initBoard(): Promise<void> {
     event.preventDefault();
     if (diving) return;
     diving = true;
-    if (target.config.kind === 'project') tracker.remember(target.config.id);
+    if (slug) tracker.remember(slug);
     else tracker.forget();
-    originOf(target);
+    origin();
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {
       location.href = el.href;
@@ -328,20 +463,36 @@ export async function initBoard(): Promise<void> {
       const fallback = setTimeout(resetStage, 3000);
       addEventListener('pagehide', () => clearTimeout(fallback), { once: true });
     }, DIVE_MS);
+  };
+
+  labels.addEventListener('click', (event) => {
+    const el = (event.target as Element).closest<HTMLElement>('.ent');
+    const target = el && placed.get(el.dataset.id ?? '');
+    if (!el || !target || !(el instanceof HTMLAnchorElement) || target.config.kind !== 'cv') return;
+    dive(event, el, null, () => originOfStructure(target));
+  });
+  list.addEventListener('click', (event) => {
+    const row = rowOf(event.target);
+    if (row) dive(event, row.el, row.slug, () => originOfRow(row));
   });
   labels.addEventListener('pointerover', (event) => {
     hoverId = (event.target as Element).closest<HTMLElement>('.ent')?.dataset.id ?? null;
+    dirty = true;
   });
   labels.addEventListener('pointerout', (event) => {
     if (!(event.relatedTarget as Element | null)?.closest?.('.ent')) hoverId = null;
+    dirty = true;
   });
   labels.addEventListener('focusin', (event) => {
     hoverId = (event.target as Element).closest<HTMLElement>('.ent')?.dataset.id ?? null;
+    dirty = true;
   });
   labels.addEventListener('focusout', () => {
     hoverId = null;
+    dirty = true;
   });
 
+  readColors();
   layout();
 
   const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
@@ -352,7 +503,33 @@ export async function initBoard(): Promise<void> {
   });
   flag.clear();
   const replayed = from ? replayZoomOut(from) : false;
-  canvas.dataset.entry = replayed && !reduced ? 'zoom-out' : reduced ? 'direct' : 'intro';
+  const entry = replayed && !reduced ? 'zoom-out' : reduced ? 'direct' : 'intro';
+  canvas.dataset.entry = entry;
+
+  // ---- the opening: a ring of newborn colours leaves the name, everything appears as it passes ----
+  const wave: Shockwave = { cx: 0, cy: 0, front: 0, band: 3 };
+  let intro: { el: HTMLElement; d: number; shown: boolean }[] | null = null;
+  const startIntro = () => {
+    intro = [];
+    const targets: Element[] = [...labels.querySelectorAll('.ent'), ...list.querySelectorAll('.proj')];
+    if (note) targets.push(note);
+    for (const el of targets) {
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot((r.left + r.width / 2) / cell - waveCentre.x, (r.top + r.height / 2) / cell - waveCentre.y);
+      intro.push({ el: el as HTMLElement, d, shown: false });
+    }
+    stage.classList.add('intro');
+  };
+  const endIntro = () => {
+    intro = null;
+    renderState.wave = null;
+    stage.classList.remove('intro');
+    dirty = true;
+  };
+  if (entry === 'intro') {
+    startIntro();
+    renderState.wave = wave;
+  }
   stage.classList.add('ready');
 
   addEventListener('pageshow', (event) => {
@@ -379,7 +556,9 @@ export async function initBoard(): Promise<void> {
   addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (`${innerWidth}x${innerHeight}` !== lastSize && !diving) layout();
+      if (`${innerWidth}x${innerHeight}` === lastSize || diving) return;
+      layout();
+      if (intro) startIntro();
     }, 200);
   });
 
@@ -390,29 +569,40 @@ export async function initBoard(): Promise<void> {
   function tick(): void {
     gen++;
     stepWorld(world);
-    clearBoxes(world, [...keepClear, ...nameRing]);
+    clearBoxes(world, listBox ? [...keepClear, ...nameRing, listBox] : [...keepClear, ...nameRing]);
     stepStructures(world, structures, gen);
     if (gen % FEED_EVERY === 0) addFeedGlider(world);
     updateCounters(gen);
+    dirty = true;
   }
   const loop = (now: number) => {
     requestAnimationFrame(loop);
-    if (!reduced && now - last > RATE && now - t0 > 500) {
+    if (intro) {
+      const progress = (now - t0) / INTRO_MS;
+      wave.cx = waveCentre.x;
+      wave.cy = waveCentre.y;
+      wave.band = waveBand;
+      wave.front = waveFront(progress, waveTotal);
+      for (const item of intro) {
+        if (item.shown || wave.front < item.d) continue;
+        item.shown = true;
+        item.el.classList.add('in');
+      }
+      dirty = true;
+      if (progress >= 1) {
+        intro.forEach((item) => item.el.classList.remove('in'));
+        endIntro();
+      }
+    }
+    if (!reduced && !intro && now - last > RATE && now - t0 > (entry === 'intro' ? INTRO_MS : START_DELAY)) {
       last = now;
       tick();
     }
-    draw({
-      ctx,
-      cell,
-      dpr: Math.min(2, devicePixelRatio || 1),
-      width: innerWidth,
-      height: innerHeight,
-      world,
-      structures,
-      colors,
-      hoverId,
-      ready: reduced ? 1 : Math.min(1, (now - t0) / INTRO_MS),
-    });
+    if (!dirty) return;
+    dirty = false;
+    renderState.dpr = Math.min(2, devicePixelRatio || 1);
+    renderState.hoverId = hoverId;
+    draw(renderState);
   };
   requestAnimationFrame(loop);
 }

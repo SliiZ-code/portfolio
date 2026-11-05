@@ -1,4 +1,4 @@
-import { idx, stepBox, type World } from './life';
+import { idx, spawn, stepBox, type World } from './life';
 import type { Footprint } from './layout';
 import type { Structure } from './types';
 
@@ -24,7 +24,6 @@ export function addStructure(structures: Structure[], { cells, footprint, pad, k
     cur,
     nxt: new Uint8Array(w * h),
     hidden: new Uint16Array(w * h),
-    born: new Float32Array(w * h).map(() => Math.random()),
     kind,
     id,
     core: { ...core },
@@ -58,9 +57,7 @@ export function stepStructures(world: World, structures: Structure[], gen: numbe
             const k = jj * structure.w + ii;
             if (structure.cur[k] && !structure.hidden[k] && Math.random() < 0.6) {
               structure.hidden[k] = 20 + Math.random() * 40;
-              const at = idx(world.w, world.h, structure.x + ii, structure.y + jj);
-              world.cells[at] = 1;
-              world.heat[at] = 255;
+              spawn(world, idx(world.w, world.h, structure.x + ii, structure.y + jj));
             }
           }
         }
@@ -115,7 +112,7 @@ function emitGliders(world: World, structure: Structure): void {
       const keep = structure.shots++ % 2 === 0;
       for (const q of component) {
         structure.cur[q] = 0;
-        if (keep) world.cells[idx(world.w, world.h, structure.x + (q % structure.w), structure.y + ((q / structure.w) | 0))] = 1;
+        if (keep) spawn(world, idx(world.w, world.h, structure.x + (q % structure.w), structure.y + ((q / structure.w) | 0)));
       }
     }
   }

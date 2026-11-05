@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { addFeedGlider, clearBoxes, createWorld, feedGlider, seedWorld, stepBox, stepWorld } from '../src/scripts/board/life';
+import { addFeedGlider, clearBoxes, createWorld, feedGlider, seedWorld, spawn, stepBox, stepWorld } from '../src/scripts/board/life';
 import { isProtected } from '../src/scripts/board/layout';
 import { GLIDERS } from '../src/scripts/board/patterns';
+import { AGE_STEPS, BUCKETS, ageBucket } from '../src/scripts/board/render';
 
 const set = (world: ReturnType<typeof createWorld>, x: number, y: number) => {
   world.cells[y * world.w + x] = 1;
@@ -120,5 +121,76 @@ describe('v2 world helpers', () => {
     const world = createWorld(144, 90);
     addFeedGlider(world, seeded(5));
     expect(total(world)).toBe(5);
+  });
+});
+
+describe('cell age', () => {
+  const ageAt = (world: ReturnType<typeof createWorld>, x: number, y: number) => world.age[y * world.w + x];
+
+  it('is 0 on birth and goes up by one for each generation survived', () => {
+    const world = createWorld(9, 9);
+    // a block: four cells that survive forever, next to an empty corner
+    [[3, 3], [4, 3], [3, 4], [4, 4]].forEach(([x, y]) => spawn(world, y * 9 + x));
+    // one more cell far away that dies at once
+    spawn(world, 8 * 9 + 8);
+    stepWorld(world);
+    expect(ageAt(world, 3, 3)).toBe(1);
+    expect(ageAt(world, 8, 8)).toBe(0);
+    expect(alive(world, 8, 8)).toBe(false);
+    stepWorld(world);
+    stepWorld(world);
+    expect(ageAt(world, 4, 4)).toBe(3);
+  });
+
+  it('starts a cell born from three neighbours at 0, and keeps counting for the old ones', () => {
+    const world = createWorld(7, 7);
+    [1, 2, 3].forEach((x) => spawn(world, 3 * 7 + x));
+    stepWorld(world);
+    // the blinker's middle survived, its vertical arms were born
+    expect(ageAt(world, 2, 3)).toBe(1);
+    expect([ageAt(world, 2, 2), ageAt(world, 2, 4)]).toEqual([0, 0]);
+    stepWorld(world);
+    // the middle survived again, the ends are newborn again
+    expect(ageAt(world, 2, 3)).toBe(2);
+    expect([ageAt(world, 1, 3), ageAt(world, 3, 3)]).toEqual([0, 0]);
+  });
+
+  it('saturates instead of wrapping around', () => {
+    const world = createWorld(6, 6);
+    [[2, 2], [3, 2], [2, 3], [3, 3]].forEach(([x, y]) => spawn(world, y * 6 + x));
+    for (let n = 0; n < 300; n++) stepWorld(world);
+    expect(ageAt(world, 2, 2)).toBe(255);
+  });
+
+  it('is reset to 0 when a cell is painted over a living one', () => {
+    const world = createWorld(6, 6);
+    [[2, 2], [3, 2], [2, 3], [3, 3]].forEach(([x, y]) => spawn(world, y * 6 + x));
+    for (let n = 0; n < 5; n++) stepWorld(world);
+    expect(ageAt(world, 2, 2)).toBe(5);
+    spawn(world, 2 * 6 + 2);
+    expect(ageAt(world, 2, 2)).toBe(0);
+  });
+});
+
+describe('age buckets', () => {
+  it('start bright and settle on the calm grey after about twelve to twenty generations', () => {
+    expect(ageBucket(0)).toBe(0);
+    expect(ageBucket(AGE_STEPS[0] - 1)).toBe(0);
+    expect(ageBucket(AGE_STEPS[0])).toBe(1);
+    expect(ageBucket(AGE_STEPS[2])).toBe(3);
+    expect(ageBucket(AGE_STEPS[3] - 1)).toBe(3);
+    expect(ageBucket(AGE_STEPS[3])).toBe(BUCKETS - 1);
+    expect(ageBucket(255)).toBe(BUCKETS - 1);
+    expect(AGE_STEPS[3]).toBeGreaterThanOrEqual(12);
+    expect(AGE_STEPS[3]).toBeLessThanOrEqual(20);
+  });
+
+  it('never go backwards as a cell ages', () => {
+    let previous = 0;
+    for (let age = 0; age < 256; age++) {
+      const bucket = ageBucket(age);
+      expect(bucket).toBeGreaterThanOrEqual(previous);
+      previous = bucket;
+    }
   });
 });

@@ -7,13 +7,14 @@ import {
   getBoardProjects,
   overlayFor,
   projectMeta,
+  seedFor,
   projectPath,
 } from '../src/data/board';
 import { strings } from '../src/i18n';
 import { slugify, type Project, type Resume } from '../src/lib/resume';
 import { sampleResume } from './fixtures';
 import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
-import { OSCILLATORS, PATTERNS } from '../src/scripts/board/patterns';
+import { METHUSELAHS, PATTERNS } from '../src/scripts/board/patterns';
 
 const extra = (name: string, index = 0): Project => ({
   id: `extra-${index}`,
@@ -31,11 +32,24 @@ describe('known project overlay', () => {
   const projects = getBoardProjects(sampleResume('fr'));
   const bySlug = Object.fromEntries(projects.map((project) => [project.slug, project]));
 
-  it('places the four known projects exactly like the prototype', () => {
-    expect(bySlug['jeu-de-la-vie']).toMatchObject({ pattern: 'pulsar', pad: 3, at: { l: [0.14, 0.66], p: [0.26, 0.57] } });
-    expect(bySlug.thrive).toMatchObject({ pattern: 'penta', pad: 4, at: { l: [0.38, 0.71], p: [0.74, 0.68] } });
-    expect(bySlug['worldwide-weather-watcher']).toMatchObject({ pattern: 'galaxy', pad: 2, at: { l: [0.62, 0.68], p: [0.26, 0.79] } });
-    expect(bySlug.blink).toMatchObject({ pattern: 'blinkers', pad: 2, at: { l: [0.84, 0.12], p: [0.74, 0.15] } });
+  it('gives each known project its methuselah', () => {
+    expect(bySlug['jeu-de-la-vie'].seed).toBe('r-pentomino');
+    expect(bySlug.thrive.seed).toBe('acorn');
+    expect(bySlug['worldwide-weather-watcher'].seed).toBe('pi-heptomino');
+    expect(bySlug.blink.seed).toBe('diehard');
+  });
+
+  it('no longer places projects on the board: no pattern, no padding, no position', () => {
+    for (const project of projects) {
+      expect(project).not.toHaveProperty('pattern');
+      expect(project).not.toHaveProperty('pad');
+      expect(project).not.toHaveProperty('at');
+    }
+    for (const overlay of Object.values(BOARD_OVERLAY)) {
+      expect(overlay).not.toHaveProperty('pattern');
+      expect(overlay).not.toHaveProperty('pad');
+      expect(overlay).not.toHaveProperty('at');
+    }
   });
 
   it('keeps the board names short and the resume names whole', () => {
@@ -54,7 +68,25 @@ describe('known project overlay', () => {
   it('keeps the media and the page notes', () => {
     expect(bySlug['jeu-de-la-vie'].media).toEqual({ video: '/media/conway.mp4' });
     expect(bySlug.thrive.media).toEqual({ image: '/media/thrive.jpg' });
-    expect(bySlug.blink.note?.text).toContain('blinkers');
+    expect(bySlug.blink.note?.text).toContain('diehard');
+  });
+
+  it('describes the seed in the page notes, in both languages', () => {
+    const notes = (lang: 'fr' | 'en') => Object.fromEntries(Object.entries(BOARD_OVERLAY).map(([key, overlay]) => [key, overlay.note?.[lang]]));
+    expect(notes('fr')).toEqual({
+      'jeu-de-la-vie': 'le R-pentomino : cinq cellules,\n1103 générations de chaos',
+      thrive: 'un gland : sept cellules\nqui poussent 5206 générations',
+      'worldwide-weather-watcher': "un pi-heptomino :\nil s'agite, puis il se pose",
+      blink: 'un diehard : il disparaît\naprès 130 générations',
+      'larduino-en-pixels': "un B-heptomino :\nil fait naître des planeurs",
+    });
+    expect(notes('en')).toEqual({
+      'jeu-de-la-vie': 'the R-pentomino: five cells,\n1103 generations of chaos',
+      thrive: 'an acorn: seven cells\nthat grow for 5206 generations',
+      'worldwide-weather-watcher': 'a pi-heptomino:\nit stirs, then it settles',
+      blink: 'a diehard: gone\nafter 130 generations',
+      'larduino-en-pixels': 'a B-heptomino:\nit gives birth to gliders',
+    });
   });
 
   it('ignores overlay entries that are not in the resume', () => {
@@ -91,19 +123,29 @@ describe('projects outside the overlay', () => {
   const projects = getBoardProjects(withProjects(base, [...base.projects, extra('Unlisted Project')]));
   const auto = projects.find((project) => project.slug === 'extra-0')!;
 
-  it('keep their place in the list, with no fixed position', () => {
+  it('keep their place in the list', () => {
     expect(projects).toHaveLength(5);
-    expect(auto.at).toBeNull();
     expect(auto.displayName).toBe('Unlisted Project');
     expect(auto.boardName).toBe('Unlisted Project');
   });
 
-  it('get a deterministic oscillator and no tag', () => {
-    expect(OSCILLATORS).toContain(auto.pattern);
+  it('get a deterministic methuselah and no tag', () => {
+    expect(METHUSELAHS).toContain(auto.seed);
     expect(auto.tag).toBe('');
     expect(auto.note).toBeUndefined();
     const again = getBoardProjects(withProjects(base, [...base.projects, extra('Unlisted Project')])).find((p) => p.slug === 'extra-0')!;
-    expect(again.pattern).toBe(auto.pattern);
+    expect(again.seed).toBe(auto.seed);
+  });
+
+  it('pick the methuselah from the slug, spreading projects over all of them', () => {
+    const seeds = new Set<string>();
+    for (let n = 0; n < 40; n++) seeds.add(seedFor({ ...extra('Project', n), slug: `project-${n}` }));
+    expect(seeds.size).toBe(METHUSELAHS.length);
+  });
+
+  it('let the overlay name a seed that beats the slug', () => {
+    const arduino = { ...extra('L’Arduino'), slug: 'larduino-en-pixels' };
+    expect(seedFor(arduino)).toBe('b-heptomino');
   });
 });
 
@@ -113,9 +155,8 @@ describe('overlay aliases', () => {
     const projects = getBoardProjects(withProjects(en, [{ ...en.projects[0], name: 'Game of Life', slug: 'game-of-life' }]));
     const conway = projects.find((project) => project.slug === 'game-of-life')!;
     expect(conway).toBeDefined();
-    expect(conway.pattern).toBe('pulsar');
+    expect(conway.seed).toBe('r-pentomino');
     expect(conway.tag).toBe('C++');
-    expect(conway.at).toEqual(BOARD_OVERLAY['jeu-de-la-vie'].at);
   });
 });
 
@@ -128,9 +169,7 @@ describe('the Arduino experiment', () => {
   it('resolves its overlay through the French and the English slug', () => {
     for (const lang of ['fr', 'en'] as const) {
       expect(overlayFor(arduino(lang))).toMatchObject({
-        pattern: 'beacon',
-        pad: 2,
-        at: { l: [0.86, 0.7], p: [0.74, 0.84] },
+        seed: 'b-heptomino',
         tag: 'three.js',
         experiment: { kind: 'pixel-model', src: '/media/arduino.glb' },
       });
@@ -143,7 +182,7 @@ describe('the Arduino experiment', () => {
     const base = sampleResume('fr');
     expect(getBoardProjects(base).map((project) => project.slug)).not.toContain('larduino-en-pixels');
     const project = getBoardProjects(withProjects(base, [...base.projects, arduino('fr')])).find((entry) => entry.slug === 'larduino-en-pixels')!;
-    expect(project).toMatchObject({ pattern: 'beacon', tag: 'three.js' });
+    expect(project).toMatchObject({ seed: 'b-heptomino', tag: 'three.js' });
     expect(project.note?.text.length).toBeGreaterThan(0);
   });
 
@@ -164,34 +203,21 @@ describe('CV and contact', () => {
 });
 
 describe('board entities', () => {
-  it('lists every entity once, in French and in English', () => {
+  it('draws only the CV and the contact: projects are an HTML list', () => {
     for (const lang of ['fr', 'en'] as const) {
       const resume = sampleResume(lang);
       const entities = getBoardEntities(resume, { cvHref: lang === 'fr' ? '/cv/' : '/en/cv/', contactHref: 'mailto:x@y.z' });
       const t = strings(lang).board;
-      const ids = entities.map((entity) => entity.id);
-      expect(new Set(ids).size).toBe(ids.length);
-      expect(ids).toEqual(expect.arrayContaining(['cv', 'contact', ...resume.projects.map((project) => project.slug)]));
+      expect(entities.map((entity) => entity.id)).toEqual(['cv', 'contact']);
       for (const entity of entities) {
         expect(entity.name.length, entity.id).toBeGreaterThan(0);
         expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
       }
-      // the lab and the story pages are gone: only projects, the CV and the contact are drawn
-      expect(ids).not.toContain('labo');
-      expect(ids).not.toContain('story');
-      expect(new Set(entities.map((entity) => entity.kind))).toEqual(new Set(['project', 'cv', 'contact']));
-      expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, tag: '', url: lang === 'fr' ? '/cv/' : '/en/cv/' });
+      expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, url: lang === 'fr' ? '/cv/' : '/en/cv/' });
       expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
-      expect(entities.find((entity) => entity.id === 'blink')).toMatchObject({ kind: 'project', url: projectPath(lang, 'blink') });
+      // every project still has its page
+      for (const project of resume.projects) expect(projectPath(lang, project.slug)).toContain(project.slug);
     }
-  });
-
-  it('puts the fixed entities before the ones that need a free slot', () => {
-    const base = sampleResume('fr');
-    const entities = getBoardEntities(withProjects(base, [extra('Alpha'), ...base.projects]), { cvHref: '/cv/', contactHref: '' });
-    const firstFree = entities.findIndex((entity) => entity.at === null);
-    expect(firstFree).toBeGreaterThan(0);
-    expect(entities.slice(firstFree).every((entity) => entity.at === null)).toBe(true);
   });
 
   it('keeps a contact without address inert', () => {
@@ -199,8 +225,8 @@ describe('board entities', () => {
     expect(entities.find((entity) => entity.id === 'contact')?.url).toBe('');
   });
 
-  it('does not collide: structures never overlap and stay on screen, in both orientations', () => {
-    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' }).filter((entity) => entity.at);
+  it('does not collide: the CV and the contact never overlap and stay on screen, in both orientations', () => {
+    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' });
     // the fine name raster: "Julien / Petit-Colboc" is 150 × 41 cells, "Julien / Petit- / Colboc" 82 × 63
     const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740]];
     for (const [vw, vh] of screens) {

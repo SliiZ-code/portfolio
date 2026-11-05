@@ -1,13 +1,13 @@
 import type { At } from './layout';
 import type { PatternName } from './patterns';
 
+/** What stays a structure on the board: the CV and the contact. Projects are an HTML list. */
 export interface EntityConfig {
   id: string;
-  kind: 'project' | 'cv' | 'contact';
+  kind: 'cv' | 'contact';
   pattern: PatternName;
   pad: number;
-  /** Null: the board looks for a free slot at runtime. */
-  at: At | null;
+  at: At;
 }
 
 export interface BoardConfig {
@@ -25,7 +25,6 @@ export interface Structure {
   cur: Uint8Array;
   nxt: Uint8Array;
   hidden: Uint16Array;
-  born: Float32Array;
   kind: 'name' | 'osc' | 'gun';
   /** The entity this structure belongs to; null for the name. */
   id: string | null;

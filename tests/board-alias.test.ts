@@ -18,8 +18,8 @@ describe('overlay aliases', () => {
   it('resolves the overlay through an alias slug', () => {
     const en = project('Game of Life', 'game-of-life');
     expect(overlayKeyFor(en)).toBe('jeu-de-la-vie');
-    expect(overlayFor(en)?.pattern).toBe('pulsar');
-    expect(boardNote(en, 'en')?.text).toBe('a pulsar. obviously.');
+    expect(overlayFor(en)?.seed).toBe('r-pentomino');
+    expect(boardNote(en, 'en')?.text).toBe('the R-pentomino: five cells,\n1103 generations of chaos');
     expect(boardMedia(en)).toEqual({ video: '/media/conway.mp4' });
   });
 

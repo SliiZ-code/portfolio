@@ -6,8 +6,9 @@ export interface World {
   h: number;
   cells: Uint8Array;
   next: Uint8Array;
-  heat: Uint8Array;
-  heatNext: Uint8Array;
+  /** Generations each live cell has survived: 0 on birth (or when painted), saturating at 255. Zero on dead cells. */
+  age: Uint8Array;
+  ageNext: Uint8Array;
 }
 
 export const createWorld = (w: number, h: number): World => ({
@@ -15,17 +16,23 @@ export const createWorld = (w: number, h: number): World => ({
   h,
   cells: new Uint8Array(w * h),
   next: new Uint8Array(w * h),
-  heat: new Uint8Array(w * h),
-  heatNext: new Uint8Array(w * h),
+  age: new Uint8Array(w * h),
+  ageNext: new Uint8Array(w * h),
 });
 
 /** Toroidal index; keeps negative coordinates inside the board. */
 export const idx = (w: number, h: number, x: number, y: number): number =>
   (((y % h) + h) % h) * w + (((x % w) + w) % w);
 
+/** Makes a cell alive and newborn (painted, dropped, stamped or released by a structure). */
+export const spawn = (world: World, k: number): void => {
+  world.cells[k] = 1;
+  world.age[k] = 0;
+};
+
 /** One step of the free world. Returns the new population. */
 export function stepWorld(world: World): number {
-  const { w, h, cells, next, heat, heatNext } = world;
+  const { w, h, cells, next, age, ageNext } = world;
   let population = 0;
   for (let y = 0; y < h; y++) {
     const up = ((y - 1 + h) % h) * w;
@@ -42,23 +49,17 @@ export function stepWorld(world: World): number {
       const alive = n === 3 || (n === 2 && cells[i]) ? 1 : 0;
       next[i] = alive;
       if (!alive) {
-        heatNext[i] = 0;
+        ageNext[i] = 0;
         continue;
       }
       population++;
-      if (cells[i]) heatNext[i] = heat[i] > 5 ? heat[i] - 5 : 0;
-      else
-        heatNext[i] = Math.max(
-          heat[up + left], heat[up + x], heat[up + right],
-          heat[mid + left], heat[mid + right],
-          heat[down + left], heat[down + x], heat[down + right],
-        ) * 0.9;
+      ageNext[i] = cells[i] ? (age[i] < 255 ? age[i] + 1 : 255) : 0;
     }
   }
   world.cells = next;
   world.next = cells;
-  world.heat = heatNext;
-  world.heatNext = heat;
+  world.age = ageNext;
+  world.ageNext = age;
   return population;
 }
 
@@ -112,5 +113,5 @@ export function feedGlider(grid: Grid, rnd: () => number = Math.random) {
 
 export function addFeedGlider(world: World, rnd: () => number = Math.random): void {
   const { x, y, cells } = feedGlider({ cols: world.w, rows: world.h }, rnd);
-  cells.forEach((row, j) => row.forEach((value, i) => value && (world.cells[idx(world.w, world.h, x + i, y + j)] = 1)));
+  cells.forEach((row, j) => row.forEach((value, i) => value && spawn(world, idx(world.w, world.h, x + i, y + j))));
 }

@@ -98,15 +98,17 @@ language exists at build time; without IDs there is no PDF link and the CV page 
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
-`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Board placement, pattern, tag,
-page note, capture and optional live experiment are a site-only overlay in `src/data/board.ts`, keyed by that slug
-(positions are screen fractions per orientation, `l` landscape / `p` portrait). A project
-that exists in RxResume but not in the overlay is still rendered, in the no-JavaScript list and as a page:
-on the board it gets a deterministic pattern and a free slot found at runtime (a scan for a
-free rectangle that avoids every pattern, label, keep-clear zone and HUD corner). If the
-screen has no room left it is left off the board with a `[board] no free slot` console
-warning. An overlay entry without a matching RxResume project is ignored (RxResume stays the
-source of truth for projects).
+`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Seed, tag, page note, capture and optional live
+experiment are a site-only overlay in `src/data/board.ts`, keyed by that slug. A project that
+exists in RxResume but not in the overlay is still rendered, in the board list, in the
+no-JavaScript list and as a page: it gets no tag and a methuselah picked from its slug
+(`METHUSELAHS[hash(slug) % length]`, always the same one). An overlay entry without a matching
+RxResume project is ignored (RxResume stays the source of truth for projects).
+
+Each project has a seed, a methuselah (a few cells that run for a long time): `seed` in the
+overlay, one of `r-pentomino`, `acorn`, `diehard`, `b-heptomino`, `pi-heptomino` (`patterns.ts`).
+Its page note, in the margin of the project page, describes it. Hovering or focusing the project
+on the board fires that seed (see Board).
 
 The FR and EN versions of a project are matched by the RxResume item `id` (a duplicated
 resume keeps the ids), then by overlay key, then by position.
@@ -145,8 +147,8 @@ time, not rendered on the client.
 
 A project can replace its pixelated capture with a live 3D viewer: give its overlay entry
 `experiment: { kind: 'pixel-model', src: '/media/arduino.glb' }`. "L'Arduino en pixels" /
-"The Arduino in pixels" (overlay key `larduino-en-pixels`, alias `the-arduino-in-pixels`, a
-beacon) uses it; name, description, period and link come from RxResume like any project, and it
+"The Arduino in pixels" (overlay key `larduino-en-pixels`, alias `the-arduino-in-pixels`, seed
+`b-heptomino`) uses it; name, description, period and link come from RxResume like any project, and it
 only appears once RxResume has the project. The page renders `public/media/arduino.glb` with
 three.js at 320×200, then pixelates it (see below); drag to rotate, it turns by itself unless
 reduced motion is requested, and it follows the theme. three.js is imported only once the
@@ -156,32 +158,59 @@ viewer is on screen, and without WebGL the page shows a message instead.
 
 The board fits the viewport exactly: no pan, no zoom. The name is rasterized at the font's
 half-pixel resolution and sets the cell size (about 40% of the width in landscape, two thirds
-on phones, cells between 3 and 8px), the grid covers the screen, and every structure is
+on phones, cells between 3 and 8px), the grid covers the screen, and the CV and the contact are
 placed by screen fractions. The engine lives in `src/scripts/board/`:
 
-- `index.ts`: bootstrap, layout (re-run on resize), generation loop, dive and return;
+- `index.ts`: bootstrap, layout (re-run on resize), generation loop, opening, seeds, dive and return;
 - `layout.ts`: pure geometry: orientation, cell size, anchors, footprints, keep-clear boxes;
-- `slots.ts`: pure free-rectangle finder for projects outside the overlay;
-- `life.ts`: world stepping and heat, seeding, keep-clear, the glider fed from an edge;
-- `structures.ts`: private boards per pattern, intrusion, release, regrowth, healing, the gun;
-- `patterns.ts`: Life patterns (pulsar, penta, blinkers, galaxy, beacon, toad, beehive, gun);
+- `projects.ts`: pure geometry of the project list (where it sits), of the seeds (where one lands)
+  and of the opening shockwave;
+- `life.ts`: world stepping and per-cell age, seeding, keep-clear, the glider fed from an edge;
+- `structures.ts`: private boards per pattern (the CV's beehive, the contact's gun): intrusion,
+  release, regrowth, healing;
+- `patterns.ts`: the beehive, the gun, gliders and the five methuselahs;
 - `input.ts`: drag to draw (continuous strokes), tap for a glider;
-- `render.ts`: canvas drawing;
+- `render.ts`: canvas drawing, colour buckets by age, the shockwave ring;
 - `return-flag.ts`: the `jpc-from` session flag that replays the reverse zoom on Back.
 
-Names and links are server-rendered: each pattern has a real `<a>` that the script positions:
-a hit area over the pattern framed by accent pixel corners, the name in a small ink tab and,
-for projects, the language tag under it. Hover or focus turns the tab and the pattern to the
-accent colour.
+**Colour by age.** Every free cell has an age: 0 when it is born (or painted, dropped, fired,
+or released by a structure), +1 for each generation it survives. A newborn cell is drawn bright
+and fades through a warm-to-cool ramp (`--life-0` … `--life-3`, defined for both themes in
+`global.css`; ages 0–2, 3–6, 7–11, 12–17) to the calm resting grey, the ink at half opacity.
+Still lifes and old patterns are therefore grey; whatever moves or flickers shows colour (the
+ends of a blinker are reborn every generation, so they stay bright). The name, the CV and the
+contact are solid ink. The draw loop sorts the live cells into five buckets in one pass and sets
+one `fillStyle` per bucket; it allocates nothing per frame and redraws only when something changed.
 
-Controls: drag to draw, click empty space to drop a glider, click a name to dive. A dive
-scales the stage 16× toward the pattern (about 750 ms), then navigates. `?from=<slug>` starts
-at that scale on that pattern and animates back to 1. A browser Back finds the same slug in
-`sessionStorage` (`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back
+**Projects.** The projects are a real HTML list on the board (`#projects`, Geist Mono, name plus
+muted `tag · period`): a column hugging the right gutter, vertically centred and clear of the name,
+its note, the CV and the corners, in landscape; full width under the CV on a phone. If it does not
+fit it tightens (`compact`), drops the meta column (`narrow`) and finally scrolls, but never overlaps
+anything. Its box is a keep-clear zone: the soup dies under it. Hovering or focusing a row (a touch
+on a phone) fires its seed as newborn cells just outside the list, on the side facing the open
+board and level with the row (or the nearest free rows when that level is taken), then Life runs
+it; one firing per row every 1.5 s. With reduced motion the seed is still stamped and the board
+advances one generation. Without JavaScript the same projects are in the plain list (`BoardList`).
+
+**Opening.** On a fresh load (`data-entry="intro"` on the canvas) the board starts empty and a
+shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells, with the
+seeded soup (age 0) appearing behind it, the name, the CV and the contact as it passes them, and
+the labels and project rows fading in once it has passed their position. The simulation starts when
+the ring has left. There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
+(`direct`).
+
+Names and links are server-rendered. The CV and the contact are real `<a>` that the script
+positions: a hit area over the pattern framed by accent pixel corners and the name in a small ink
+tab; hover or focus turns the tab and the pattern to the accent colour.
+
+Controls: drag to draw, click empty space to drop a glider, click a project or the CV to dive. A dive
+scales the stage 16× toward the clicked row or pattern (about 750 ms), then navigates. `?from=<slug>`
+starts at that scale on that project's row and animates back to 1. A browser Back finds the same
+slug in `sessionStorage` (`jpc-from`); the board puts it back on `pagehide`, so Back, Forward, Back
 replays it again. Contact goes to `mailto:` or the first profile, no dive.
 
-`prefers-reduced-motion` disables the simulation steps (the board is static, drawing still
-works), the intro and the dive: links navigate directly.
+`prefers-reduced-motion` disables the simulation steps (the board only advances when the user draws
+or fires a seed), the opening and the dive: links navigate directly.
 
 The theme is stored under `jpc-theme` and applied inline before paint so night mode does not
 flash (19:00–6:59 by default). The HUD and every page bar carry the same two flags (FR / EN,

@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
-import { getBoardEntities, getBoardProjects } from '../data/board';
+import { getBoardEntities, getBoardProjects, projectPath } from '../data/board';
 import { strings } from '../i18n';
 import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
@@ -25,6 +25,7 @@ const entities = getBoardEntities(resume, { cvHref, contactHref });
 const boardData = {
   name: { l: nameText, p: nameNarrow },
   nameNote: { l: t.board.nameNote, p: t.board.nameNoteNarrow },
+  // projects are the HTML list below: only the CV and the contact are structures
   entities: entities.map(({ id, kind, pattern, pad, at }) => ({ id, kind, pattern, pad, at })),
 };
 
@@ -46,11 +47,23 @@ const description = htmlToText(resume.summary) || resume.headline;
             <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
               <span class="hit"></span>
               <span class="name">{entity.name}</span>
-              {entity.tag && <span class="tag">{entity.tag}</span>}
             </Tag>
           );
         })}
       </div>
+      <!-- the projects: each row fires its seed onto the board, a click dives into its page -->
+      <nav id="projects" aria-label={t.board.projects}>
+        <ul>
+          {projects.map((project) => (
+            <li>
+              <a class="proj" href={projectPath(lang, project.slug)} data-id={project.slug} data-seed={project.seed}>
+                <span class="pname">{project.boardName}</span>
+                {project.meta && <span class="pmeta">{project.meta}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   </main>
 
