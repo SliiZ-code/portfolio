@@ -112,18 +112,6 @@ button {
   cursor: crosshair;
 }
 
-.headline {
-  position: absolute;
-  z-index: 1;
-  font: 500 16px/1.4 "Geist Mono", monospace;
-  letter-spacing: .05em;
-  color: var(--ink);
-  text-wrap: balance;
-  background: var(--paper);
-  box-shadow: 0 0 0 4px var(--paper);
-  pointer-events: none;
-}
-
 .name-note {
   position: absolute;
   font: 15px/1.25 "Shantell Sans", cursive;
@@ -229,7 +217,6 @@ button {
 }
 
 /* the opening: the note and the rows start hidden and appear as the shockwave passes them */
-#stage.intro .headline,
 #stage.intro .name-note,
 #stage.intro .proj {
   opacity: 0;
@@ -386,10 +373,9 @@ a.flag:hover {
 }
 
 #list .headline {
-  position: static;
-  font-size: 13px;
-  text-transform: none;
-  box-shadow: none;
+  font: 500 13px/1.4 "Geist Mono", monospace;
+  letter-spacing: .05em;
+  color: var(--ink);
   margin: -2px 0 14px;
 }
 
@@ -812,11 +798,6 @@ a.flag:hover {
 
 @media (max-width: 760px) {
 
-  .headline {
-    font-size: 13px;
-    letter-spacing: .04em;
-  }
-
   .hint {
     display: none;
   }
@@ -855,7 +836,7 @@ a.flag:hover {
   }
 }
 
-/* shorter screens: the bottom-left pattern would sit under the counters, and the hint repeats the note */
+/* shorter screens: the bottom-left pattern would sit under the counters, and the hint would crowd them */
 @media (max-height: 820px) {
   .hud.bl .hint {
     display: none;
@@ -875,10 +856,6 @@ a.flag:hover {
 
 /* landscape phones: the full-size note does not fit beside the project list */
 @media (max-height: 620px) {
-  .headline {
-    font-size: 13px;
-  }
-
   .name-note {
     font-size: 13px;
   }

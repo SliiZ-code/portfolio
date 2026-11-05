@@ -12,8 +12,6 @@ const fr = {
     generation: 'génération',
     cells: 'cellules',
     hint: 'glisse pour dessiner · clique dans le vide pour lâcher un planeur',
-    nameNote: '↑ mon nom, en cellules vivantes. tout le site est un jeu de la vie : glisse pour dessiner.',
-    nameNoteNarrow: '↑ mon nom, en cellules vivantes. glisse pour dessiner.',
     home: 'jpc',
     themeNight: 'Mode nuit',
     themePaper: 'Mode papier',

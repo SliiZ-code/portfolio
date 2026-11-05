@@ -1,8 +1,7 @@
-/** What the script reads from the page: the name, rasterised, and the note under it. */
+/** What the script reads from the page: the name, rasterised. */
 export interface BoardConfig {
   /** The text rasterised into cells, per orientation. */
   name: { l: string; p: string };
-  nameNote: { l: string; p: string };
 }
 
 /** A fixed shape drawn over the world with its own cells: the name. */

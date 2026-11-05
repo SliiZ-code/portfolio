@@ -14,8 +14,6 @@ const en = {
     generation: 'generation',
     cells: 'cells',
     hint: 'drag to draw · click empty space to drop a glider',
-    nameNote: '↑ my name, in living cells. the whole site is a game of life: drag to draw.',
-    nameNoteNarrow: '↑ my name, in living cells. drag to draw.',
     home: 'jpc',
     themeNight: 'Night mode',
     themePaper: 'Paper mode',
