@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createWorld, stepWorld } from '../src/scripts/board/life';
-import { BEEHIVE, GLIDER_HEADINGS, METHUSELAHS, METHUSELAH_PATTERNS, PATTERNS } from '../src/scripts/board/patterns';
+import { GLIDER_HEADINGS, METHUSELAHS, METHUSELAH_PATTERNS } from '../src/scripts/board/patterns';
 
 const count = (cells: number[][]) => cells.flat().reduce((sum, value) => sum + value, 0);
 
@@ -26,14 +26,6 @@ describe('gliders by heading', () => {
         }),
       );
     }
-  });
-});
-
-describe('structure patterns', () => {
-  it('keeps the CV beehive and the contact gun', () => {
-    expect(BEEHIVE).toHaveLength(3);
-    expect(PATTERNS.beehive).toBe(BEEHIVE);
-    expect(Object.keys(PATTERNS).sort()).toEqual(['beehive', 'gun']);
   });
 });
 

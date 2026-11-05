@@ -1,27 +1,24 @@
-import { GLIDERS, METHUSELAH_PATTERNS, PATTERNS, type MethuselahName } from './patterns';
+import { GLIDERS, METHUSELAH_PATTERNS, type MethuselahName } from './patterns';
 import { rasterize } from './rasterize';
 import { addFeedGlider, clearBoxes, createWorld, idx, seedWorld, spawn, stepWorld, type World } from './life';
 import { addStructure, stepStructures, structurePopulation } from './structures';
 import {
-  anchorFor,
   boxMinus,
   cellSizeFor,
   coreBox,
-  footprint,
   gridFor,
   isProtected,
   namePlacement,
   orientationFor,
   rectToBox,
   type Box,
-  type Footprint,
   type Grid,
 } from './layout';
 import { placeProjects, stampSpot, waveFront, waveTravel, type PxRect } from './projects';
 import { createRenderBuffers, draw, BUCKETS, type Colors, type RenderState, type Shockwave } from './render';
 import { createFromFlag, createReturnTracker, resolveFrom } from './return-flag';
 import { bindInput } from './input';
-import type { BoardConfig, EntityConfig, Structure } from './types';
+import type { BoardConfig, Structure } from './types';
 
 const RATE = 120;
 const FEED_EVERY = 18;
@@ -35,12 +32,6 @@ const STAMP_COOLDOWN = 1500;
 /** Width of one band of the shockwave's ring, in pixels. */
 const BAND_PX = 11;
 
-interface Placed {
-  config: EntityConfig;
-  el: HTMLElement;
-  fp: Footprint;
-}
-
 interface Row {
   slug: string;
   seed: MethuselahName;
@@ -51,11 +42,10 @@ export async function initBoard(): Promise<void> {
   const source = document.getElementById('board-data');
   const canvas = document.querySelector<HTMLCanvasElement>('#board');
   const stage = document.getElementById('stage');
-  const labels = document.getElementById('labels');
   const note = document.getElementById('name-note');
   const list = document.getElementById('projects');
   const ctx = canvas?.getContext('2d');
-  if (!source?.textContent || !canvas || !stage || !labels || !list || !ctx) return;
+  if (!source?.textContent || !canvas || !stage || !list || !ctx) return;
 
   let data: BoardConfig;
   try {
@@ -70,14 +60,13 @@ export async function initBoard(): Promise<void> {
     reduced = event.matches;
   });
   const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  let colors: Colors = { paper: '', ink: '', mute: '', accent: '', life: ['', '', '', ''] };
+  let colors: Colors = { paper: '', ink: '', mute: '', life: ['', '', '', ''] };
   let dirty = true;
   const readColors = () => {
     colors = {
       paper: css('--paper'),
       ink: css('--ink'),
       mute: css('--mute'),
-      accent: css('--accent'),
       life: [css('--life-0'), css('--life-1'), css('--life-2'), css('--life-3')],
     };
     renderState.colors = colors;
@@ -98,8 +87,6 @@ export async function initBoard(): Promise<void> {
     // the fallback fonts still give a usable board
   }
 
-  const anchors = new Map<string, HTMLElement>();
-  labels.querySelectorAll<HTMLElement>('.ent').forEach((el) => anchors.set(el.dataset.id ?? '', el));
   const rows = new Map<string, Row>();
   list.querySelectorAll<HTMLAnchorElement>('.proj').forEach((el) => {
     const seed = el.dataset.seed as MethuselahName | undefined;
@@ -115,7 +102,6 @@ export async function initBoard(): Promise<void> {
   let nameRing: Box[] = [];
   // the project list: the soup dies under it too, and seeds are fired beside it
   let listBox: Box | null = null;
-  let placed = new Map<string, Placed>();
   let lastSize = '';
   // the opening: where the shockwave starts and how far its front travels, in cells
   let waveCentre = { x: 0, y: 0 };
@@ -132,18 +118,12 @@ export async function initBoard(): Promise<void> {
     structures,
     colors,
     buffers: createRenderBuffers(1),
-    hoverId: null,
     wave: null,
   };
 
   const protectedBoxes = () => [...keepClear, ...(listBox ? [listBox] : []), ...nameRing, ...structures.map((s) => coreBox(s))];
-  // visitors may draw on the name, so only labels, the list, the HUD and the other structures' cores stay off limits
-  const isFree = (x: number, y: number) =>
-    !isProtected(x, y, 0, [
-      ...keepClear,
-      ...(listBox ? [listBox] : []),
-      ...structures.filter((s) => s.kind !== 'name').map((s) => coreBox(s)),
-    ]);
+  // visitors may draw on the name, so only the note and the list stay off limits
+  const isFree = (x: number, y: number) => !isProtected(x, y, 0, [...keepClear, ...(listBox ? [listBox] : [])]);
 
   const pxRect = (el: Element): PxRect | null => {
     const r = el.getBoundingClientRect();
@@ -171,17 +151,12 @@ export async function initBoard(): Promise<void> {
     keepClear = [];
     nameRing = [];
     listBox = null;
-    placed = new Map();
-    anchors.forEach((el) => el.classList.remove('placed'));
     list!.classList.remove('placed', 'compact', 'narrow', 'scroll');
 
     const at = namePlacement(grid, nameDims, orientation);
     addStructure(structures, {
       cells: nameCells,
       footprint: { x: at.x, y: at.y, w: at.w, h: at.h, core: { x: 0, y: 0, w: at.w, h: at.h } },
-      pad: 0,
-      kind: 'name',
-      id: null,
     });
     nameRing = boxMinus(
       { x: at.x - 1, y: at.y - 1, x2: at.x + at.w + 1, y2: at.y + at.h + 1 },
@@ -204,7 +179,7 @@ export async function initBoard(): Promise<void> {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
       note.style.top = `${(at.y + at.h) * cell + 10}px`;
-      // one line under the name wherever it fits (the CV hangs below it); inside the name's width on a phone,
+      // one line under the name wherever it fits; inside the name's width on a phone,
       // and in landscape when the line would take the room the project list needs
       note.style.maxWidth = orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : 'none';
       if (orientation === 'l') {
@@ -212,67 +187,15 @@ export async function initBoard(): Promise<void> {
         const right = Math.max(oneLine, (at.x + at.w) * cell);
         if (vw - 16 - right - 20 < Math.min(natural.w, 260)) note.style.maxWidth = `${at.w * cell}px`;
       }
+      keepClear.push(rectToBox(note.getBoundingClientRect(), cell));
     }
-    // the CV hangs under the name, and under the note when the note is on one line
-    const noteRect = note?.getBoundingClientRect();
-    const below = noteRect?.height ? Math.ceil(noteRect.bottom / cell) : at.y + at.h;
 
-    const place = (config: EntityConfig, anchor: { cx: number; ty: number }): Placed | null => {
-      const el = anchors.get(config.id);
-      if (!el) return null;
-      const gun = config.pattern === 'gun';
-      const cells = PATTERNS[config.pattern];
-      const fp = footprint({ w: cells[0].length, h: cells.length }, config.pad, anchor, gun);
-      addStructure(structures, { cells, footprint: fp, pad: gun ? 0 : config.pad, kind: gun ? 'gun' : 'osc', id: config.id });
-      // the link sits under the pattern and its hit area covers the pattern too
-      const hit = el.querySelector<HTMLElement>('.hit');
-      if (hit) {
-        hit.style.width = `${fp.core.w * cell}px`;
-        hit.style.height = `${fp.core.h * cell}px`;
-      }
-      el.style.left = `${(fp.x + fp.core.x) * cell + (fp.core.w * cell) / 2}px`;
-      el.style.top = `${fp.y * cell}px`;
-      el.classList.add('placed');
-      const result = { config, el, fp };
-      placed.set(config.id, result);
-      return result;
-    };
-    const addLabelBoxes = (el: HTMLElement) => {
-      // the frame sits 4px outside the pattern: keep the browser's own one-cell margin beyond it
-      const frame = el.querySelector<HTMLElement>('.hit');
-      if (frame) {
-        const r = frame.getBoundingClientRect();
-        if (r.width && r.height) {
-          keepClear.push(rectToBox({ left: r.left - 4, top: r.top - 4, right: r.right + 4, bottom: r.bottom + 4 }, cell));
-        }
-      }
-      for (const part of el.querySelectorAll<HTMLElement>('.name')) {
-        const r = part.getBoundingClientRect();
-        if (r.width && r.height) keepClear.push(rectToBox(r, cell));
-      }
-    };
-
-    for (const config of data.entities) {
-      if (config.at[orientation]) place(config, anchorFor(config.at[orientation], grid, at, below));
-    }
-    if (note) {
-      const r = note.getBoundingClientRect();
-      keepClear.push(rectToBox(r, cell));
-    }
-    placed.forEach(({ el }) => addLabelBoxes(el));
-
-    // the list goes where the board has room: right of everything in landscape, under the CV on a phone
+    // the list goes where the board has room: right of the name in landscape, under it on a phone
     const obstacles: PxRect[] = [{ left: at.x * cell, top: at.y * cell, right: (at.x + at.w) * cell, bottom: (at.y + at.h) * cell }];
     if (note) {
       const r = pxRect(note);
       if (r) obstacles.push(r);
     }
-    placed.forEach(({ el }) => {
-      for (const part of el.querySelectorAll<HTMLElement>('.hit, .name')) {
-        const r = pxRect(part);
-        if (r) obstacles.push({ left: r.left - 4, top: r.top - 4, right: r.right + 4, bottom: r.bottom + 4 });
-      }
-    });
     const hudTop = document.querySelector('.hud.tr');
     const hudBottom = document.querySelector('.hud.br');
     const topLimit = Math.max(12, (hudTop ? pxRect(hudTop)?.bottom ?? 0 : 0) + 12);
@@ -393,7 +316,6 @@ export async function initBoard(): Promise<void> {
   const flag = createFromFlag(() => sessionStorage);
   const tracker = createReturnTracker(flag);
   let diving = false;
-  let hoverId: string | null = null;
 
   const cleanUrl = () => {
     const url = new URL(location.href);
@@ -404,11 +326,7 @@ export async function initBoard(): Promise<void> {
   const originAt = (x: number, y: number) => {
     stage.style.transformOrigin = `${x}px ${y}px`;
   };
-  /** The dive zooms toward the middle of a structure, or of a project's row. */
-  const originOfStructure = (target: Placed) => {
-    const { fp } = target;
-    originAt((fp.x + fp.core.x + fp.core.w / 2) * cell, (fp.y + fp.core.y + fp.core.h / 2) * cell);
-  };
+  /** The dive zooms toward the middle of the project's row. */
   const originOfRow = (row: Row) => {
     const rect = row.el.getBoundingClientRect();
     const bounds = list.getBoundingClientRect();
@@ -443,8 +361,8 @@ export async function initBoard(): Promise<void> {
     return true;
   };
 
-  /** A click on a link that dives: the stage scales toward `origin`, then the page changes. */
-  const dive = (event: MouseEvent, el: HTMLAnchorElement, slug: string | null, origin: () => void) => {
+  /** A click on a project row: the stage scales toward the row, then the page changes. */
+  const dive = (event: MouseEvent, row: Row) => {
     // leaving without a dive (reduced motion, new tab): no slug may survive to be replayed on a later Back
     if (reduced || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       tracker.forget();
@@ -453,12 +371,11 @@ export async function initBoard(): Promise<void> {
     event.preventDefault();
     if (diving) return;
     diving = true;
-    if (slug) tracker.remember(slug);
-    else tracker.forget();
-    origin();
+    tracker.remember(row.slug);
+    originOfRow(row);
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {
-      location.href = el.href;
+      location.href = row.el.href;
       // if the navigation never happens (offline, blocked), the board must come back;
       // a slow navigation that does happen unloads the page first, which cancels this
       const fallback = setTimeout(resetStage, 3000);
@@ -466,33 +383,10 @@ export async function initBoard(): Promise<void> {
     }, DIVE_MS);
   };
 
-  labels.addEventListener('click', (event) => {
-    const el = (event.target as Element).closest<HTMLElement>('.ent');
-    const target = el && placed.get(el.dataset.id ?? '');
-    if (!el || !target || !(el instanceof HTMLAnchorElement) || target.config.kind !== 'cv') return;
-    dive(event, el, null, () => originOfStructure(target));
-  });
   list.addEventListener('click', (event) => {
     const row = rowOf(event.target);
-    if (row) dive(event, row.el, row.slug, () => originOfRow(row));
+    if (row) dive(event, row);
   });
-  labels.addEventListener('pointerover', (event) => {
-    hoverId = (event.target as Element).closest<HTMLElement>('.ent')?.dataset.id ?? null;
-    dirty = true;
-  });
-  labels.addEventListener('pointerout', (event) => {
-    if (!(event.relatedTarget as Element | null)?.closest?.('.ent')) hoverId = null;
-    dirty = true;
-  });
-  labels.addEventListener('focusin', (event) => {
-    hoverId = (event.target as Element).closest<HTMLElement>('.ent')?.dataset.id ?? null;
-    dirty = true;
-  });
-  labels.addEventListener('focusout', () => {
-    hoverId = null;
-    dirty = true;
-  });
-
   readColors();
   layout();
 
@@ -512,7 +406,7 @@ export async function initBoard(): Promise<void> {
   let intro: { el: HTMLElement; d: number; shown: boolean }[] | null = null;
   const startIntro = () => {
     intro = [];
-    const targets: Element[] = [...labels.querySelectorAll('.ent'), ...list.querySelectorAll('.proj')];
+    const targets: Element[] = [...list.querySelectorAll('.proj')];
     if (note) targets.push(note);
     for (const el of targets) {
       const r = el.getBoundingClientRect();
@@ -543,7 +437,7 @@ export async function initBoard(): Promise<void> {
   });
   // Back → Forward → Back: the flag was consumed on arrival, put it back when the board is left
   addEventListener('pagehide', () => tracker.pagehide());
-  // any other way out (CV, language switch, list link) must not replay a zoom-out on the next Back
+  // any other way out (CV, contact, language switch, list link) must not replay a zoom-out on the next Back
   document.addEventListener(
     'click',
     (event) => {
@@ -607,7 +501,6 @@ export async function initBoard(): Promise<void> {
     if (!dirty) return;
     dirty = false;
     renderState.dpr = Math.min(2, devicePixelRatio || 1);
-    renderState.hoverId = hoverId;
     draw(renderState);
   };
   requestAnimationFrame(loop);

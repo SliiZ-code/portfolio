@@ -1,4 +1,4 @@
-// Game of Life patterns: the CV's beehive, the contact's gun, gliders and the methuselahs that seed the projects.
+// Game of Life patterns: gliders and the methuselahs that seed the projects.
 export type Pattern = number[][];
 
 const P = (rows: string): Pattern =>
@@ -6,22 +6,6 @@ const P = (rows: string): Pattern =>
     .trim()
     .split('\n')
     .map((row) => [...row.trim()].map((cell) => (cell === 'O' ? 1 : 0)));
-
-export const BEEHIVE = P(`
-.OO.
-O..O
-.OO.`);
-
-export const GUN = P(`
-........................O...........
-......................O.O...........
-............OO......OO............OO
-...........O...O....OO............OO
-OO........O.....O...OO..............
-OO........O...O.OO....O.O...........
-..........O.....O.......O...........
-...........O...O....................
-............OO......................`);
 
 /** Gliders by the diagonal they travel along: [dx, dy], y growing downwards. */
 export const GLIDER_HEADINGS: { heading: readonly [number, number]; cells: Pattern }[] = [
@@ -56,14 +40,6 @@ O..
 ];
 
 export const GLIDERS: Pattern[] = GLIDER_HEADINGS.map((entry) => entry.cells);
-
-/** Structures drawn on the board in their own private world. */
-export const PATTERNS = {
-  beehive: BEEHIVE,
-  gun: GUN,
-} as const;
-
-export type PatternName = keyof typeof PATTERNS;
 
 /** Small patterns that run for a long time before they settle (or vanish): one per project. */
 export const R_PENTOMINO = P(`

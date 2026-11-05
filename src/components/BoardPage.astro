@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
-import { getBoardEntities, getBoardProjects, projectPath } from '../data/board';
+import { getBoardProjects, projectPath } from '../data/board';
 import { strings } from '../i18n';
 import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
@@ -19,14 +19,10 @@ const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = cvPdfPath(lang);
 const { l: nameText, p: nameNarrow } = boardName(resume.name);
-const contactHref = resume.email ? `mailto:${resume.email}` : resume.profiles[0]?.url ?? '';
-const entities = getBoardEntities(resume, { cvHref, contactHref });
 
 const boardData = {
   name: { l: nameText, p: nameNarrow },
   nameNote: { l: t.board.nameNote, p: t.board.nameNoteNarrow },
-  // projects are the HTML list below: only the CV and the contact are structures
-  entities: entities.map(({ id, kind, pattern, pad, at }) => ({ id, kind, pattern, pad, at })),
 };
 
 const json = JSON.stringify(boardData).replace(/</g, '\\u003c');
@@ -39,18 +35,7 @@ const description = htmlToText(resume.summary) || resume.headline;
     <h1 class="sr-only">{resume.name}</h1>
     <div id="stage">
       <canvas id="board" role="img" aria-label={title}></canvas>
-      <div id="labels">
-        <div class="name-note" id="name-note">{t.board.nameNote}</div>
-        {entities.map((entity) => {
-          const Tag = entity.url ? 'a' : 'span';
-          return (
-            <Tag class:list={['ent', `ent-${entity.kind}`]} data-id={entity.id} href={entity.url || undefined}>
-              <span class="hit"></span>
-              <span class="name">{entity.name}</span>
-            </Tag>
-          );
-        })}
-      </div>
+      <div class="name-note" id="name-note">{t.board.nameNote}</div>
       <!-- the projects: each row fires its seed onto the board, a click dives into its page -->
       <nav id="projects" aria-label={t.board.projects}>
         <ul>
@@ -67,7 +52,7 @@ const description = htmlToText(resume.summary) || resume.headline;
     </div>
   </main>
 
-  <BoardHud lang={lang} t={t} profiles={resume.profiles} cvPdf={cvPdf} />
+  <BoardHud lang={lang} t={t} profiles={resume.profiles} email={resume.email} cvHref={cvHref} cvPdf={cvPdf} />
   <!-- without JavaScript there is no board: the same content as a plain list -->
   <noscript>
     <style>

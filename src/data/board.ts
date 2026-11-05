@@ -1,8 +1,6 @@
 import type { Lang, Project, Resume } from '../lib/resume';
-import { strings } from '../i18n';
 import { findMedia } from '../lib/media';
-import type { At } from '../scripts/board/layout';
-import { METHUSELAHS, type MethuselahName, type PatternName } from '../scripts/board/patterns';
+import { METHUSELAHS, type MethuselahName } from '../scripts/board/patterns';
 
 interface OverlayNote {
   fr: string;
@@ -204,38 +202,4 @@ export function getBoardProjects(resume: Resume): BoardProject[] {
       media: overlay.media,
     };
   });
-}
-
-/** The CV hangs off the bottom-right of the name in landscape, and has a fixed slot in portrait, under the note. */
-export const CV_LAYOUT = { pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } } as const satisfies {
-  pattern: PatternName;
-  pad: number;
-  at: At;
-};
-
-/** The gun, at the top edge. */
-export const CONTACT_LAYOUT = { pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.44, 0.025] } } as const satisfies {
-  pattern: PatternName;
-  pad: number;
-  at: At;
-};
-
-/** What is still drawn on the board as a structure besides the name: the CV and the contact. */
-export interface BoardEntity {
-  id: string;
-  kind: 'cv' | 'contact';
-  name: string;
-  /** Empty for a contact with no address: drawn, but not a link. */
-  url: string;
-  pattern: PatternName;
-  pad: number;
-  at: At;
-}
-
-export function getBoardEntities(resume: Resume, links: { cvHref: string; contactHref: string }): BoardEntity[] {
-  const t = strings(resume.lang).board;
-  return [
-    { id: 'cv', kind: 'cv', name: t.cvName, url: links.cvHref, ...CV_LAYOUT },
-    { id: 'contact', kind: 'contact', name: t.contactName, url: links.contactHref, ...CONTACT_LAYOUT },
-  ];
 }

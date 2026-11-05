@@ -112,67 +112,6 @@ button {
   cursor: crosshair;
 }
 
-/* ---- structures' labels: real links laid over the canvas ---- */
-.ent {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  text-decoration: none;
-  transform: translateX(-50%);
-  -webkit-user-drag: none;
-}
-
-.ent:not(.placed) {
-  visibility: hidden;
-}
-
-.ent .hit {
-  display: block;
-  /* the frame is drawn 4px outside the pattern: four L corners made of eight 10×2px arms */
-  margin: -4px;
-  padding: 4px;
-  box-sizing: content-box;
-  /* the riso blue at rest: the one touch of colour on the board besides the note */
-  --frame: var(--accent);
-  background:
-    linear-gradient(var(--frame), var(--frame)) top left / 10px 2px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) top left / 2px 10px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) top right / 10px 2px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) top right / 2px 10px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) bottom left / 10px 2px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) bottom left / 2px 10px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) bottom right / 10px 2px no-repeat,
-    linear-gradient(var(--frame), var(--frame)) bottom right / 2px 10px no-repeat;
-}
-
-.ent .name {
-  font: 500 12px/1.2 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--paper);
-  margin-top: 6px;
-  padding: 2px 6px;
-  background: var(--ink);
-  white-space: nowrap;
-}
-
-a.ent,
-a.ent .hit,
-a.ent .name {
-  cursor: pointer;
-}
-
-a.ent:hover .name,
-a.ent:focus-visible .name {
-  background: var(--accent);
-}
-
-.ent:focus-visible {
-  outline: none;
-}
-
 .name-note {
   position: absolute;
   font: 15px/1.25 "Shantell Sans", cursive;
@@ -277,8 +216,7 @@ a.ent:focus-visible .name {
   background: var(--accent);
 }
 
-/* the opening: labels and rows start hidden and appear as the shockwave passes them */
-#stage.intro .ent,
+/* the opening: the note and the rows start hidden and appear as the shockwave passes them */
 #stage.intro .name-note,
 #stage.intro .proj {
   opacity: 0;
@@ -331,6 +269,21 @@ a.ent:focus-visible .name {
 .br {
   bottom: 14px;
   right: 16px;
+}
+
+/* the two main calls to action, Contact and CV: the ink chip, inverted on hover */
+.br .cta {
+  padding: 1px 7px;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+  box-shadow: 0 0 0 4px var(--paper);
+}
+
+.br .cta:hover,
+.br .cta:focus-visible {
+  background: var(--accent);
+  outline: none;
 }
 
 .bl b {
@@ -831,10 +784,6 @@ a.flag:hover {
 
 /* phones and landscape phones: smaller tabs */
 @media (max-width: 760px), (max-height: 620px) {
-  .ent .name {
-    font-size: 11px;
-  }
-
   .proj .pname {
     font-size: 11px;
   }
@@ -873,6 +822,13 @@ a.flag:hover {
   }
 }
 
+/* tablets in portrait: the hint would run into the four buttons bottom-right */
+@media (max-width: 860px) {
+  .hud.bl .hint {
+    display: none;
+  }
+}
+
 /* shorter screens: the bottom-left pattern would sit under the counters, and the hint repeats the note */
 @media (max-height: 820px) {
   .hud.bl .hint {
@@ -891,7 +847,7 @@ a.flag:hover {
   }
 }
 
-/* landscape phones: the full-size note does not fit between the labels */
+/* landscape phones: the full-size note does not fit beside the project list */
 @media (max-height: 620px) {
   .name-note {
     font-size: 13px;

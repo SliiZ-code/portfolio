@@ -2,10 +2,6 @@
 
 export type Orientation = 'l' | 'p';
 
-/** Screen fractions [centre x, pattern top y], or 'name' for "hanging off the bottom-right of the name". */
-export type Anchor = readonly [number, number] | 'name';
-export type At = Partial<Record<Orientation, Anchor>>;
-
 export interface Grid {
   cols: number;
   rows: number;
@@ -48,37 +44,16 @@ export const gridFor = (vw: number, vh: number, cell: number): Grid => ({
 
 export const namePlacement = (grid: Grid, name: Grid, orientation: Orientation): Rect => ({
   x: Math.round(grid.cols / 2 - name.cols / 2),
-  // portrait sits a touch higher: the fine name and its note need the room above the fixed patterns
+  // portrait sits a touch higher: the fine name, its note and the project list need the room below it
   y: Math.round(grid.rows * (orientation === 'p' ? 0.34 : 0.38) - name.rows / 2),
   w: name.cols,
   h: name.rows,
 });
 
-/**
- * Centre column and pattern top row of a structure. 'name' hangs the CV off the name's bottom-right,
- * its board (`pad` 2) three cells below the name or the note's last row (`below`, in cells).
- */
-export const anchorFor = (at: Anchor | undefined, grid: Grid, name: Rect, below = name.y + name.h): { cx: number; ty: number } => {
-  if (at === 'name' || at === undefined) return { cx: name.x + name.w - 4, ty: below + 5 };
-  return { cx: Math.round(grid.cols * at[0]), ty: Math.round(grid.rows * at[1]) };
-};
-
 export interface Footprint extends Rect {
-  /** The part that counts for intrusion and hit testing; the gun's board is wider than its mouth. */
+  /** The part that counts for intrusion and for what must stay clear of the structure. */
   core: Rect;
 }
-
-const GUN_BOARD = { w: 52, h: 34 };
-const GUN_CORE = { w: 37, h: 10 };
-
-/** Where a structure's private board sits: the pattern plus its padding, or the gun's wider board. */
-export const footprint = (pattern: { w: number; h: number }, pad: number, anchor: { cx: number; ty: number }, gun = false): Footprint => {
-  const x0 = gun ? Math.max(1, anchor.cx - 18) : anchor.cx - Math.floor(pattern.w / 2);
-  if (gun) return { x: x0, y: anchor.ty, ...GUN_BOARD, core: { x: 0, y: 0, ...GUN_CORE } };
-  const w = pattern.w + pad * 2;
-  const h = pattern.h + pad * 2;
-  return { x: x0 - pad, y: anchor.ty - pad, w, h, core: { x: 0, y: 0, w, h } };
-};
 
 export const coreBox = (fp: Footprint): Box => ({
   x: fp.x + fp.core.x,

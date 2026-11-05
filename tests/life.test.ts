@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addFeedGlider, clearBoxes, createWorld, feedGlider, seedWorld, spawn, stepBox, stepWorld } from '../src/scripts/board/life';
+import { addFeedGlider, clearBoxes, createWorld, feedGlider, seedWorld, spawn, stepWorld } from '../src/scripts/board/life';
 import { isProtected } from '../src/scripts/board/layout';
 import { GLIDERS } from '../src/scripts/board/patterns';
 import { AGE_STEPS, BUCKETS, ageBucket } from '../src/scripts/board/render';
@@ -36,17 +36,6 @@ describe('Life step', () => {
       if (cell) expect(alive(world, cell[0], cell[1])).toBe(true);
     });
     expect(world.cells.reduce((sum, value) => sum + value, 0)).toBe(5);
-  });
-});
-
-describe('bounded step', () => {
-  it('runs a blinker in a private box and clears its edges', () => {
-    const cur = new Uint8Array(25);
-    const nxt = new Uint8Array(25);
-    [1, 2, 3].forEach((x) => (cur[2 * 5 + x] = 1));
-    stepBox(cur, nxt, 5, 5);
-    expect([nxt[1 * 5 + 2], nxt[2 * 5 + 2], nxt[3 * 5 + 2]]).toEqual([1, 1, 1]);
-    expect(nxt[2 * 5 + 1]).toBe(0);
   });
 });
 

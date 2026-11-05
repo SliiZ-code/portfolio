@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  anchorFor,
   boxMinus,
   cellSizeFor,
   coreBox,
-  footprint,
   gridFor,
   inBox,
   isProtected,
@@ -76,42 +74,9 @@ describe('name placement', () => {
   });
 });
 
-describe('anchors', () => {
-  const grid = { cols: 144, rows: 90 };
-  const name = { x: 32, y: 23, w: 80, h: 23 };
-
-  it('turns screen fractions into cells', () => {
-    expect(anchorFor([0.14, 0.66], grid, name)).toEqual({ cx: 20, ty: 59 });
-    expect(anchorFor([0.5, 0.025], grid, name)).toEqual({ cx: 72, ty: 2 });
-  });
-
-  it('hangs the CV off the bottom-right of the name, under the note when it has one', () => {
-    // no note: three cells under the name
-    expect(anchorFor('name', grid, name)).toEqual({ cx: 108, ty: 51 });
-    // the note ends on row 60: the CV starts three cells below it
-    expect(anchorFor('name', grid, name, 60)).toEqual({ cx: 108, ty: 65 });
-  });
-});
-
-describe('footprint', () => {
-  const pulsar = { w: 13, h: 13 };
-
-  it('is the pattern plus its padding, centred on the anchor', () => {
-    const fp = footprint(pulsar, 3, { cx: 20, ty: 59 });
-    expect(fp).toMatchObject({ x: 11, y: 56, w: 19, h: 19 });
-    expect(fp.core).toEqual({ x: 0, y: 0, w: 19, h: 19 });
-  });
-
-  it('gives the gun a wider private board, a 37×10 core and a left edge kept on screen', () => {
-    const gun = footprint({ w: 36, h: 9 }, 0, { cx: 72, ty: 2 }, true);
-    expect(gun).toMatchObject({ x: 54, y: 2, w: 52, h: 34 });
-    expect(gun.core).toEqual({ x: 0, y: 0, w: 37, h: 10 });
-    expect(footprint({ w: 36, h: 9 }, 0, { cx: 5, ty: 2 }, true).x).toBe(1);
-  });
-
+describe('core box', () => {
   it('exposes the core as a box in board cells', () => {
-    const fp = footprint(pulsar, 3, { cx: 20, ty: 59 });
-    expect(coreBox(fp)).toEqual({ x: 11, y: 56, x2: 30, y2: 75 });
+    expect(coreBox({ x: 11, y: 56, w: 19, h: 19, core: { x: 0, y: 0, w: 19, h: 19 } })).toEqual({ x: 11, y: 56, x2: 30, y2: 75 });
   });
 });
 

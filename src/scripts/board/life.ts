@@ -63,25 +63,6 @@ export function stepWorld(world: World): number {
   return population;
 }
 
-/** Bounded step used by a structure's private simulation (edges are dead). */
-export function stepBox(cur: Uint8Array, nxt: Uint8Array, w: number, h: number): void {
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let n = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (!dx && !dy) continue;
-          const xx = x + dx;
-          const yy = y + dy;
-          if (xx >= 0 && yy >= 0 && xx < w && yy < h) n += cur[yy * w + xx];
-        }
-      }
-      const i = y * w + x;
-      nxt[i] = n === 3 || (n === 2 && cur[i]) ? 1 : 0;
-    }
-  }
-}
-
 /** The board starts busy: `density` of every cell that `isProtected` doesn't claim. */
 export function seedWorld(world: World, isProtected: (x: number, y: number) => boolean, density: number, rnd: () => number = Math.random): void {
   for (let y = 0; y < world.h; y++) {

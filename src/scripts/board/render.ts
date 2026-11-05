@@ -5,7 +5,6 @@ export interface Colors {
   paper: string;
   ink: string;
   mute: string;
-  accent: string;
   /** Newborn → young, warm to cool; older cells fall back to `ink` at half opacity. */
   life: [string, string, string, string];
 }
@@ -58,8 +57,6 @@ export interface RenderState {
   structures: Structure[];
   colors: Colors;
   buffers: RenderBuffers;
-  /** The entity whose link is hovered or focused: its pattern takes the accent. */
-  hoverId: string | null;
   /** Null once the opening is over (or when there is none). */
   wave: Shockwave | null;
 }
@@ -74,7 +71,7 @@ const sparkle = (x: number, y: number): number => {
 };
 
 export function draw(state: RenderState): void {
-  const { ctx, cell, dpr, width, height, world, structures, colors, buffers, hoverId, wave } = state;
+  const { ctx, cell, dpr, width, height, world, structures, colors, buffers, wave } = state;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   const gap = cell >= 4 ? 1 : 0;
@@ -108,7 +105,7 @@ export function draw(state: RenderState): void {
 
   ctx.globalAlpha = 1;
   for (const structure of structures) {
-    ctx.fillStyle = structure.id && structure.id === hoverId ? colors.accent : colors.ink;
+    ctx.fillStyle = colors.ink;
     for (let k = 0; k < structure.cur.length; k++) {
       if (!structure.cur[k] || structure.hidden[k]) continue;
       const x = structure.x + (k % structure.w);

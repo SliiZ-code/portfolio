@@ -1,20 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   BOARD_OVERLAY,
-  CONTACT_LAYOUT,
-  CV_LAYOUT,
-  getBoardEntities,
   getBoardProjects,
   overlayFor,
   projectMeta,
   seedFor,
-  projectPath,
 } from '../src/data/board';
-import { strings } from '../src/i18n';
 import { slugify, type Project, type Resume } from '../src/lib/resume';
 import { sampleResume } from './fixtures';
-import { anchorFor, coreBox, footprint, gridFor, namePlacement, orientationFor, cellSizeFor, type Box } from '../src/scripts/board/layout';
-import { METHUSELAHS, PATTERNS } from '../src/scripts/board/patterns';
+import { cellSizeFor, gridFor, namePlacement, orientationFor, type Box } from '../src/scripts/board/layout';
+import { METHUSELAHS } from '../src/scripts/board/patterns';
 
 const extra = (name: string, index = 0): Project => ({
   id: `extra-${index}`,
@@ -26,7 +21,6 @@ const extra = (name: string, index = 0): Project => ({
 });
 
 const withProjects = (resume: Resume, projects: Project[]): Resume => ({ ...resume, projects });
-const overlap = (a: Box, b: Box) => a.x < b.x2 && a.x2 > b.x && a.y < b.y2 && a.y2 > b.y;
 
 describe('known project overlay', () => {
   const projects = getBoardProjects(sampleResume('fr'));
@@ -192,73 +186,24 @@ describe('the Arduino experiment', () => {
   });
 });
 
-describe('CV and contact', () => {
-  it('hangs the CV off the name in landscape and gives it a fixed slot in portrait', () => {
-    expect(CV_LAYOUT).toMatchObject({ pattern: 'beehive', pad: 2, at: { l: 'name', p: [0.85, 0.56] } });
-  });
-
-  it('puts the gun at the top, with no padding', () => {
-    expect(CONTACT_LAYOUT).toMatchObject({ pattern: 'gun', pad: 0, at: { l: [0.18, 0.05], p: [0.44, 0.025] } });
-  });
-});
-
-describe('board entities', () => {
-  it('draws only the CV and the contact: projects are an HTML list', () => {
-    for (const lang of ['fr', 'en'] as const) {
-      const resume = sampleResume(lang);
-      const entities = getBoardEntities(resume, { cvHref: lang === 'fr' ? '/cv/' : '/en/cv/', contactHref: 'mailto:x@y.z' });
-      const t = strings(lang).board;
-      expect(entities.map((entity) => entity.id)).toEqual(['cv', 'contact']);
-      for (const entity of entities) {
-        expect(entity.name.length, entity.id).toBeGreaterThan(0);
-        expect(PATTERNS[entity.pattern], entity.id).toBeDefined();
-      }
-      expect(entities.find((entity) => entity.id === 'cv')).toMatchObject({ kind: 'cv', name: t.cvName, url: lang === 'fr' ? '/cv/' : '/en/cv/' });
-      expect(entities.find((entity) => entity.id === 'contact')).toMatchObject({ kind: 'contact', url: 'mailto:x@y.z' });
-      // every project still has its page
-      for (const project of resume.projects) expect(projectPath(lang, project.slug)).toContain(project.slug);
-    }
-  });
-
-  it('keeps a contact without address inert', () => {
-    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: '' });
-    expect(entities.find((entity) => entity.id === 'contact')?.url).toBe('');
-  });
-
-  it('does not collide: the CV and the contact never overlap and stay on screen, in both orientations', () => {
-    const entities = getBoardEntities(sampleResume('fr'), { cvHref: '/cv/', contactHref: 'mailto:x@y.z' });
+describe('name placement across screens', () => {
+  it('keeps the name around half the width and inside the grid, in both orientations', () => {
     // the fine name raster: "Julien / Petit-Colboc" is 150 × 41 cells, "Julien / Petit- / Colboc" 82 × 63
-    const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740]];
+    const screens: [number, number][] = [[1440, 900], [1920, 1080], [1280, 720], [1024, 768], [390, 844], [768, 1024], [360, 740], [360, 640]];
     for (const [vw, vh] of screens) {
       const orientation = orientationFor(vw, vh);
       const name = orientation === 'p' ? { cols: 82, rows: 63 } : { cols: 150, rows: 41 };
       const cell = cellSizeFor(name, vw, vh, orientation);
-      // the name stays around half the width (a little more on a phone)
       const ratio = (name.cols * cell) / vw;
       expect(ratio, `name width @ ${vw}x${vh}`).toBeGreaterThanOrEqual(orientation === 'p' ? 0.4 : 0.34);
       expect(ratio, `name width @ ${vw}x${vh}`).toBeLessThanOrEqual(orientation === 'p' ? 0.72 : 0.45);
       const grid = gridFor(vw, vh, cell);
       const place = namePlacement(grid, name, orientation);
-      // in landscape the note sits on one line 10px under the name (15px handwritten line)
-      const noteBottom = orientation === 'l' ? place.y + place.h + Math.ceil(30 / cell) : place.y + place.h;
-      const boxes = entities.map((entity) => {
-        const dims = { w: PATTERNS[entity.pattern][0].length, h: PATTERNS[entity.pattern].length };
-        const fp = footprint(dims, entity.pad, anchorFor(entity.at?.[orientation], grid, place, noteBottom), entity.pattern === 'gun');
-        return { id: entity.id, box: coreBox(fp) };
-      });
-      const nameBox = { x: place.x, y: place.y, x2: place.x + place.w, y2: place.y + place.h };
-      const cv = boxes.find(({ id }) => id === 'cv')!;
-      if (orientation === 'l') expect(cv.box.y, `CV / note @ ${vw}x${vh}`).toBeGreaterThan(noteBottom);
-      for (const { id, box } of boxes) {
-        expect(box.x, `${id} @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);
-        expect(box.y, `${id} @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);
-        expect(box.x2, `${id} @ ${vw}x${vh}`).toBeLessThanOrEqual(grid.cols);
-        expect(box.y2, `${id} @ ${vw}x${vh}`).toBeLessThanOrEqual(grid.rows);
-        expect(overlap(box, nameBox), `${id} / name @ ${vw}x${vh}`).toBe(false);
-      }
-      for (let i = 0; i < boxes.length; i++)
-        for (let j = i + 1; j < boxes.length; j++)
-          expect(overlap(boxes[i].box, boxes[j].box), `${boxes[i].id} / ${boxes[j].id} @ ${vw}x${vh}`).toBe(false);
+      const box: Box = { x: place.x, y: place.y, x2: place.x + place.w, y2: place.y + place.h };
+      expect(box.x, `name @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);
+      expect(box.y, `name @ ${vw}x${vh}`).toBeGreaterThanOrEqual(0);
+      expect(box.x2, `name @ ${vw}x${vh}`).toBeLessThanOrEqual(grid.cols);
+      expect(box.y2, `name @ ${vw}x${vh}`).toBeLessThanOrEqual(grid.rows);
     }
   });
 });

@@ -8,10 +8,13 @@ interface Props {
   lang: Lang;
   t: UIStrings;
   profiles: Profile[];
+  email: string;
+  /** The HTML CV page: the fallback while there is no PDF. */
+  cvHref: string;
   cvPdf: string;
 }
 
-const { lang, t, profiles, cvPdf } = Astro.props;
+const { t, profiles, email, cvHref, cvPdf, lang } = Astro.props;
 ---
 
 <div class="hud tl">{t.board.home}</div>
@@ -29,5 +32,6 @@ const { lang, t, profiles, cvPdf } = Astro.props;
 
 <nav class="hud br" aria-label={t.board.elsewhere}>
   {profiles.map((profile) => <a href={profile.url}>{profile.network}</a>)}
-  {cvPdf && <a href={cvPdf}>CV (PDF)</a>}
+  {email && <a class="cta" href={`mailto:${email}`}>{t.board.contact}</a>}
+  <a class="cta" href={cvPdf || cvHref} type={cvPdf ? 'application/pdf' : undefined}>{t.board.cv}</a>
 </nav>
