@@ -42,6 +42,7 @@ export async function initBoard(): Promise<void> {
   const source = document.getElementById('board-data');
   const canvas = document.querySelector<HTMLCanvasElement>('#board');
   const stage = document.getElementById('stage');
+  const headline = document.getElementById('headline');
   const note = document.getElementById('name-note');
   const list = document.getElementById('projects');
   const ctx = canvas?.getContext('2d');
@@ -175,10 +176,26 @@ export async function initBoard(): Promise<void> {
     };
     let natural = measureList();
 
+    // the headline hangs under the name, on its left edge, and wraps inside the name's width
+    let under = (at.y + at.h) * cell;
+    if (headline) {
+      headline.style.left = `${at.x * cell}px`;
+      headline.style.top = `${under + 12}px`;
+      // one line in landscape when it fits without taking the room the list needs; else inside the name's width
+      headline.style.maxWidth = orientation === 'l' ? 'none' : `${at.w * cell}px`;
+      if (orientation === 'l') {
+        const right = Math.max(headline.getBoundingClientRect().right, (at.x + at.w) * cell);
+        if (vw - 16 - right - 20 < Math.min(natural.w, 260)) headline.style.maxWidth = `${at.w * cell}px`;
+      }
+      const r = headline.getBoundingClientRect();
+      keepClear.push(rectToBox(r, cell));
+      under = r.bottom;
+    }
+
     if (note) {
       note.textContent = data.nameNote[orientation];
       note.style.left = `${at.x * cell}px`;
-      note.style.top = `${(at.y + at.h) * cell + 10}px`;
+      note.style.top = `${under + (headline ? 14 : 10)}px`;
       // one line under the name wherever it fits; inside the name's width on a phone,
       // and in landscape when the line would take the room the project list needs
       note.style.maxWidth = orientation === 'p' ? `${Math.min(at.w * cell, Math.round(vw * 0.7))}px` : 'none';
@@ -192,8 +209,8 @@ export async function initBoard(): Promise<void> {
 
     // the list goes where the board has room: right of the name in landscape, under it on a phone
     const obstacles: PxRect[] = [{ left: at.x * cell, top: at.y * cell, right: (at.x + at.w) * cell, bottom: (at.y + at.h) * cell }];
-    if (note) {
-      const r = pxRect(note);
+    for (const el of [headline, note]) {
+      const r = el ? pxRect(el) : null;
       if (r) obstacles.push(r);
     }
     const hudTop = document.querySelector('.hud.tr');
@@ -407,6 +424,7 @@ export async function initBoard(): Promise<void> {
   const startIntro = () => {
     intro = [];
     const targets: Element[] = [...list.querySelectorAll('.proj')];
+    if (headline) targets.push(headline);
     if (note) targets.push(note);
     for (const el of targets) {
       const r = el.getBoundingClientRect();

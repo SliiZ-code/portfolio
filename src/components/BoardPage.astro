@@ -35,6 +35,7 @@ const description = htmlToText(resume.summary) || resume.headline;
     <h1 class="sr-only">{resume.name}</h1>
     <div id="stage">
       <canvas id="board" role="img" aria-label={title}></canvas>
+      {resume.headline && <p class="headline" id="headline">{resume.headline}</p>}
       <div class="name-note" id="name-note">{t.board.nameNote}</div>
       <!-- the projects: each row fires its seed onto the board, a click dives into its page -->
       <nav id="projects" aria-label={t.board.projects}>

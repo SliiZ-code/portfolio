@@ -168,7 +168,8 @@ viewer is on screen, and without WebGL the page shows a message instead.
 The board fits the viewport exactly: no pan, no zoom. The name is rasterized at the font's
 half-pixel resolution and sets the cell size (about 40% of the width in landscape, two thirds
 on phones, cells between 3 and 8px) and the grid covers the screen. The name is the only drawing;
-the projects are an HTML list and the links (GitHub, LinkedIn, Contact, CV) are the bottom-right
+right under it hangs the resume headline (`#headline`, Geist Mono, ink on a paper chip, from the resume at
+build time), then the handwritten note; the projects are an HTML list and the links (GitHub, LinkedIn, Contact, CV) are the bottom-right
 HUD. The engine lives in `src/scripts/board/`:
 
 - `index.ts`: bootstrap, layout (re-run on resize), generation loop, opening, seeds, dive and return;
@@ -192,7 +193,7 @@ one `fillStyle` per bucket; it allocates nothing per frame and redraws only when
 
 **Projects.** The projects are a real HTML list on the board (`#projects`, Geist Mono, name plus
 muted `tag · period`): a column hugging the right gutter, vertically centred and clear of the name,
-its note and the corners, in landscape; full width under the name and its note on a phone. If it does not
+its headline, its note and the corners, in landscape; full width under the name and its note on a phone. If it does not
 fit it tightens (`compact`), drops the meta column (`narrow`) and finally scrolls, but never overlaps
 anything. Its box is a keep-clear zone: the soup dies under it. Hovering or focusing a row (a touch
 on a phone) fires its seed as newborn cells just outside the list, on the side facing the open
@@ -203,7 +204,7 @@ advances one generation. Without JavaScript the same projects are in the plain l
 **Opening.** On a fresh load (`data-entry="intro"` on the canvas) the board starts empty and a
 shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells, with the
 seeded soup (age 0) appearing behind it, the name as it passes it, and
-the note and project rows fading in once it has passed their position. The simulation starts when
+the headline, the note and project rows fading in once it has passed their position. The simulation starts when
 the ring has left. There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
 (`direct`).
 

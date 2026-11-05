@@ -20,6 +20,7 @@ const projectHref = (slug: string) =>
 
 <aside id="list" aria-label={t.board.listLabel}>
   <h2>{first}<br />{rest.join(' ')}</h2>
+  {resume.headline && <p class="headline">{resume.headline}</p>}
   {resume.summary && <div class="summary" set:html={resume.summary} />}
 
   <h3>{t.board.projects}</h3>

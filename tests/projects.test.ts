@@ -11,7 +11,7 @@ const rectOf = (p: { left: number; top: number; width: number; height: number })
 });
 
 describe('placeProjects', () => {
-  // 1440×900: cell 4, the name is 600×164 at (420, 260), its note one line below, the CV hangs off its right
+  // 1440×900: cell 4, the name is 600×164 at (420, 260), its headline and note below, the CV hangs off its right
   const landscape = {
     vw: 1440,
     vh: 900,
@@ -19,8 +19,10 @@ describe('placeProjects', () => {
     natural: { w: 300, h: 330 },
     obstacles: [
       { left: 420, top: 260, right: 1020, bottom: 424 },
-      { left: 420, top: 434, right: 1000, bottom: 462 },
-      { left: 980, top: 470, right: 1030, bottom: 540 },
+      // the headline, one line under the name, then the note under it
+      { left: 420, top: 436, right: 1030, bottom: 458 },
+      { left: 420, top: 464, right: 1000, bottom: 492 },
+      { left: 980, top: 500, right: 1030, bottom: 560 },
     ],
     topLimit: 52,
     bottomLimit: 860,
