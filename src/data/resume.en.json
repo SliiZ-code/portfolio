@@ -140,6 +140,90 @@
             "inlineLink": false
           },
           "description": "<p>Cross-platform task manager (Android, iOS, Windows, macOS, Web) built with Flutter/Dart: local Isar database, categories, notifications.</p>"
+        },
+        {
+          "id": "42e49092-48a3-4fa1-8c78-4654a7877f35",
+          "hidden": false,
+          "name": "Game of Life",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/Lucacist/jeu-de-Conway-projet",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>CESI group project in C++. We built a Game of Life with a graphical interface: grid editable in real time, obstacles, adjustable speed, grid import and export.</p>"
+        },
+        {
+          "id": "cd533142-b965-4ad7-90d6-bc1af4002e37",
+          "hidden": false,
+          "name": "Worldwide Weather Watcher",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/enzogilles/Projet-World-wide-weather-watcher",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>CESI group project on Arduino. A weather station with four modes, temperature and pressure sensors, an RTC clock, SD card logging and interrupt handling.</p>"
+        },
+        {
+          "id": "fb8bd09b-fb02-4d2c-bf0f-33c29b55fce3",
+          "hidden": false,
+          "name": "BB8",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/R1leMargoulin/BB8_Project_Repo",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>BB-8 robot of the CESI robotics club: a Raspberry Pi sends commands to an Arduino that drives the motors. I built the web control interface and its Python server.</p>"
+        },
+        {
+          "id": "23fd2894-8610-4f84-9497-3018d020cc6f",
+          "hidden": false,
+          "name": "UniLink",
+          "period": "2025 – Present",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>A university events platform, built as a team. Students browse a map of campus events and sign up; student unions organise them. React, Express, Prisma and PostgreSQL, containerised with Docker.</p>"
+        },
+        {
+          "id": "2fd916ce-8407-4bfa-83f0-14d87054ac9c",
+          "hidden": false,
+          "name": "Photographer's website",
+          "period": "2026 – Present",
+          "website": {
+            "url": "https://noelfrc.sliiz.com",
+            "label": "noelfrc.sliiz.com",
+            "inlineLink": false
+          },
+          "description": "<p>A bilingual portfolio site for a photographer friend, which he updates on his own. Payload CMS, Next.js and Postgres, self-hosted with Coolify. Images are resized and converted to AVIF and WebP on upload.</p>"
+        },
+        {
+          "id": "e3f9c2eb-c883-4fed-aee3-b6cd27b5d04a",
+          "hidden": false,
+          "name": "AgentKanban",
+          "period": "2026",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>A local service that turns GitHub issues into tasks handed to coding agents (Codex), each in its own workspace. It follows OpenAI's Symphony specification.</p>"
+        },
+        {
+          "id": "18d045d7-1a16-4926-b664-15f0b9489553",
+          "hidden": false,
+          "name": "The Arduino in pixels",
+          "period": "2026",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>A 3D model of an Arduino rendered live with three.js, then pixelated to five ink levels. You can rotate it with the mouse or a finger.</p>"
         }
       ]
     },

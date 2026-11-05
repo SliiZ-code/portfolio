@@ -140,6 +140,90 @@
             "inlineLink": false
           },
           "description": "<p>Gestionnaire de tâches multiplateforme (Android, iOS, Windows, macOS, Web) développé avec Flutter/Dart : base de données locale Isar, catégories, notifications.</p>"
+        },
+        {
+          "id": "42e49092-48a3-4fa1-8c78-4654a7877f35",
+          "hidden": false,
+          "name": "Jeu de la vie",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/Lucacist/jeu-de-Conway-projet",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>Projet de groupe CESI en C++. Nous avons développé un jeu de la vie avec interface graphique : grille modifiable en temps réel, obstacles, vitesse réglable, import et export de grilles.</p>"
+        },
+        {
+          "id": "cd533142-b965-4ad7-90d6-bc1af4002e37",
+          "hidden": false,
+          "name": "Worldwide Weather Watcher",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/enzogilles/Projet-World-wide-weather-watcher",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>Projet de groupe CESI sur Arduino. Station météo à quatre modes, avec capteurs de température et de pression, horloge RTC, enregistrement sur carte SD et gestion des interruptions.</p>"
+        },
+        {
+          "id": "fb8bd09b-fb02-4d2c-bf0f-33c29b55fce3",
+          "hidden": false,
+          "name": "BB8",
+          "period": "2024",
+          "website": {
+            "url": "https://github.com/R1leMargoulin/BB8_Project_Repo",
+            "label": "GitHub",
+            "inlineLink": false
+          },
+          "description": "<p>Robot BB-8 du club robotique CESI : un Raspberry Pi envoie les commandes à un Arduino qui pilote les moteurs. J'ai développé l'interface web de pilotage et son serveur Python.</p>"
+        },
+        {
+          "id": "23fd2894-8610-4f84-9497-3018d020cc6f",
+          "hidden": false,
+          "name": "UniLink",
+          "period": "2025 – Aujourd’hui",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Plateforme d'événements universitaires, développée en équipe. Les étudiants consultent une carte des événements du campus et s'y inscrivent ; les BDE les organisent. React, Express, Prisma et PostgreSQL, conteneurisés avec Docker.</p>"
+        },
+        {
+          "id": "2fd916ce-8407-4bfa-83f0-14d87054ac9c",
+          "hidden": false,
+          "name": "Site du photographe",
+          "period": "2026 – Aujourd’hui",
+          "website": {
+            "url": "https://noelfrc.sliiz.com",
+            "label": "noelfrc.sliiz.com",
+            "inlineLink": false
+          },
+          "description": "<p>Site portfolio pour un ami photographe, bilingue, qu'il met à jour seul. Payload CMS, Next.js et Postgres, auto-hébergé avec Coolify. Les images sont redimensionnées et converties en AVIF et WebP à l'envoi.</p>"
+        },
+        {
+          "id": "e3f9c2eb-c883-4fed-aee3-b6cd27b5d04a",
+          "hidden": false,
+          "name": "AgentKanban",
+          "period": "2026",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Service local qui transforme des issues GitHub en tâches confiées à des agents de code (Codex), chacune dans son propre espace de travail. Il suit la spécification Symphony d'OpenAI.</p>"
+        },
+        {
+          "id": "18d045d7-1a16-4926-b664-15f0b9489553",
+          "hidden": false,
+          "name": "L'Arduino en pixels",
+          "period": "2026",
+          "website": {
+            "url": "",
+            "label": "",
+            "inlineLink": false
+          },
+          "description": "<p>Un modèle 3D d'Arduino rendu en direct avec three.js, puis pixelisé en cinq niveaux d'encre. On peut le faire tourner à la souris ou au doigt.</p>"
         }
       ]
     },
