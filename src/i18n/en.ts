@@ -59,6 +59,12 @@ const en = {
     projectPage: 'project page',
     madeWith: 'made with a Game of Life',
     top: '↑ back to top',
+    /** Phrases of the bio drawn with a highlighter; each must match the summary text exactly. */
+    introMarks: ['Cerebro', 'LLM', 'VR', 'abroad'],
+    /** The handwritten note beside the calls to action. */
+    replyNote: 'reply within 48\u00a0h',
+    /** The big closing line, which links to the e-mail. */
+    closing: 'Let’s talk.',
   },
 } satisfies UIStrings;
 

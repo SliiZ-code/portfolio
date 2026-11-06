@@ -57,6 +57,12 @@ const fr = {
     projectPage: 'page du projet',
     madeWith: 'fait avec un jeu de la vie',
     top: '↑ haut de page',
+    /** Phrases of the bio drawn with a highlighter; each must match the summary text exactly. */
+    introMarks: ['Cerebro', 'LLM', 'réalité virtuelle', "à l'étranger"],
+    /** The handwritten note beside the calls to action. */
+    replyNote: 'réponse sous 48\u00a0h',
+    /** The big closing line, which links to the e-mail. */
+    closing: 'Parlons-en.',
   },
 };
 
