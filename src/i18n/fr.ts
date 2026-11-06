@@ -47,6 +47,16 @@ const fr = {
     language: 'Langue',
     theme: 'Thème',
   },
+  home: {
+    status: "Recherche un stage de recherche à l'étranger · dès juin 2027 · 12 à 17 semaines",
+    cv: 'CV',
+    cvPdf: 'CV (PDF)',
+    about: 'À propos',
+    moreProjects: 'Autres projets',
+    projectPage: 'page du projet',
+    madeWith: 'fait avec un jeu de la vie',
+    top: '↑ haut de page',
+  },
 };
 
 export default fr;

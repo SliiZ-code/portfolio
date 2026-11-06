@@ -1,0 +1,37 @@
+---
+// Experience as case studies: when and where, the role, the company, then what was done.
+import HomeSection from './HomeSection.astro';
+import { joinMeta } from './content';
+import type { Experience } from '../../lib/resume';
+
+interface Props {
+  title: string;
+  entries: Experience[];
+}
+
+const { title, entries } = Astro.props;
+---
+
+<HomeSection id="hc-experience" number="01" title={title}>
+  <div class="hc-stack">
+    {entries.map((entry) => (
+      <article class="hc-exp hc-reveal">
+        <p class="hc-meta">{joinMeta(entry.period, entry.location)}</p>
+        <h3 class="hc-role">{entry.position || entry.company}</h3>
+        {entry.company && entry.position && (
+          <p class="hc-company">
+            {entry.website.url ? <a href={entry.website.url}>{entry.company}</a> : entry.company}
+          </p>
+        )}
+        {entry.description && <div class="hc-desc" set:html={entry.description} />}
+        {entry.roles.map((role) => (
+          <div class="hc-sub">
+            <h4 class="hc-role-sub">{role.position}</h4>
+            {role.period && <p class="hc-meta">{role.period}</p>}
+            {role.description && <div class="hc-desc" set:html={role.description} />}
+          </div>
+        ))}
+      </article>
+    ))}
+  </div>
+</HomeSection>

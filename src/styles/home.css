@@ -4,3 +4,432 @@
   z-index: 3;
   background: var(--paper);
 }
+
+/* ---- layout: a left gutter for section numbers, reading text at most 720px wide ---- */
+.hc {
+  --hc-gutter: clamp(16px, 9vw, 128px);
+  /* the bottom padding keeps the last lines clear of the fixed HUD in the corner */
+  padding: 72px 16px 80px var(--hc-gutter);
+  color: var(--ink);
+  font: 12px/1.5 "Geist Mono", monospace;
+}
+
+.hc a {
+  color: inherit;
+  text-underline-offset: .2em;
+}
+
+.hc a:hover {
+  color: var(--accent);
+}
+
+.hc p,
+.hc h3,
+.hc h4 {
+  margin: 0;
+}
+
+.hc-stack {
+  display: grid;
+  gap: 56px;
+}
+
+.hc-meta {
+  color: var(--mute);
+  letter-spacing: .02em;
+}
+
+.hc-strong {
+  font: 18px/1.3 "Gambarino", serif;
+}
+
+.hc-line {
+  font: 17px/1.35 "Gambarino", serif;
+}
+
+/* ---- intro: status line, summary, the two calls to action ---- */
+.hc-intro {
+  display: grid;
+  gap: 28px;
+  max-width: 720px;
+}
+
+.hc-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  letter-spacing: .03em;
+}
+
+.hc-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+}
+
+.hc-summary {
+  font: 22px/1.3 "Gambarino", serif;
+}
+
+.hc-summary p + p {
+  margin-top: .6em;
+}
+
+.hc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* the two main calls to action: the ink chip, inverted on hover (as the board's .br .cta) */
+.hc-cta {
+  padding: 1px 7px;
+  background: var(--ink);
+  color: var(--paper);
+  text-decoration: none;
+}
+
+/* the generic `.hc a` rules above are more specific, so the chip's colours are repeated under `.hc` */
+.hc .hc-cta {
+  color: var(--paper);
+}
+
+.hc .hc-cta:hover,
+.hc .hc-cta:focus-visible {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+/* ---- numbered sections ---- */
+.hc-section {
+  margin-top: 120px;
+}
+
+.hc-head {
+  margin-bottom: 40px;
+}
+
+.hc-num {
+  color: var(--mute);
+  margin-bottom: 6px;
+}
+
+.hc-section h2 {
+  font: 34px/1 "Geist Pixel", monospace;
+  font-weight: 400;
+}
+
+/* ---- experience: case studies ---- */
+.hc-exp {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.hc-role {
+  font: 400 24px/1.1 "Geist Pixel", monospace;
+  margin-top: 8px;
+}
+
+.hc-company {
+  font: 18px/1.3 "Gambarino", serif;
+  margin-top: 4px;
+}
+
+.hc-sub {
+  margin-top: 24px;
+}
+
+.hc-role-sub {
+  font: 400 18px/1.2 "Geist Pixel", monospace;
+}
+
+/* rich text from the resume: bullets are small accent squares */
+.hc-desc {
+  font: 18px/1.45 "Gambarino", serif;
+  margin-top: 16px;
+}
+
+.hc-desc > * + * {
+  margin-top: .6em;
+}
+
+.hc-desc ul {
+  list-style: none;
+  padding: 0;
+}
+
+.hc-desc li {
+  position: relative;
+  padding-left: 1.2em;
+}
+
+.hc-desc li + li {
+  margin-top: .45em;
+}
+
+.hc-desc li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .5em;
+  width: .42em;
+  height: .42em;
+  background: var(--accent);
+}
+
+.hc-desc li > p {
+  display: inline;
+}
+
+/* ---- projects: research-homepage format ---- */
+.hc-projects {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 64px;
+}
+
+.hc-project {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+.hc-media {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.hc-media > *,
+.hc-media img,
+.hc-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hc-project-name {
+  font: 400 22px/1.15 "Geist Pixel", monospace;
+}
+
+.hc-project-name a {
+  text-decoration: none;
+}
+
+.hc-project-name a:hover {
+  color: var(--accent);
+}
+
+.hc-lead {
+  font: 18px/1.45 "Gambarino", serif;
+  margin-top: 12px;
+}
+
+.hc-links {
+  margin-top: 12px;
+  color: var(--mute);
+}
+
+.hc-links a {
+  color: var(--ink);
+}
+
+.hc-more {
+  margin-top: 56px;
+}
+
+.hc-more h3 {
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 400;
+  margin-bottom: 6px;
+}
+
+.hc-more ul {
+  list-style: none;
+  padding: 0;
+}
+
+.hc-more li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.hc-more-name {
+  font: 400 17px/1.2 "Geist Pixel", monospace;
+  text-decoration: none;
+}
+
+/* ---- about: compact, in columns ---- */
+.hc-about {
+  display: grid;
+  gap: 40px 32px;
+}
+
+.hc-about h3 {
+  color: var(--mute);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 400;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hc-about ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.hc-about li {
+  display: grid;
+  gap: 2px;
+}
+
+.hc-skills li {
+  display: block;
+  font: 17px/1.4 "Gambarino", serif;
+}
+
+.hc-skill-name {
+  font: 12px/1.5 "Geist Mono", monospace;
+  color: var(--ink);
+  margin-right: 8px;
+}
+
+.hc-keywords {
+  color: var(--ink);
+}
+
+/* ---- footer ---- */
+.hc-foot {
+  margin-top: 140px;
+  padding-top: 28px;
+  border-top: 1px solid var(--ink);
+  display: grid;
+  gap: 20px;
+}
+
+.hc-foot-name {
+  font: 400 28px/1 "Geist Pixel", monospace;
+}
+
+.hc-foot-links ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+
+.hc-foot-links a {
+  text-decoration: none;
+}
+
+.hc-colophon {
+  color: var(--mute);
+}
+
+.hc-top {
+  justify-self: start;
+  text-decoration: none;
+  color: var(--mute);
+}
+
+/* ---- wide screens: section numbers in a left column, the body in the reading column ---- */
+@media (min-width: 800px) {
+  .hc-section {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 720px);
+    column-gap: 32px;
+  }
+
+  .hc-head {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    column-gap: 32px;
+  }
+
+  .hc-num {
+    grid-column: 1;
+    margin-top: 10px;
+    margin-bottom: 0;
+  }
+
+  .hc-section h2 {
+    grid-column: 2;
+  }
+
+  .hc-body {
+    grid-column: 2;
+  }
+}
+
+@media (min-width: 640px) {
+  .hc-project {
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .hc-about {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hc-about .hc-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- motion: sections and entries rise and fade in as they enter the view (scroll-driven) ---- */
+@keyframes hc-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hc-pulse {
+  50% {
+    opacity: .25;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hc-reveal {
+      animation: hc-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hc-dot {
+    animation: hc-pulse 2s steps(2, jump-none) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-reveal {
+    animation: none;
+  }
+}

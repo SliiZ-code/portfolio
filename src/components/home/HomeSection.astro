@@ -1,0 +1,21 @@
+---
+// A numbered section: the number sits in the left gutter on desktop, above the heading on phones.
+interface Props {
+  id: string;
+  number: string;
+  title: string;
+}
+
+const { id, number, title } = Astro.props;
+const headingId = `${id}-title`;
+---
+
+<section class="hc-section" id={id} aria-labelledby={headingId}>
+  <header class="hc-head hc-reveal">
+    <p class="hc-num">{number} /</p>
+    <h2 id={headingId}>{title}</h2>
+  </header>
+  <div class="hc-body">
+    <slot />
+  </div>
+</section>

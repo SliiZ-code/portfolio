@@ -1,0 +1,24 @@
+---
+import type { UIStrings } from '../../i18n/fr';
+import type { Resume } from '../../lib/resume';
+
+interface Props {
+  t: UIStrings;
+  resume: Resume;
+  cvHref: string;
+  cvPdf: string;
+}
+
+const { t, resume, cvHref, cvPdf } = Astro.props;
+---
+
+<div class="hc-intro hc-reveal">
+  <p class="hc-status"><span class="hc-dot" aria-hidden="true"></span>{t.home.status}</p>
+  {resume.summary && <div class="hc-summary" set:html={resume.summary} />}
+  <div class="hc-actions">
+    {resume.email && <a class="hc-cta" href={`mailto:${resume.email}`}>{t.board.contact}</a>}
+    <a class="hc-cta" href={cvPdf || cvHref} type={cvPdf ? 'application/pdf' : undefined}>
+      {cvPdf ? t.home.cvPdf : t.home.cv}
+    </a>
+  </div>
+</div>
