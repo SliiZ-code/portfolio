@@ -1,5 +1,10 @@
 // Ordered dithering for the project media: a source frame becomes two inks, the theme's ink and
-// (for the very brightest highlights) the life colour. Pure functions only, so the tests run in node.
+// (for the very brightest highlights) the life colour. The dithered mask is also the seed of a Game of
+// Life burst on hover (see ProjectMedia.astro). Pure functions only, so the tests run in node.
+
+import { AGE_STEPS } from './board/render';
+
+export { ageBucket, BUCKET_ALPHA, BUCKETS } from './board/render';
 
 /** Mask value: the pixel stays paper. */
 export const DITHER_PAPER = 0;
@@ -52,4 +57,30 @@ export function ditherToMask(rgba: Uint8ClampedArray, w: number, h: number, inve
     }
   }
   return mask;
+}
+
+/** Generations a hover, focus or touch burst runs for. */
+export const BURST_GENERATIONS = 24;
+/** The burst's tempo, in generations per second. */
+export const BURST_RATE = 30;
+/**
+ * The age a seeded cell starts with: the oldest colour bucket, so the picture starts as the dither's ink
+ * and only the newborn cells take the life colours. Set it to 0 to start the whole picture in `--life-0`.
+ */
+export const SEED_AGE = AGE_STEPS[AGE_STEPS.length - 1];
+
+/**
+ * The Life world for a dithered mask: ink cells are alive, paper and highlight cells are dead (the
+ * highlights are sparse and only show on the still dither). Returns `w × h` cells, 1 alive, 0 dead.
+ */
+export function maskToWorldCells(mask: Uint8Array, w: number, h: number): Uint8Array {
+  const cells = new Uint8Array(w * h);
+  const n = Math.min(mask.length, w * h);
+  for (let i = 0; i < n; i++) if (mask[i] === DITHER_INK) cells[i] = 1;
+  return cells;
+}
+
+/** How many generations a burst has run after `elapsedMs`, at `perSecond` (never negative). */
+export function generationAt(elapsedMs: number, perSecond = BURST_RATE): number {
+  return Math.max(0, Math.floor((elapsedMs * perSecond) / 1000));
 }
