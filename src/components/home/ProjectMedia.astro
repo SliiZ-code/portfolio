@@ -1,7 +1,8 @@
 ---
 // A project's media, drawn in the site's inks: the real video or image sits under an ordered-dithered
-// copy that fades out on hover or focus. A project without media gets its seed pattern as a poster.
-// See docs/plan-home-v3.md; the dithering lives in src/scripts/dither.ts.
+// copy. On hover or focus the dither becomes a Game of Life burst, coloured by age as the board is, and
+// then the full-colour media shows. A project without media gets its seed as a live poster on hover.
+// See docs/plan-home-v3.md; the dithering and the burst's maths live in src/scripts/dither.ts.
 import { boardMedia, type BoardProject } from '../../data/board';
 import { METHUSELAH_PATTERNS } from '../../scripts/board/patterns';
 
@@ -21,9 +22,11 @@ const pattern = METHUSELAH_PATTERNS[project.seed];
 const cols = Math.max(...pattern.map((row) => row.length));
 const cells = pattern.flatMap((row, y) => row.flatMap((alive, x) => (alive ? [{ x, y }] : [])));
 const glyph = { width: cols * CELL, height: pattern.length * CELL };
+// the script turns the SVG into a live Life poster; without JS the SVG stays
+const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
 ---
 
-<figure class:list={['pmedia', { 'pmedia--poster': !kind }]} aria-label={label}>
+<figure class:list={['pmedia', { 'pmedia--poster': !kind }]} aria-label={label} data-seed={kind ? undefined : seed}>
   {kind === 'video' && <video src={media?.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
   {kind === 'image' && <img src={media?.image} alt={label} loading="lazy" decoding="async" />}
   {kind && <canvas class="pmedia-dither" aria-hidden="true"></canvas>}
@@ -42,6 +45,7 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
             <rect x={x * CELL} y={y * CELL} width={CELL} height={CELL} />
           ))}
         </svg>
+        <canvas class="pmedia-life" aria-hidden="true" hidden></canvas>
         <figcaption class="pmedia-caption">{project.seed.toUpperCase()}</figcaption>
       </>
     )
@@ -79,11 +83,8 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
     transition: opacity 0.25s ease;
   }
 
-  /* hover reveals the real media; focus does too, when a parent link has it */
-  .pmedia:hover > canvas,
-  .pmedia:focus-within > canvas,
-  :global(a:focus-visible) .pmedia > canvas,
-  :global(li:has(a:focus-visible)) .pmedia > canvas {
+  /* the script fades the dither out once the burst is over (or on a tap, or at once under reduced motion) */
+  .pmedia--revealed > canvas.pmedia-dither {
     opacity: 0;
   }
 
@@ -101,6 +102,10 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
     max-width: 100%;
     height: auto;
     shape-rendering: crispEdges;
+  }
+
+  .pmedia-glyph[hidden] {
+    display: none;
   }
 
   .pmedia-glyph rect {
@@ -127,7 +132,20 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
 </style>
 
 <script>
-  import { DITHER_HIGHLIGHT, DITHER_INK, ditherToMask } from '../../scripts/dither';
+  import { createWorld, idx, stepWorld, type World } from '../../scripts/board/life';
+  import {
+    BUCKETS,
+    BUCKET_ALPHA,
+    BURST_GENERATIONS,
+    BURST_RATE,
+    DITHER_HIGHLIGHT,
+    DITHER_INK,
+    SEED_AGE,
+    ageBucket,
+    ditherToMask,
+    generationAt,
+    maskToWorldCells,
+  } from '../../scripts/dither';
 
   /** The dithered copy is redrawn at most this often while a video plays. */
   const FRAME_MS = 80;
@@ -135,7 +153,21 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
   const CELL_PX = 3;
   /** The figure's aspect ratio; the crop of the source follows it, as `object-fit: cover` does. */
   const ASPECT = 4 / 3;
+  /** A poster's cells are this many CSS pixels, as the SVG glyph is drawn at rest. */
+  const POSTER_CELL = 10;
+  /** A poster runs at the board's tempo: the board ticks every 120 ms. */
+  const POSTER_RATE = 1000 / 120;
+  /** On touch, a figure bursts when this much of it is in view. */
+  const TOUCH_VIEW = 0.6;
+  /**
+   * Under a burst the seed's ink stays as a faint ground, so the picture does not vanish when most of
+   * its cells die (sparse or overcrowded dither dies within a few generations). 0 is the bare Life board.
+   */
+  const GROUND_ALPHA = 0.2;
   const FALLBACK_INK = '#1b1a17';
+  const FALLBACK_PAPER = '#e8e5dc';
+  const FALLBACK_LIFE = '#ff8a00';
+
   /** Rough lightness (0–1) of a #rgb, #rrggbb or rgb() colour; only used to compare ink and paper. */
   const lightness = (colour: string): number => {
     let rgb: number[] = [];
@@ -148,19 +180,92 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
     }
     return rgb.length === 3 ? (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255 : 0;
   };
-  const FALLBACK_LIFE = '#ff8a00';
+
+  interface Palette {
+    ink: string;
+    paper: string;
+    /** Newborn → young, warm to cool. */
+    life: string[];
+    /** Light ink on dark paper (night): the dither inverts. */
+    invert: boolean;
+  }
+
+  const readPalette = (figure: HTMLElement): Palette => {
+    const style = getComputedStyle(figure);
+    const token = (name: string, fallback: string): string => style.getPropertyValue(name).trim() || fallback;
+    const ink = token('--ink', FALLBACK_INK);
+    const paper = token('--paper', FALLBACK_PAPER);
+    return {
+      ink,
+      paper,
+      life: ['--life-0', '--life-1', '--life-2', '--life-3'].map((name) => token(name, FALLBACK_LIFE)),
+      invert: lightness(ink) > lightness(paper),
+    };
+  };
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  /** No hover here: touch devices burst when a figure scrolls in, and a tap toggles the colour reveal. */
+  const touchOnly = matchMedia('(hover: none)');
   /** Re-reads the colours and redraws, for every figure; one shared observer on the theme. */
   const refreshers = new Set<() => void>();
 
-  const setup = (figure: HTMLElement): void => {
-    const canvas = figure.querySelector<HTMLCanvasElement>('canvas.pmedia-dither');
-    const video = figure.querySelector<HTMLVideoElement>('video');
-    const img = figure.querySelector<HTMLImageElement>('img');
-    const source = video ?? img;
-    if (!canvas || !source) return;
+  /**
+   * The live cells of a Life world, one batched fill per age bucket and coloured as the board colours
+   * them. The calm bucket (old cells) is the ink at full strength, so the picture keeps its weight.
+   */
+  const paintLife = (ctx: CanvasRenderingContext2D, world: World, palette: Palette, cell: number): void => {
+    const paths = Array.from({ length: BUCKETS }, () => new Path2D());
+    const { w, cells, age } = world;
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i]) paths[ageBucket(age[i])].rect((i % w) * cell, Math.floor(i / w) * cell, cell, cell);
+    }
+    paths.forEach((path, b) => {
+      const calm = b === BUCKETS - 1;
+      ctx.globalAlpha = calm ? 1 : BUCKET_ALPHA[b];
+      ctx.fillStyle = calm ? palette.ink : palette.life[b];
+      ctx.fill(path);
+    });
+    ctx.globalAlpha = 1;
+  };
 
+  /** One rAF loop per figure: `step` says whether it wants another frame; the loop stops when it does not. */
+  const frameLoop = (step: (now: number) => boolean): (() => void) => {
+    let raf = 0;
+    const tick = (now: number): void => {
+      raf = 0;
+      if (step(now) && !raf) raf = requestAnimationFrame(tick);
+    };
+    return () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+  };
+
+  /** Pointer hover and focus on a figure's row (the `li`, or the figure itself), reported on every change. */
+  const trackPointer = (figure: HTMLElement, onChange: (hovered: boolean, focused: boolean) => void): void => {
+    const host = figure.closest<HTMLElement>('li, a') ?? figure;
+    let hovered = false;
+    let focused = false;
+    figure.addEventListener('pointerenter', () => {
+      hovered = true;
+      onChange(hovered, focused);
+    });
+    figure.addEventListener('pointerleave', () => {
+      hovered = false;
+      onChange(hovered, focused);
+    });
+    host.addEventListener('focusin', () => {
+      focused = true;
+      onChange(hovered, focused);
+    });
+    host.addEventListener('focusout', (event) => {
+      // focus moving between controls of the same row is still focus
+      focused = host.contains((event as FocusEvent).relatedTarget as Node | null);
+      onChange(hovered, focused);
+    });
+  };
+
+  const setupMedia = (figure: HTMLElement, canvas: HTMLCanvasElement, source: HTMLVideoElement | HTMLImageElement): void => {
+    const video = source instanceof HTMLVideoElement ? source : null;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const work = document.createElement('canvas');
     const workCtx = work.getContext('2d', { willReadFrequently: true });
@@ -170,31 +275,39 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
       return;
     }
 
-    let ink = FALLBACK_INK;
-    let invert = false;
-    let paper = '#e8e5dc';
-    let life = FALLBACK_LIFE;
+    let palette = readPalette(figure);
     let cols = 0;
     let rows = 0;
-
-    const readColours = (): void => {
-      const style = getComputedStyle(figure);
-      ink = style.getPropertyValue('--ink').trim() || FALLBACK_INK;
-      life = style.getPropertyValue('--life-0').trim() || FALLBACK_LIFE;
-      paper = style.getPropertyValue('--paper').trim() || paper;
-      invert = lightness(ink) > lightness(paper);
-    };
+    /** The dither of the latest frame: the seed of a burst. */
+    let mask: Uint8Array | null = null;
+    /** The running burst's Life world; null when none runs. */
+    let life: World | null = null;
+    let burstStart = 0;
+    /** The seed's ink, as a path: the faint ground under a burst. */
+    let ground: Path2D | null = null;
+    let gen = 0;
+    /** The canvas is faded out, so the colour media shows. */
+    let revealed = false;
+    let lastFrame = 0;
+    let inView = false;
+    let hovered = false;
+    let focused = false;
+    let active = false;
+    let seen = false;
 
     /** The source's pixel size, or undefined while it cannot be read yet. */
     const sourceSize = (): [number, number] | undefined => {
       if (video) return video.videoWidth && video.videoHeight ? [video.videoWidth, video.videoHeight] : undefined;
-      if (img?.complete && img.naturalWidth) return [img.naturalWidth, img.naturalHeight];
+      if (source instanceof HTMLImageElement && source.complete && source.naturalWidth) {
+        return [source.naturalWidth, source.naturalHeight];
+      }
       return undefined;
     };
 
-    const draw = (): void => {
+    /** Dithers the source's current frame; null while the source cannot be read yet. */
+    const grabDither = (): Uint8Array | null => {
       const size = sourceSize();
-      if (!size || !cols || !rows) return;
+      if (!size || !cols || !rows) return null;
       const [sw, sh] = size;
       const wide = sw / sh > ASPECT;
       const cropW = wide ? sh * ASPECT : sw;
@@ -202,22 +315,127 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
       try {
         workCtx.imageSmoothingQuality = 'high';
         workCtx.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, cols, rows);
-        const mask = ditherToMask(workCtx.getImageData(0, 0, cols, rows).data, cols, rows, invert);
-        // paper first: the real media sits underneath and must not show through the gaps
-        ctx.fillStyle = paper;
-        ctx.fillRect(0, 0, cols, rows);
-        for (const [value, colour] of [
-          [DITHER_INK, ink],
-          [DITHER_HIGHLIGHT, life],
-        ] as const) {
-          ctx.fillStyle = colour;
-          for (let i = 0; i < mask.length; i++) {
-            if (mask[i] === value) ctx.fillRect(i % cols, Math.floor(i / cols), 1, 1);
-          }
-        }
+        mask = ditherToMask(workCtx.getImageData(0, 0, cols, rows).data, cols, rows, palette.invert);
+        return mask;
       } catch {
         // not readable yet: the next frame, load or seek draws it
+        return null;
       }
+    };
+
+    /** Paper first: the real media sits underneath and must not show through the gaps. */
+    const paintPaper = (): void => {
+      ctx.fillStyle = palette.paper;
+      ctx.fillRect(0, 0, cols, rows);
+    };
+
+    /** The cells of a mask holding `value`, as one path: a single fill per colour. */
+    const maskPath = (m: Uint8Array, value: number): Path2D => {
+      const path = new Path2D();
+      for (let i = 0; i < m.length; i++) if (m[i] === value) path.rect(i % cols, Math.floor(i / cols), 1, 1);
+      return path;
+    };
+
+    const paintDither = (m: Uint8Array): void => {
+      paintPaper();
+      ctx.fillStyle = palette.ink;
+      ctx.fill(maskPath(m, DITHER_INK));
+      ctx.fillStyle = palette.life[0];
+      ctx.fill(maskPath(m, DITHER_HIGHLIGHT));
+    };
+
+    const paintBurst = (world: World): void => {
+      paintPaper();
+      if (ground) {
+        ctx.globalAlpha = GROUND_ALPHA;
+        ctx.fillStyle = palette.ink;
+        ctx.fill(ground);
+        ctx.globalAlpha = 1;
+      }
+      paintLife(ctx, world, palette, 1);
+    };
+
+    /** Idle: the dither of the current frame. Nothing while a burst runs or the colour is revealed. */
+    const draw = (): void => {
+      if (life || revealed) return;
+      const m = grabDither();
+      if (m) paintDither(m);
+    };
+
+    const setRevealed = (on: boolean): void => {
+      revealed = on;
+      figure.classList.toggle('pmedia--revealed', on);
+      kick();
+    };
+
+    /** Runs the burst up to the generation the clock asks for, and ends it at BURST_GENERATIONS. */
+    const stepBurst = (now: number): void => {
+      const world = life;
+      if (!world) return;
+      const due = Math.min(BURST_GENERATIONS, generationAt(now - burstStart, BURST_RATE));
+      if (due !== gen) {
+        while (gen < due) {
+          stepWorld(world);
+          gen++;
+        }
+        paintBurst(world);
+      }
+      if (gen >= BURST_GENERATIONS) endBurst();
+    };
+
+    /** On touch the dither settles back in; with a pointer the colour is revealed. */
+    const endBurst = (): void => {
+      life = null;
+      if (touchOnly.matches) draw();
+      else setRevealed(true);
+    };
+
+    const videoPlaying = (): boolean => video !== null && !video.paused && !video.ended;
+
+    const step = (now: number): boolean => {
+      if (life) stepBurst(now);
+      if (video && !life && !revealed && videoPlaying() && now - lastFrame >= FRAME_MS) {
+        lastFrame = now;
+        draw();
+      }
+      return life !== null || (!revealed && videoPlaying());
+    };
+    const kick = frameLoop(step);
+
+    /** Starts a burst from the current dither. False while the frame cannot be read yet. */
+    const startBurst = (): boolean => {
+      const m = grabDither();
+      if (!m) return false;
+      const world = createWorld(cols, rows);
+      world.cells.set(maskToWorldCells(m, cols, rows));
+      // the picture starts as old ink, so the first frame reads as the dither; only newborn cells take colour
+      for (let i = 0; i < world.cells.length; i++) if (world.cells[i]) world.age[i] = SEED_AGE;
+      ground = maskPath(m, DITHER_INK);
+      life = world;
+      gen = 0;
+      burstStart = performance.now();
+      setRevealed(false);
+      paintBurst(world);
+      return true;
+    };
+
+    const syncVideo = (): void => {
+      if (!video) return;
+      // play while on screen; under reduced motion, only while hovered or focused
+      const wantsPlay = inView && (!reducedMotion.matches || hovered || focused);
+      if (wantsPlay) void video.play().catch(() => {});
+      else video.pause();
+    };
+
+    const enter = (): void => {
+      // under reduced motion there is no burst: the colour simply shows, as it always did
+      if (reducedMotion.matches || !startBurst()) setRevealed(true);
+    };
+
+    const leave = (): void => {
+      life = null;
+      setRevealed(false);
+      draw();
     };
 
     const resize = (): void => {
@@ -226,77 +444,191 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
       if (nextCols === cols && nextRows === rows) return;
       cols = nextCols;
       rows = nextRows;
-      work.width = canvas.width = cols;
-      work.height = canvas.height = rows;
+      canvas.width = cols;
+      canvas.height = rows;
+      work.width = cols;
+      work.height = rows;
+      life = null;
       draw();
     };
 
-    readColours();
     refreshers.add(() => {
-      readColours();
-      draw();
+      palette = readPalette(figure);
+      if (life) paintBurst(life);
+      else draw();
     });
     new ResizeObserver(resize).observe(figure);
 
-    if (img) img.addEventListener('load', draw);
+    if (source instanceof HTMLImageElement) source.addEventListener('load', draw);
 
     if (video) {
-      let inView = false;
-      let hovered = false;
-      let focused = false;
-      let last = 0;
-      let frame = 0;
-
-      const tick = (now: number): void => {
-        frame = 0;
-        if (video.paused || video.ended) return;
-        if (now - last >= FRAME_MS) {
-          last = now;
-          draw();
-        }
-        frame = requestAnimationFrame(tick);
-      };
-
-      // play while on screen; under reduced motion, only while hovered or focused
-      const wantsPlay = (): boolean => inView && (!reducedMotion.matches || hovered || focused);
-      const sync = (): void => {
-        if (wantsPlay()) void video.play().catch(() => {});
-        else video.pause();
-      };
-
       video.addEventListener('loadedmetadata', () => {
         // step past the black first frame so there is something to dither before playback
         if (video.currentTime === 0) video.currentTime = 0.1;
       });
       video.addEventListener('loadeddata', draw);
       video.addEventListener('seeked', draw);
-      video.addEventListener('play', () => {
-        if (!frame) frame = requestAnimationFrame(tick);
-      });
-
-      const host = figure.closest('li, a') ?? figure;
-      figure.addEventListener('pointerenter', () => {
-        hovered = true;
-        sync();
-      });
-      figure.addEventListener('pointerleave', () => {
-        hovered = false;
-        sync();
-      });
-      host.addEventListener('focusin', () => {
-        focused = true;
-        sync();
-      });
-      host.addEventListener('focusout', () => {
-        focused = false;
-        sync();
-      });
-
-      new IntersectionObserver(([entry]) => {
-        inView = entry?.isIntersecting ?? false;
-        sync();
-      }).observe(figure);
+      video.addEventListener('play', kick);
     }
+
+    trackPointer(figure, (h, f) => {
+      hovered = h;
+      focused = f;
+      syncVideo();
+      const next = !touchOnly.matches && (h || f);
+      if (next === active) return;
+      active = next;
+      if (next) enter();
+      else leave();
+    });
+
+    // one observer for both: the video plays while on screen, and on touch a figure bursts as it comes into view
+    new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        inView = entry.isIntersecting;
+        const visible = entry.intersectionRatio >= TOUCH_VIEW;
+        if (touchOnly.matches && visible && !seen && !reducedMotion.matches) startBurst();
+        seen = visible;
+        syncVideo();
+      },
+      { threshold: [0, TOUCH_VIEW] },
+    ).observe(figure);
+
+    // on touch a tap toggles the colour reveal (a figure is not a link, so the tap does nothing else)
+    figure.addEventListener('click', () => {
+      if (!touchOnly.matches) return;
+      life = null;
+      if (revealed) {
+        setRevealed(false);
+        draw();
+      } else {
+        setRevealed(true);
+      }
+    });
+  };
+
+  /**
+   * A project without media: the seed in the middle of a Life world at the poster's grid. At rest it looks
+   * like the SVG it replaces; while hovered or focused the methuselah runs, coloured by age, and it resets
+   * to the seed on leave. On touch it runs one burst as it scrolls into view.
+   */
+  const setupPoster = (figure: HTMLElement, svg: SVGSVGElement, canvas: HTMLCanvasElement): void => {
+    const ctx = canvas.getContext('2d');
+    const seedData = JSON.parse(figure.dataset.seed ?? 'null') as { w: number; h: number; cells: { x: number; y: number }[] } | null;
+    if (!ctx || !seedData) return; // the SVG stays
+
+    let palette = readPalette(figure);
+    let cssW = 0;
+    let cssH = 0;
+    let cols = 0;
+    let rows = 0;
+    let ox = 0;
+    let oy = 0;
+    let world: World | null = null;
+    let running = false;
+    let limit = Infinity;
+    let startedAt = 0;
+    let gen = 0;
+    let active = false;
+    let seen = false;
+
+    /** A fresh world with the seed in its middle. Its cells are old ink, as the SVG was drawn. */
+    const seeded = (): World => {
+      const w = createWorld(cols, rows);
+      for (const c of seedData.cells) {
+        const k = idx(cols, rows, ox + c.x, oy + c.y);
+        w.cells[k] = 1;
+        w.age[k] = SEED_AGE;
+      }
+      return w;
+    };
+
+    const paint = (): void => {
+      ctx.clearRect(0, 0, cssW, cssH);
+      if (world) paintLife(ctx, world, palette, POSTER_CELL);
+    };
+
+    /** Back to the seed, still. */
+    const rest = (): void => {
+      running = false;
+      if (!cols) return;
+      world = seeded();
+      paint();
+    };
+
+    const step = (now: number): boolean => {
+      if (!running || !world) return false;
+      const due = Math.min(limit, generationAt(now - startedAt, POSTER_RATE));
+      if (due !== gen) {
+        while (gen < due) {
+          stepWorld(world);
+          gen++;
+        }
+        paint();
+      }
+      if (gen >= limit) {
+        rest();
+        return false;
+      }
+      return true;
+    };
+    const kick = frameLoop(step);
+
+    /** Runs the methuselah from the seed, for `generations` (or until left). */
+    const run = (generations: number): void => {
+      if (!cols) return;
+      world = seeded();
+      gen = 0;
+      limit = generations;
+      startedAt = performance.now();
+      running = true;
+      paint();
+      kick();
+    };
+
+    const layout = (): void => {
+      const width = figure.clientWidth;
+      const height = figure.clientHeight;
+      if (!width || !height) return;
+      const dpr = window.devicePixelRatio || 1;
+      cssW = width;
+      cssH = height;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cols = Math.max(8, Math.floor(width / POSTER_CELL));
+      rows = Math.max(6, Math.floor(height / POSTER_CELL));
+      ox = Math.floor((cols - seedData.w) / 2);
+      oy = Math.floor((rows - seedData.h) / 2);
+      rest();
+      canvas.hidden = false;
+      svg.toggleAttribute('hidden', true);
+    };
+
+    new ResizeObserver(layout).observe(figure);
+    refreshers.add(() => {
+      palette = readPalette(figure);
+      paint();
+    });
+
+    trackPointer(figure, (h, f) => {
+      const next = !touchOnly.matches && (h || f);
+      if (next === active) return;
+      active = next;
+      if (!next) rest();
+      else if (!reducedMotion.matches) run(Infinity);
+    });
+
+    new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+        const visible = entry.intersectionRatio >= TOUCH_VIEW;
+        if (touchOnly.matches && visible && !seen && !reducedMotion.matches) run(BURST_GENERATIONS);
+        seen = visible;
+      },
+      { threshold: [0, TOUCH_VIEW] },
+    ).observe(figure);
   };
 
   const figures = document.querySelectorAll<HTMLElement>('figure.pmedia');
@@ -308,9 +640,17 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
   }
   for (const figure of figures) {
     try {
-      setup(figure);
+      const svg = figure.querySelector<SVGSVGElement>('svg.pmedia-glyph');
+      const lifeCanvas = figure.querySelector<HTMLCanvasElement>('canvas.pmedia-life');
+      if (svg && lifeCanvas) {
+        setupPoster(figure, svg, lifeCanvas);
+        continue;
+      }
+      const canvas = figure.querySelector<HTMLCanvasElement>('canvas.pmedia-dither');
+      const source = figure.querySelector<HTMLVideoElement>('video') ?? figure.querySelector<HTMLImageElement>('img');
+      if (canvas && source) setupMedia(figure, canvas, source);
     } catch {
-      // a broken figure keeps its real media; the others still set up
+      // a broken figure keeps its real media or its SVG; the others still set up
     }
   }
 </script>

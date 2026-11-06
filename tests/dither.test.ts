@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { DITHER_HIGHLIGHT, DITHER_INK, DITHER_PAPER, bayer4, ditherToMask, luminance } from '../src/scripts/dither';
+import {
+  BUCKETS,
+  BURST_GENERATIONS,
+  DITHER_HIGHLIGHT,
+  DITHER_INK,
+  DITHER_PAPER,
+  SEED_AGE,
+  ageBucket,
+  bayer4,
+  ditherToMask,
+  generationAt,
+  luminance,
+  maskToWorldCells,
+} from '../src/scripts/dither';
+import { createWorld, stepWorld } from '../src/scripts/board/life';
 
 /** An RGBA buffer where every pixel has the same colour. */
 const solid = (w: number, h: number, r: number, g: number, b: number, a = 255): Uint8ClampedArray => {
@@ -104,5 +118,74 @@ describe('ditherToMask on light ink (night)', () => {
     const black = new Uint8ClampedArray([0, 0, 0, 255]);
     expect(ditherToMask(white, 1, 1, true)[0]).toBe(DITHER_INK);
     expect(ditherToMask(black, 1, 1, true)[0]).toBe(DITHER_PAPER);
+  });
+});
+
+describe('maskToWorldCells', () => {
+  it('makes ink cells alive and everything else dead, row-major', () => {
+    const mask = Uint8Array.from([DITHER_INK, DITHER_PAPER, DITHER_INK, DITHER_PAPER, DITHER_PAPER, DITHER_INK]);
+    expect(Array.from(maskToWorldCells(mask, 3, 2))).toEqual([1, 0, 1, 0, 0, 1]);
+  });
+
+  it('leaves the sparse highlights dead: only the ink lives', () => {
+    const mask = Uint8Array.from([DITHER_HIGHLIGHT, DITHER_HIGHLIGHT, DITHER_INK, DITHER_PAPER]);
+    expect(Array.from(maskToWorldCells(mask, 2, 2))).toEqual([0, 0, 1, 0]);
+  });
+
+  it('returns a world-sized array of 0s and 1s', () => {
+    const cells = maskToWorldCells(ditherToMask(solid(93, 70, 40, 40, 40), 93, 70), 93, 70);
+    expect(cells).toHaveLength(93 * 70);
+    expect(new Set(cells)).toEqual(new Set([0, 1]));
+  });
+
+  it('is empty for a mask with no ink', () => {
+    const cells = maskToWorldCells(ditherToMask(solid(8, 8, 255, 255, 255), 8, 8), 8, 8);
+    expect(cells.every((c) => c === 0)).toBe(true);
+  });
+
+  it('gives a world that Life can step: a blinker from the mask oscillates', () => {
+    // a 3-cell bar of ink in a 5×5 mask
+    const mask = new Uint8Array(25);
+    [11, 12, 13].forEach((k) => (mask[k] = DITHER_INK));
+    const world = createWorld(5, 5);
+    world.cells.set(maskToWorldCells(mask, 5, 5));
+    stepWorld(world);
+    expect(Array.from(world.cells).reduce((a, b) => a + b, 0)).toBe(3);
+    expect(world.cells[7] + world.cells[12] + world.cells[17]).toBe(3);
+  });
+});
+
+describe('ageBucket (the board’s colour buckets)', () => {
+  it('colours a newborn cell and the young ones with the first three life colours', () => {
+    expect([0, 1, 2].map(ageBucket)).toEqual([0, 0, 0]);
+    expect([3, 6].map(ageBucket)).toEqual([1, 1]);
+    expect([7, 11].map(ageBucket)).toEqual([2, 2]);
+    expect([12, 17].map(ageBucket)).toEqual([3, 3]);
+  });
+
+  it('turns every cell from age 18 on into the calm ink bucket', () => {
+    expect([18, 19, 100, 255].map(ageBucket)).toEqual([BUCKETS - 1, BUCKETS - 1, BUCKETS - 1, BUCKETS - 1]);
+  });
+
+  it('starts the seeded cells in the calm bucket, so the first frame reads as the dither', () => {
+    expect(ageBucket(SEED_AGE)).toBe(BUCKETS - 1);
+    expect(ageBucket(SEED_AGE - 1)).toBeLessThan(BUCKETS - 1);
+  });
+});
+
+describe('generationAt', () => {
+  it('runs the burst at 30 generations a second by default', () => {
+    expect(generationAt(0)).toBe(0);
+    expect(generationAt(1000)).toBe(30);
+    expect(generationAt(999)).toBe(29);
+  });
+
+  it('reaches the full burst after its length in generations', () => {
+    expect(generationAt((BURST_GENERATIONS * 1000) / 30)).toBe(BURST_GENERATIONS);
+  });
+
+  it('takes a tempo, and never goes negative', () => {
+    expect(generationAt(2000, 8)).toBe(16);
+    expect(generationAt(-50)).toBe(0);
   });
 });
