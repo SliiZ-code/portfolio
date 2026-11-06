@@ -38,6 +38,25 @@ const TOOLBAR_PX = 120;
 
 export const isScrolled = (scrollTop: number): boolean => scrollTop > SCROLLED_PX;
 
+/** The hero progress at which the board freezes; by then the tick interval has stretched to HERO_SLOW times. */
+export const HERO_FREEZE = 0.6;
+export const HERO_SLOW = 4;
+
+const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+
+/** How far the hero has scrolled away: 0 at the top, 1 once it is covered by the content. */
+export const heroProgress = (scrollTop: number, viewportHeight: number): number => {
+  if (!(viewportHeight > 0) || !Number.isFinite(scrollTop)) return 0;
+  return clamp01(scrollTop / viewportHeight);
+};
+
+/** The loop's tick interval at hero progress p: `base` at the top, stretched to HERO_SLOW × by HERO_FREEZE, then Infinity (frozen). */
+export const tickInterval = (p: number, base: number): number => {
+  const q = Number.isFinite(p) ? clamp01(p) : 0;
+  if (q >= HERO_FREEZE) return Infinity;
+  return base * (1 + (HERO_SLOW - 1) * (q / HERO_FREEZE));
+};
+
 /** Whether the screen changed enough to lay the board out again: another width, or a height beyond the toolbar's. */
 export const needsLayout = (laid: { w: number; h: number }, now: { w: number; h: number }): boolean =>
   now.w !== laid.w || Math.abs(now.h - laid.h) >= TOOLBAR_PX;
@@ -64,18 +83,36 @@ export async function initBoard(): Promise<void> {
     return;
   }
 
-  // the HUD counter and the scroll cue step back as the hero scrolls away; the corners stay
   const root = document.documentElement;
-  const onScroll = () => root.classList.toggle('scrolled', isScrolled(scrollY));
-  addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
 
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let reduced = motion.matches;
   motion.addEventListener('change', (event) => {
     reduced = event.matches;
   });
-  const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  // ---- the hero scrolling away: one custom property per frame drives the CSS (global.css), the speed drives the loop ----
+  // the loop's tick interval at the current progress: RATE at the top, Infinity once the board is frozen
+  let interval = RATE;
+  let frame = 0;
+  const heroFrame = () => {
+    frame = 0;
+    // the HUD counter and the scroll cue step back as the hero scrolls away; the corners stay
+    root.classList.toggle('scrolled', isScrolled(scrollY));
+    // reduced motion: no parallax, no slowdown; the board only pauses when covered, as before
+    if (reduced) return;
+    const p = heroProgress(scrollY, innerHeight);
+    root.style.setProperty('--hero-p', p.toFixed(3));
+    interval = tickInterval(p, RATE);
+  };
+  const onHeroScroll = () => {
+    if (!frame) frame = requestAnimationFrame(heroFrame);
+  };
+  addEventListener('scroll', onHeroScroll, { passive: true });
+  addEventListener('resize', onHeroScroll, { passive: true });
+  heroFrame();
+
+  const css =(name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   let colors: Colors = { paper: '', ink: '', mute: '', life: ['', '', '', ''] };
   let dirty = true;
   const readColors = () => {
@@ -161,6 +198,8 @@ export async function initBoard(): Promise<void> {
     cell = cellSizeFor(nameDims, vw, vh, orientation);
     grid = gridFor(vw, vh, cell);
     stage!.style.setProperty('--c', `${cell}px`);
+    // the content's dissolving edge is cut in the same cells (home.css), so it reads as the board's cells
+    root.style.setProperty('--c', `${cell}px`);
     canvas!.width = vw * dpr;
     canvas!.height = vh * dpr;
     world = createWorld(grid.cols, grid.rows);
@@ -346,7 +385,12 @@ export async function initBoard(): Promise<void> {
   const originOfRow = (row: Row) => {
     const rect = row.el.getBoundingClientRect();
     const bounds = list.getBoundingClientRect();
-    originAt(rect.left + rect.width / 2, Math.min(Math.max(rect.top + rect.height / 2, bounds.top), bounds.bottom));
+    // the stage drifts with the hero's parallax (a `translate`, which the dive's `transform` does not touch): the origin is in its own box
+    const box = stage.getBoundingClientRect();
+    originAt(
+      rect.left + rect.width / 2 - box.left,
+      Math.min(Math.max(rect.top + rect.height / 2, bounds.top), bounds.bottom) - box.top,
+    );
   };
   /** Puts the stage back at scale 1 without animating (a page restored from the back/forward cache). */
   const resetStage = () => {
@@ -449,6 +493,7 @@ export async function initBoard(): Promise<void> {
 
   addEventListener('pageshow', (event) => {
     if (!event.persisted) return;
+    onHeroScroll();
     const slug = flag.get();
     flag.clear();
     resetStage();
@@ -524,7 +569,7 @@ export async function initBoard(): Promise<void> {
         endIntro();
       }
     }
-    if (!reduced && !intro && now - last > RATE && now - t0 > (entry === 'intro' ? INTRO_MS : START_DELAY)) {
+    if (!reduced && !intro && now - last > interval && now - t0 > (entry === 'intro' ? INTRO_MS : START_DELAY)) {
       last = now;
       tick();
     }

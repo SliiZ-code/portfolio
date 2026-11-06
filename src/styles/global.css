@@ -128,6 +128,24 @@ button {
   cursor: crosshair;
 }
 
+/* ---- the hero scrolling away: index.ts sets --hero-p on <html> (0 at the top, 1 once the content covers it) ----
+   the stage drifts up at 30% of the scroll (`translate`, so the dive's `transform` still composes), the canvas dims
+   to 35%, and the note and the list fade out by half way. Only the custom property changes per frame. Off under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  #stage {
+    translate: 0 calc(var(--hero-p, 0) * -30vh);
+  }
+
+  #board {
+    opacity: calc(1 - var(--hero-p, 0) * .65);
+  }
+
+  #name-note,
+  #projects {
+    opacity: max(0, calc(1 - var(--hero-p, 0) * 2));
+  }
+}
+
 /* the hero is one screen of the board. The spacer lets pointer events through, so the board under it still answers. */
 #hero-spacer {
   position: relative;

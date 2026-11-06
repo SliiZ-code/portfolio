@@ -3,6 +3,22 @@
   position: relative;
   z-index: 3;
   background: var(--paper);
+  /* the edge where the paper meets the board: a sixteen-cell band (48px at the usual 3px cell) of ordered dither, cut in the board's cells (--c, set on
+     <html> by the board), so the paper dissolves into cells instead of ending in a straight line. The band sits inside the
+     top padding, so no text is masked. Static: it stays on under reduced motion. */
+  --dissolve: calc(var(--c, 3px) * 16);
+  /* a big cell makes a deeper band: the text starts below it, never under it */
+  padding-top: max(0px, calc(var(--dissolve) - 72px));
+  --dither: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 16%27 shape-rendering=%27crispEdges%27%3E%3Cpath fill=%27%23000%27 d=%27M0 0h1v1h-1zM4 0h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM1 9h1v1h-1zM3 9h1v1h-1zM5 9h1v1h-1zM7 9h1v1h-1zM0 10h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM0 12h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM0 13h1v1h-1zM1 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM0 14h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM3 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM7 15h1v1h-1z%27/%3E%3C/svg%3E");
+  /* the solid part below the band, and the dither tile repeating across the top band */
+  -webkit-mask-image: linear-gradient(#000, #000), var(--dither);
+  mask-image: linear-gradient(#000, #000), var(--dither);
+  -webkit-mask-size: 100% calc(100% - var(--dissolve)), calc(var(--c, 3px) * 8) var(--dissolve);
+  mask-size: 100% calc(100% - var(--dissolve)), calc(var(--c, 3px) * 8) var(--dissolve);
+  -webkit-mask-position: 0 100%, 0 0;
+  mask-position: 0 100%, 0 0;
+  -webkit-mask-repeat: no-repeat, repeat-x;
+  mask-repeat: no-repeat, repeat-x;
 }
 
 /* ---- layout: a left gutter for section numbers, reading text at most 720px wide ---- */
@@ -431,5 +447,13 @@
 @media (prefers-reduced-motion: reduce) {
   .hc-reveal {
     animation: none;
+  }
+}
+
+/* print: the page is paper, not a board, so the dissolving edge goes */
+@media print {
+  .home-content {
+    -webkit-mask-image: none;
+    mask-image: none;
   }
 }
