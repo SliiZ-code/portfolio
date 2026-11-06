@@ -59,11 +59,18 @@ body {
 }
 
 /* the home page scrolls: the board is a fixed hero and the content slides over it (BoardPage, home.css) */
-html.home,
-html.home body {
+/* only the root scrolls: a body that is its own scroll container (with overscroll-behavior: none)
+   would swallow every wheel and swipe over the content, and the page would freeze after the hero */
+html.home {
   overflow-x: hidden;
   overflow-y: auto;
   height: auto;
+}
+
+html.home body {
+  overflow: visible;
+  height: auto;
+  overscroll-behavior: auto;
 }
 
 @media (prefers-reduced-motion: no-preference) {
