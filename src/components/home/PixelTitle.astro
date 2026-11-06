@@ -1,0 +1,57 @@
+---
+// A section title in Geist Pixel. The h2 is the real text; a canvas over it, aria-hidden, assembles the word from cells
+// once as it enters the view (src/scripts/pixel-title.ts). Without JS, or under reduced motion, the heading just shows.
+interface Props {
+  id: string;
+  text: string;
+}
+
+const { id, text } = Astro.props;
+---
+
+<div class="pt" data-pixel-title>
+  <h2 class="pt-text" id={id}>{text}</h2>
+  <canvas class="pt-canvas" aria-hidden="true"></canvas>
+</div>
+
+<style>
+  .pt {
+    position: relative;
+  }
+
+  .pt-text {
+    margin: 0;
+    font: 400 clamp(56px, 9vw, 132px)/.9 "Geist Pixel", monospace;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    white-space: nowrap;
+    transition: color 150ms ease;
+  }
+
+  /* the canvas sits exactly over the glyph grid; the script sets its size and offset */
+  .pt-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+
+  /* while the cells fly, the text is hidden (it stays in the DOM); both switch at once when the class is added */
+  .pt.is-assembling .pt-text {
+    color: transparent;
+    transition: none;
+  }
+
+  .pt.is-assembling .pt-canvas {
+    opacity: 1;
+    transition: none;
+  }
+</style>
+
+<script>
+  import { initPixelTitles } from '../../scripts/pixel-title';
+
+  initPixelTitles();
+</script>
