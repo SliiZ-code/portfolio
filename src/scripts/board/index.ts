@@ -100,7 +100,7 @@ export async function initBoard(): Promise<void> {
   let keepClear: Box[] = [];
   // the name's keep-clear box without the name: the soup dies there, visitors may draw on the name
   let nameRing: Box[] = [];
-  // the project list: the soup dies under it too, and seeds are fired beside it
+  // the project list: seeds are fired beside it; life goes on under it
   let listBox: Box | null = null;
   let lastSize = '';
   // the opening: where the shockwave starts and how far its front travels, in cells
@@ -122,8 +122,8 @@ export async function initBoard(): Promise<void> {
   };
 
   const protectedBoxes = () => [...keepClear, ...(listBox ? [listBox] : []), ...nameRing, ...structures.map((s) => coreBox(s))];
-  // visitors may draw on the name, so only the note and the list stay off limits
-  const isFree = (x: number, y: number) => !isProtected(x, y, 0, [...keepClear, ...(listBox ? [listBox] : [])]);
+  // visitors may draw on the name and under the list, so only the note stays off limits
+  const isFree = (x: number, y: number) => !isProtected(x, y, 0, keepClear);
 
   const pxRect = (el: Element): PxRect | null => {
     const r = el.getBoundingClientRect();
@@ -470,7 +470,8 @@ export async function initBoard(): Promise<void> {
     stepWorld(world);
     // the name feels whatever reaches its ring before the ring is cleared
     stepStructures(world, structures, gen);
-    clearBoxes(world, listBox ? [...keepClear, ...nameRing, listBox] : [...keepClear, ...nameRing]);
+    // the list's rows sit on paper chips, so life goes on under them
+    clearBoxes(world, [...keepClear, ...nameRing]);
     if (gen % FEED_EVERY === 0) addFeedGlider(world);
     updateCounters(gen);
     dirty = true;
