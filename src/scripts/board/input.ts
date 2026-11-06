@@ -13,6 +13,9 @@ export function strokeCells(from: Cell, to: Cell): Cell[] {
 
 export const isTap = (x0: number, y0: number, x: number, y: number): boolean => Math.hypot(x - x0, y - y0) <= 4;
 
+/** A mouse or a pen draws with a drag; a finger drags the page instead (touch-action: pan-y), so its drags never paint. */
+export const drawsOnDrag = (pointerType: string): boolean => pointerType !== 'touch';
+
 interface InputOptions {
   canvas: HTMLCanvasElement;
   cell: () => number;
@@ -24,9 +27,12 @@ interface InputOptions {
   onChange?: () => void;
 }
 
-/** Drag to draw, tap to drop a glider. One pointer at a time, so a second finger cannot join a stroke. */
+/**
+ * Drag to draw, tap to drop a glider. One pointer at a time, so a second finger cannot join a stroke.
+ * A touch drag is left to the page: it scrolls, and only a tap does anything.
+ */
 export function bindInput({ canvas, cell, paint, glider, onChange }: InputOptions): void {
-  let drag: { id: number; x0: number; y0: number; at: Cell; moved: boolean } | null = null;
+  let drag: { id: number; x0: number; y0: number; at: Cell; moved: boolean; draws: boolean } | null = null;
   const cellAt = (event: PointerEvent): Cell => [Math.floor(event.clientX / cell()), Math.floor(event.clientY / cell())];
 
   canvas.addEventListener('pointerdown', (event) => {
@@ -37,21 +43,30 @@ export function bindInput({ canvas, cell, paint, glider, onChange }: InputOption
     } catch {
       // the pointer is already gone: the stroke still works, it just stops at the edge
     }
-    drag = { id: event.pointerId, x0: event.clientX, y0: event.clientY, at: cellAt(event), moved: false };
+    drag = {
+      id: event.pointerId,
+      x0: event.clientX,
+      y0: event.clientY,
+      at: cellAt(event),
+      moved: false,
+      draws: drawsOnDrag(event.pointerType),
+    };
   });
   canvas.addEventListener('pointermove', (event) => {
     if (!drag || event.pointerId !== drag.id) return;
     if (!isTap(drag.x0, drag.y0, event.clientX, event.clientY)) drag.moved = true;
-    if (!drag.moved) return;
+    if (!drag.moved || !drag.draws) return;
     const to = cellAt(event);
     for (const [x, y] of strokeCells(drag.at, to)) paint(x, y);
     drag.at = to;
   });
   canvas.addEventListener('pointerup', (event) => {
     if (!drag || event.pointerId !== drag.id) return;
+    // a finger that scrolled changed nothing on the board, so there is no step to take
+    const acted = !drag.moved || drag.draws;
     if (!drag.moved) glider(drag.at[0], drag.at[1]);
     drag = null;
-    onChange?.();
+    if (acted) onChange?.();
   });
   canvas.addEventListener('pointercancel', (event) => {
     if (drag && event.pointerId === drag.id) drag = null;

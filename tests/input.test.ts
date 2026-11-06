@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTap, strokeCells } from '../src/scripts/board/input';
+import { drawsOnDrag, isTap, strokeCells } from '../src/scripts/board/input';
 
 describe('strokeCells', () => {
   it('fills the gap between two pointer events, ends included', () => {
@@ -28,5 +28,13 @@ describe('isTap', () => {
     expect(isTap(100, 100, 103, 102)).toBe(true);
     expect(isTap(100, 100, 100, 104)).toBe(true);
     expect(isTap(100, 100, 104, 104)).toBe(false);
+  });
+});
+
+describe('drawsOnDrag', () => {
+  it('draws with a mouse or a pen, never with a finger (a finger scrolls the page)', () => {
+    expect(drawsOnDrag('mouse')).toBe(true);
+    expect(drawsOnDrag('pen')).toBe(true);
+    expect(drawsOnDrag('touch')).toBe(false);
   });
 });

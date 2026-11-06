@@ -31,6 +31,16 @@ const START_DELAY = 500;
 const STAMP_COOLDOWN = 1500;
 /** Width of one band of the shockwave's ring, in pixels. */
 const BAND_PX = 11;
+/** Past this scroll the hero is scrolling away: the HUD counter and the scroll cue step back. */
+const SCROLLED_PX = 40;
+/** A phone's toolbar slides in and out as the page scrolls: a height change under this keeps the layout. */
+const TOOLBAR_PX = 120;
+
+export const isScrolled = (scrollTop: number): boolean => scrollTop > SCROLLED_PX;
+
+/** Whether the screen changed enough to lay the board out again: another width, or a height beyond the toolbar's. */
+export const needsLayout = (laid: { w: number; h: number }, now: { w: number; h: number }): boolean =>
+  now.w !== laid.w || Math.abs(now.h - laid.h) >= TOOLBAR_PX;
 
 interface Row {
   slug: string;
@@ -53,6 +63,12 @@ export async function initBoard(): Promise<void> {
   } catch {
     return;
   }
+
+  // the HUD counter and the scroll cue step back as the hero scrolls away; the corners stay
+  const root = document.documentElement;
+  const onScroll = () => root.classList.toggle('scrolled', isScrolled(scrollY));
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
 
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let reduced = motion.matches;
@@ -102,7 +118,8 @@ export async function initBoard(): Promise<void> {
   let nameRing: Box[] = [];
   // the project list: seeds are fired beside it; life goes on under it
   let listBox: Box | null = null;
-  let lastSize = '';
+  // the screen the board was laid out for
+  let laid = { w: 0, h: 0 };
   // the opening: where the shockwave starts and how far its front travels, in cells
   let waveCentre = { x: 0, y: 0 };
   let waveBand = 3;
@@ -134,7 +151,7 @@ export async function initBoard(): Promise<void> {
   function layout(): void {
     const vw = innerWidth;
     const vh = innerHeight;
-    lastSize = `${vw}x${vh}`;
+    laid = { w: vw, h: vh };
     const dpr = Math.min(2, devicePixelRatio || 1);
     const orientation = orientationFor(vw, vh);
     // the fine raster (half-pixel steps) is the only one that keeps the curves legible
@@ -345,6 +362,8 @@ export async function initBoard(): Promise<void> {
     if (!row) return false;
     tracker.remember(slug);
     cleanUrl();
+    // back from a project page the browser may have restored a scrolled home: the return starts at the hero
+    if (scrollY > 0) scrollTo({ top: 0, behavior: 'instant' });
     if (reduced) return true;
     originOfRow(row);
     stage.style.transition = 'none';
@@ -371,6 +390,8 @@ export async function initBoard(): Promise<void> {
     if (diving) return;
     diving = true;
     tracker.remember(row.slug);
+    // a row can be clicked while the hero is half scrolled away: the zoom starts from the hero's top
+    if (scrollY > 0) scrollTo({ top: 0, behavior: 'smooth' });
     originOfRow(row);
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {
@@ -451,7 +472,8 @@ export async function initBoard(): Promise<void> {
   addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (`${innerWidth}x${innerHeight}` === lastSize || diving) return;
+      // a toolbar sliding in and out as the page scrolls is not a new screen: the board keeps its layout
+      if (diving || !needsLayout(laid, { w: innerWidth, h: innerHeight })) return;
       layout();
       // a new layout mid-opening: show the final state rather than re-timing the wave
       if (intro) {
@@ -465,6 +487,9 @@ export async function initBoard(): Promise<void> {
   const t0 = performance.now();
   let gen = 0;
   let last = 0;
+  // the loop runs only while a frame is queued; it sleeps while the hero is fully covered
+  let running = false;
+  let heroCovered = false;
   function tick(): void {
     gen++;
     stepWorld(world);
@@ -477,6 +502,10 @@ export async function initBoard(): Promise<void> {
     dirty = true;
   }
   const loop = (now: number) => {
+    if (heroCovered) {
+      running = false;
+      return;
+    }
     requestAnimationFrame(loop);
     if (intro) {
       const progress = (now - t0) / INTRO_MS;
@@ -504,5 +533,20 @@ export async function initBoard(): Promise<void> {
     renderState.dpr = Math.min(2, devicePixelRatio || 1);
     draw(renderState);
   };
-  requestAnimationFrame(loop);
+  const wake = () => {
+    if (running || heroCovered) return;
+    running = true;
+    requestAnimationFrame(loop);
+  };
+  // the hero's spacer leaves the viewport only when the content covers the hero entirely: the board pauses then
+  const hero = document.getElementById('hero-spacer');
+  if (hero && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => {
+      heroCovered = entry.intersectionRatio === 0;
+      if (heroCovered) return;
+      dirty = true;
+      wake();
+    }).observe(hero);
+  }
+  wake();
 }

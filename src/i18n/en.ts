@@ -14,6 +14,7 @@ const en = {
     generation: 'generation',
     cells: 'cells',
     hint: 'drag to draw · click empty space to drop a glider',
+    scroll: 'Scroll',
     home: 'jpc',
     themeNight: 'Night mode',
     themePaper: 'Paper mode',

@@ -37,6 +37,10 @@ const glyphRects = (seed: keyof typeof METHUSELAH_PATTERNS) => {
 };
 const projectCount = String(projects.length).padStart(2, '0');
 
+// the scroll cue's pixel arrow: a 7 × 5 grid, one square per "#"
+const ARROW = ['...#...', '...#...', '.#.#.#.', '..###..', '...#...'];
+const arrowRects = ARROW.flatMap((row, y) => [...row].flatMap((cell, x) => (cell === '#' ? [{ x, y }] : [])));
+
 const boardData = {
   name: { l: nameText, p: nameNarrow },
 };
@@ -49,6 +53,8 @@ const description = htmlToText(resume.summary) || resume.headline;
 <Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }} zoomable>
   <main>
     <h1 class="sr-only">{resume.name}</h1>
+    <!-- the home page scrolls: this class (not on the other pages) turns scrolling on; without JavaScript it stays off -->
+    <script is:inline>document.documentElement.classList.add('home');</script>
     <div id="stage">
       <canvas id="board" role="img" aria-label={title}></canvas>
       {resume.headline && <div class="name-note" id="name-note">{resume.headline}</div>}
@@ -78,8 +84,15 @@ const description = htmlToText(resume.summary) || resume.headline;
         </ul>
       </nav>
     </div>
-    <!-- the board is the hero: the page scrolls over it from here -->
-    <div id="hero-spacer" aria-hidden="true"></div>
+    <!-- the board is the hero: the page scrolls over it from here; the cue leads down to the content -->
+    <div id="hero-spacer">
+      <a class="scroll-cue" href="#content">
+        <span>{t.board.scroll}</span>
+        <svg viewBox="0 0 7 5" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+          {arrowRects.map(({ x, y }) => <rect x={x} y={y} width="1" height="1" />)}
+        </svg>
+      </a>
+    </div>
     <HomeContent lang={lang} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
   </main>
 
@@ -87,7 +100,7 @@ const description = htmlToText(resume.summary) || resume.headline;
   <!-- without JavaScript there is no board: the same content as a plain list -->
   <noscript>
     <style>
-      #stage, .hud { display: none; }
+      #stage, .hud, #hero-spacer { display: none; }
       html, body { overflow: auto; }
     </style>
     <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />

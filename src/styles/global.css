@@ -58,6 +58,20 @@ body {
   overscroll-behavior: none;
 }
 
+/* the home page scrolls: the board is a fixed hero and the content slides over it (BoardPage, home.css) */
+html.home,
+html.home body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.home {
+    scroll-behavior: smooth;
+  }
+}
+
 a {
   color: inherit;
 }
@@ -83,10 +97,11 @@ button {
   border: 0;
 }
 
-/* the board is exactly one screen: cells are drawn on a grid-paper background */
+/* the board is exactly one screen: cells are drawn on a grid-paper background. The hero stays put while the content slides over it (z-index 3). */
 #stage {
   position: fixed;
   inset: 0;
+  z-index: 1;
   opacity: 0;
   background-image:
     linear-gradient(var(--line) 1px, transparent 1px),
@@ -108,8 +123,17 @@ button {
   inset: 0;
   width: 100%;
   height: 100%;
-  touch-action: none;
+  /* a vertical finger drag scrolls the page; a tap still drops a glider (input.ts ignores touch drags) */
+  touch-action: pan-y;
   cursor: crosshair;
+}
+
+/* the hero is one screen of the board. The spacer lets pointer events through, so the board under it still answers. */
+#hero-spacer {
+  position: relative;
+  height: 100vh;
+  height: 100svh;
+  pointer-events: none;
 }
 
 .name-note {
@@ -278,10 +302,10 @@ button {
   transition: opacity .45s ease;
 }
 
-/* ---- HUD: four quiet corners ---- */
+/* ---- HUD: four quiet corners, above the content (z-index 3) so they stay readable as it scrolls ---- */
 .hud {
   position: fixed;
-  z-index: 2;
+  z-index: 5;
   display: flex;
   gap: 14px;
   align-items: center;
@@ -293,15 +317,20 @@ button {
   box-shadow: 0 0 0 4px var(--paper);
 }
 
+/* the corners sit in a paper box, so they stay readable over the content; the text keeps its place */
 .tl {
-  top: 14px;
-  left: 16px;
+  top: 10px;
+  left: 10px;
+  padding: 4px 6px;
+  background: var(--paper);
   font: 20px "Geist Pixel";
 }
 
 .tr {
-  top: 12px;
-  right: 16px;
+  top: 8px;
+  right: 10px;
+  padding: 4px 6px;
+  background: var(--paper);
   gap: 10px;
 }
 
@@ -317,8 +346,10 @@ button {
 }
 
 .br {
-  bottom: 14px;
-  right: 16px;
+  bottom: 10px;
+  right: 10px;
+  padding: 4px 6px;
+  background: var(--paper);
 }
 
 /* the two main calls to action, Contact and CV: the ink chip, inverted on hover */
@@ -341,6 +372,70 @@ button {
   color: var(--ink);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
+}
+
+/* once the hero starts to scroll away (html.scrolled, set by index.ts) the counter and hint step back */
+.bl {
+  transition: opacity .3s ease;
+}
+
+html.scrolled .bl {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* the scroll cue at the foot of the hero: a pixel arrow on a paper chip, gone once the page moves */
+.scroll-cue {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--paper);
+  font: 500 10px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--mute);
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  transition: opacity .3s ease, visibility .3s, color .12s ease;
+}
+
+.scroll-cue:hover,
+.scroll-cue:focus-visible {
+  color: var(--accent);
+}
+
+.scroll-cue svg {
+  display: block;
+  width: 14px;
+  height: 10px;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+/* the arrow steps up and down, unless the reader asked for no motion */
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-cue svg {
+    animation: cue-bob 1.2s steps(2, end) infinite;
+  }
+}
+
+@keyframes cue-bob {
+  to {
+    transform: translateY(4px);
+  }
+}
+
+/* faded out, the cue also leaves the tab order */
+html.scrolled .scroll-cue {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* language flags and the pixel sun/moon, shared by the board and every page bar */
@@ -856,6 +951,11 @@ a.flag:hover {
   /* phones: the bottom edge is too narrow for the counters and the profile links */
   .hud.bl {
     display: none;
+  }
+
+  /* phones: the four links fill the bottom edge, so the scroll cue rides above them */
+  .scroll-cue {
+    bottom: 56px;
   }
 
   .page-inner {

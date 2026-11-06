@@ -12,6 +12,7 @@ const fr = {
     generation: 'génération',
     cells: 'cellules',
     hint: 'glisse pour dessiner · clique dans le vide pour lâcher un planeur',
+    scroll: 'Défiler',
     home: 'jpc',
     themeNight: 'Mode nuit',
     themePaper: 'Mode papier',
