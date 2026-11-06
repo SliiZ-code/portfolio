@@ -188,42 +188,6 @@
             "inlineLink": false
           },
           "description": "<p>A university events platform, built as a team. Students browse a map of campus events and sign up; student unions organise them. React, Express, Prisma and PostgreSQL, containerised with Docker.</p>"
-        },
-        {
-          "id": "2fd916ce-8407-4bfa-83f0-14d87054ac9c",
-          "hidden": false,
-          "name": "Photographer's website",
-          "period": "2026 – Present",
-          "website": {
-            "url": "https://noelfrc.sliiz.com",
-            "label": "noelfrc.sliiz.com",
-            "inlineLink": false
-          },
-          "description": "<p>A bilingual portfolio site for a photographer friend, which he updates on his own. Payload CMS, Next.js and Postgres, self-hosted with Coolify. Images are resized and converted to AVIF and WebP on upload.</p>"
-        },
-        {
-          "id": "e3f9c2eb-c883-4fed-aee3-b6cd27b5d04a",
-          "hidden": false,
-          "name": "AgentKanban",
-          "period": "2026",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>A local service that turns GitHub issues into tasks handed to coding agents (Codex), each in its own workspace. It follows OpenAI's Symphony specification.</p>"
-        },
-        {
-          "id": "18d045d7-1a16-4926-b664-15f0b9489553",
-          "hidden": false,
-          "name": "The Arduino in pixels",
-          "period": "2026",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>A 3D model of an Arduino rendered live with three.js, then pixelated to five ink levels. You can rotate it with the mouse or a finger.</p>"
         }
       ]
     },

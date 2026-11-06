@@ -188,42 +188,6 @@
             "inlineLink": false
           },
           "description": "<p>Plateforme d'événements universitaires, développée en équipe. Les étudiants consultent une carte des événements du campus et s'y inscrivent ; les BDE les organisent. React, Express, Prisma et PostgreSQL, conteneurisés avec Docker.</p>"
-        },
-        {
-          "id": "2fd916ce-8407-4bfa-83f0-14d87054ac9c",
-          "hidden": false,
-          "name": "Site du photographe",
-          "period": "2026 – Aujourd’hui",
-          "website": {
-            "url": "https://noelfrc.sliiz.com",
-            "label": "noelfrc.sliiz.com",
-            "inlineLink": false
-          },
-          "description": "<p>Site portfolio pour un ami photographe, bilingue, qu'il met à jour seul. Payload CMS, Next.js et Postgres, auto-hébergé avec Coolify. Les images sont redimensionnées et converties en AVIF et WebP à l'envoi.</p>"
-        },
-        {
-          "id": "e3f9c2eb-c883-4fed-aee3-b6cd27b5d04a",
-          "hidden": false,
-          "name": "AgentKanban",
-          "period": "2026",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>Service local qui transforme des issues GitHub en tâches confiées à des agents de code (Codex), chacune dans son propre espace de travail. Il suit la spécification Symphony d'OpenAI.</p>"
-        },
-        {
-          "id": "18d045d7-1a16-4926-b664-15f0b9489553",
-          "hidden": false,
-          "name": "L'Arduino en pixels",
-          "period": "2026",
-          "website": {
-            "url": "",
-            "label": "",
-            "inlineLink": false
-          },
-          "description": "<p>Un modèle 3D d'Arduino rendu en direct avec three.js, puis pixelisé en cinq niveaux d'encre. On peut le faire tourner à la souris ou au doigt.</p>"
         }
       ]
     },

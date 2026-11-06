@@ -468,8 +468,9 @@ export async function initBoard(): Promise<void> {
   function tick(): void {
     gen++;
     stepWorld(world);
-    clearBoxes(world, listBox ? [...keepClear, ...nameRing, listBox] : [...keepClear, ...nameRing]);
+    // the name feels whatever reaches its ring before the ring is cleared
     stepStructures(world, structures, gen);
+    clearBoxes(world, listBox ? [...keepClear, ...nameRing, listBox] : [...keepClear, ...nameRing]);
     if (gen % FEED_EVERY === 0) addFeedGlider(world);
     updateCounters(gen);
     dirty = true;

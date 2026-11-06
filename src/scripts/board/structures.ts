@@ -29,10 +29,10 @@ export function addStructure(structures: Structure[], { cells, footprint }: Stru
 /** Handles intrusion, release, regrowth and healing of every structure. */
 export function stepStructures(world: World, structures: Structure[], gen: number): void {
   for (const structure of structures) {
-    // intrusion: free cells inside the core knock structure cells loose
+    // intrusion: free cells inside the core, or touching it, knock structure cells loose
     const { core } = structure;
-    for (let j = core.y; j < core.y + core.h; j++) {
-      for (let i = core.x; i < core.x + core.w; i++) {
+    for (let j = core.y - 1; j <= core.y + core.h; j++) {
+      for (let i = core.x - 1; i <= core.x + core.w; i++) {
         if (!world.cells[idx(world.w, world.h, structure.x + i, structure.y + j)]) continue;
         structure.hurt = true;
         for (let dj = -2; dj <= 2; dj++) {

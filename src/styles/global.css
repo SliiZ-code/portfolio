@@ -283,6 +283,7 @@ button {
 .br .cta:hover,
 .br .cta:focus-visible {
   background: var(--accent);
+  color: var(--paper);
   outline: none;
 }
 
