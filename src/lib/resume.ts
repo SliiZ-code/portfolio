@@ -308,6 +308,8 @@ export interface Project {
   period: string;
   description: string;
   website: Website;
+  /** Left off the PDF; on the site it comes after the featured projects. */
+  hidden?: boolean;
 }
 
 export interface Experience {
@@ -440,6 +442,7 @@ export const parseResume = (input: unknown, lang: Lang): Resume => {
         period: entry.period.trim(),
         description: cleanDescription(entry.description),
         website: cleanWebsite(entry.website),
+        hidden: entry.hidden,
       };
     });
 
