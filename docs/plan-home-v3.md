@@ -53,3 +53,20 @@ Later (needs Julien): videos or screenshots of Cerebro (blurred), the VR teleope
 - Servers only on 127.0.0.1:18081.
 - The phone number must never reach the site.
 - Respect `prefers-reduced-motion` and the night theme (`data-theme="night"`).
+
+## Wave 3: life leaks into the page
+
+Feedback after launch: the hero is great, the rest is boring. The content must carry the board's identity.
+
+- **F, pixel titles**: section titles become huge Geist Pixel words (about 3× the current size) that assemble from scattered
+  cells as they enter the view, then settle into crisp text. Owns `HomeSection.astro`, new `PixelTitle.astro`,
+  `src/scripts/pixel-title.ts`.
+- **G, living media**: the dithered picture of a project is a Game of Life seed. Hovering (or entering the view on
+  touch) runs Life on it for a moment, coloured by age like the board, then it resolves to the full-colour media.
+  Owns `ProjectMedia.astro`, `src/scripts/dither.ts`.
+- **H, proof and rhythm**: key figures as big pixel numerals in the experience case studies (from a small overlay,
+  `src/data/highlights.ts`, FR/EN). An asymmetric project grid: the first project large, then two columns. A sharper
+  about section. Owns `HomeIntro/Experience/Projects/About/Footer.astro`, `home.css`, `highlights.ts`.
+- **I, glider margins**: a sparse Game of Life lives in the page's side margins. Glider guns at section edges fire
+  gliders down the gutters. It only runs while visible, is cheap, and is off under reduced motion. Owns
+  `HomeContent.astro`, new `MarginLife.astro`, `src/scripts/margin-life.ts`.
