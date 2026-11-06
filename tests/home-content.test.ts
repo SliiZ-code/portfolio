@@ -192,6 +192,6 @@ describe('highlightsFor', () => {
 
   it('returns copies, so a caller cannot change the data', () => {
     highlightsFor('CAPFI', 'en')[0].value = 'changed';
-    expect(highlightsFor('CAPFI', 'en')[0].value).toBe('300+');
+    expect(highlightsFor('CAPFI', 'en')[0].value).toBe('200+');
   });
 });

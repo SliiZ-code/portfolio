@@ -3,7 +3,7 @@
 import type { Lang } from '../lib/resume';
 
 export interface Highlight {
-  /** The figure as drawn in pixel type: "300+", "360°", "AES-256". */
+  /** The figure as drawn in pixel type: "200+", "360°", "AES-256". */
   value: string;
   /** A short label under the figure, lower case. */
   label: string;
@@ -14,12 +14,12 @@ type ByLang = Record<Lang, Highlight[]>;
 const HIGHLIGHTS: Record<string, ByLang> = {
   CAPFI: {
     fr: [
-      { value: '300+', label: "appels d'offres traités" },
+      { value: '200+', label: "appels d'offres traités" },
       { value: '3', label: 'sous-scores expliqués' },
       { value: '~10', label: 'commerciaux servis chaque jour' },
     ],
     en: [
-      { value: '300+', label: 'RFPs processed' },
+      { value: '200+', label: 'RFPs processed' },
       { value: '3', label: 'explained sub-scores' },
       { value: '~10', label: 'sales staff served daily' },
     ],
