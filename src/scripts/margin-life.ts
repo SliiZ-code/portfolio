@@ -515,6 +515,22 @@ export function initMarginLife(section: HTMLElement): void {
   // the first build, once every listener it relies on is in place
   rebuild();
 
+  // a resize, zoom or rotation moves the text: measure again (a toolbar sliding in and out does not count)
+  addEventListener(
+    'resize',
+    () => {
+      if (resizeQueued) return;
+      resizeQueued = requestAnimationFrame(() => {
+        resizeQueued = 0;
+        const box = section.getBoundingClientRect();
+        const now = { width: Math.round(box.width), height: Math.round(box.height), viewport: innerHeight };
+        if (!built || needsRebuild(built, now) || innerWidth < MIN_VIEWPORT) rebuild();
+        else updateView();
+      });
+    },
+    { passive: true },
+  );
+
   motion.addEventListener('change', rebuild);
   document.addEventListener('visibilitychange', () => sync());
   // the section numbers and text settle once the fonts land: measure again

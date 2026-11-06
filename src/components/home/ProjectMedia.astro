@@ -491,8 +491,9 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
         if (!entry) return;
         inView = entry.isIntersecting;
         const visible = entry.intersectionRatio >= TOUCH_VIEW;
-        if (touchOnly.matches && visible && !seen && !reducedMotion.matches) startBurst();
-        seen = visible;
+        // a burst that could not start (image not loaded yet) is retried on the next sighting
+        if (!visible) seen = false;
+        else if (touchOnly.matches && !seen && !reducedMotion.matches && startBurst()) seen = true;
         syncVideo();
       },
       { threshold: [0, TOUCH_VIEW] },
