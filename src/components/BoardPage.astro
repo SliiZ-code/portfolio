@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
+import HomeContent from './home/HomeContent.astro';
 import { getBoardProjects, projectPath } from '../data/board';
 import { strings } from '../i18n';
 import { METHUSELAH_PATTERNS } from '../scripts/board/patterns';
@@ -77,6 +78,9 @@ const description = htmlToText(resume.summary) || resume.headline;
         </ul>
       </nav>
     </div>
+    <!-- the board is the hero: the page scrolls over it from here -->
+    <div id="hero-spacer" aria-hidden="true"></div>
+    <HomeContent lang={lang} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
   </main>
 
   <BoardHud lang={lang} t={t} profiles={resume.profiles} email={resume.email} cvHref={cvHref} cvPdf={cvPdf} />

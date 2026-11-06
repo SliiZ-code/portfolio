@@ -1,0 +1,6 @@
+/* Home v3: the content that scrolls over the board (see docs/plan-home-v3.md). */
+.home-content {
+  position: relative;
+  z-index: 3;
+  background: var(--paper);
+}

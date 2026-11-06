@@ -1,0 +1,18 @@
+---
+// Wave 0 stub: builder B fills this with the content sections (see docs/plan-home-v3.md).
+import '../../styles/home.css';
+import type { BoardProject } from '../../data/board';
+import type { Lang, Resume } from '../../lib/resume';
+
+interface Props {
+  lang: Lang;
+  resume: Resume;
+  projects: BoardProject[];
+  cvHref: string;
+  cvPdf: string;
+}
+
+const { resume } = Astro.props;
+---
+
+<section id="content" class="home-content" aria-label={resume.name}></section>

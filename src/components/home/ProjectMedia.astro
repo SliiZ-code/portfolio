@@ -1,0 +1,18 @@
+---
+// Wave 0 stub: builder C turns this into the dithered media (see docs/plan-home-v3.md).
+import { boardMedia, type BoardProject } from '../../data/board';
+
+interface Props {
+  project: BoardProject;
+  /** Accessible description of the media, usually the project name. */
+  label: string;
+}
+
+const { project, label } = Astro.props;
+const media = project.media ?? boardMedia(project);
+---
+
+<figure class="pmedia">
+  {media?.video && <video src={media.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
+  {!media?.video && media?.image && <img src={media.image} alt={label} loading="lazy" />}
+</figure>
