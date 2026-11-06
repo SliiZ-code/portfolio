@@ -21,13 +21,26 @@
   mask-repeat: no-repeat, repeat-x;
 }
 
-/* ---- layout: a left gutter for section numbers, reading text at most 720px wide ---- */
+/* ---- layout: a 12-column grid, 1200px at most; every block spans the grid and sets its own columns ---- */
 .hc {
-  --hc-gutter: clamp(16px, 9vw, 128px);
+  --hc-gap: 96px;
+  --hc-pad: clamp(16px, 5vw, 64px);
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: var(--hc-gap);
+  max-width: 1200px;
+  margin: 0 auto;
   /* the bottom padding keeps the last lines clear of the fixed HUD in the corner */
-  padding: 72px 16px 80px var(--hc-gutter);
+  padding: 72px var(--hc-pad) 80px;
   color: var(--ink);
   font: 12px/1.5 "Geist Mono", monospace;
+}
+
+.hc > * {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 .hc a {
@@ -47,7 +60,7 @@
 
 .hc-stack {
   display: grid;
-  gap: 56px;
+  gap: 80px;
 }
 
 .hc-meta {
@@ -56,54 +69,66 @@
 }
 
 .hc-strong {
+  display: block;
   font: 18px/1.3 "Gambarino", serif;
 }
 
 .hc-line {
-  font: 17px/1.35 "Gambarino", serif;
+  display: block;
+  font: 16px/1.35 "Gambarino", serif;
 }
 
-/* ---- intro: status line, summary, the two calls to action ---- */
+/* ---- intro: status line, bio, the two calls to action and the note beside them ---- */
 .hc-intro {
   display: grid;
-  gap: 28px;
-  max-width: 720px;
+  gap: 36px;
 }
 
 .hc-status {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 500;
-  letter-spacing: .03em;
+  gap: 12px;
+  font: 500 13px/1.4 "Geist Mono", monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .hc-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
-  background: var(--accent);
+  width: 10px;
+  height: 10px;
+  background: var(--life-0);
 }
 
 .hc-summary {
-  font: 22px/1.3 "Gambarino", serif;
+  max-width: 760px;
+  font: 400 clamp(22px, 2.2vw + 10px, 30px)/1.22 "Gambarino", serif;
+  text-wrap: pretty;
 }
 
-.hc-summary p + p {
-  margin-top: .6em;
+/* the highlighter: the key phrases of the bio, in the first life colour */
+.hc-summary mark {
+  background: color-mix(in srgb, var(--life-0) 28%, transparent);
+  color: inherit;
+  padding: 0 .08em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .hc-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 14px 18px;
 }
 
 /* the two main calls to action: the ink chip, inverted on hover (as the board's .br .cta) */
 .hc-cta {
-  padding: 1px 7px;
+  padding: 10px 16px;
   background: var(--ink);
   color: var(--paper);
+  font: 14px/1 "Geist Mono", monospace;
   text-decoration: none;
 }
 
@@ -118,18 +143,46 @@
   color: var(--paper);
 }
 
-/* ---- numbered sections ---- */
+/* a handwritten side note, tilted, that points back at the calls to action */
+.hc-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font: 400 20px/1.1 "Shantell Sans", cursive;
+  transform: rotate(-2deg);
+}
+
+.hc-note-arrow {
+  flex: none;
+  width: 48px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- numbered sections: the number above the title, the body under it ---- */
 .hc-section {
-  margin-top: 120px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 24px;
+}
+
+.hc-section > * {
+  grid-column: 1 / -1;
 }
 
 .hc-head {
-  margin-bottom: 40px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 56px;
 }
 
 .hc-num {
   color: var(--mute);
-  margin-bottom: 6px;
 }
 
 .hc-section h2 {
@@ -137,24 +190,66 @@
   font-weight: 400;
 }
 
-/* ---- experience: case studies ---- */
+/* ---- experience: case studies, a sticky column of facts beside the figures and the text ---- */
 .hc-exp {
+  display: grid;
+  gap: 28px;
+  padding-top: 28px;
   border-top: 1px solid var(--line);
-  padding-top: 24px;
+}
+
+.hc-exp-side {
+  display: grid;
+  gap: 6px;
+  align-content: start;
 }
 
 .hc-role {
-  font: 400 24px/1.1 "Geist Pixel", monospace;
-  margin-top: 8px;
+  font: 400 32px/1.05 "Geist Pixel", monospace;
+  margin-top: 12px;
 }
 
 .hc-company {
-  font: 18px/1.3 "Gambarino", serif;
+  font: 400 20px/1.3 "Gambarino", serif;
   margin-top: 4px;
 }
 
+.hc-exp-main {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* the key figures: pixel numerals with a mono label, split by thin rules */
+.hc-figures {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 176px), 1fr));
+}
+
+.hc-figures li {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px 0 14px;
+  border-top: 1px solid var(--line);
+}
+
+.hc-fig-value {
+  font: 400 clamp(40px, 5vw, 56px)/1 "Geist Pixel", monospace;
+  white-space: nowrap;
+}
+
+.hc-fig-label {
+  color: var(--mute);
+  font: 11px/1.4 "Geist Mono", monospace;
+  letter-spacing: .02em;
+}
+
 .hc-sub {
-  margin-top: 24px;
+  margin-top: 4px;
 }
 
 .hc-role-sub {
@@ -164,7 +259,6 @@
 /* rich text from the resume: bullets are small accent squares */
 .hc-desc {
   font: 18px/1.45 "Gambarino", serif;
-  margin-top: 16px;
 }
 
 .hc-desc > * + * {
@@ -199,38 +293,43 @@
   display: inline;
 }
 
-/* ---- projects: research-homepage format ---- */
+/* ---- projects: a large lead with its text beside it, then two columns; hidden ones as a numbered index ---- */
 .hc-projects {
   list-style: none;
+  margin: 0;
   padding: 0;
   display: grid;
-  gap: 64px;
+  gap: 80px;
 }
 
 .hc-project {
   display: grid;
   gap: 20px;
-  align-items: start;
+  align-content: start;
 }
 
+/* the media box: ProjectMedia fills it at 4:3; a wider box crops that frame from its middle */
 .hc-media {
-  width: 100%;
-  max-width: 280px;
+  position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
 }
 
-.hc-media > *,
-.hc-media img,
-.hc-media video {
-  display: block;
+.hc-media > .pmedia {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+}
+
+.hc-index {
+  color: var(--mute);
+  letter-spacing: .04em;
 }
 
 .hc-project-name {
-  font: 400 22px/1.15 "Geist Pixel", monospace;
+  font: 400 28px/1.08 "Geist Pixel", monospace;
 }
 
 .hc-project-name a {
@@ -242,8 +341,8 @@
 }
 
 .hc-lead {
-  font: 18px/1.45 "Gambarino", serif;
-  margin-top: 12px;
+  font: 19px/1.45 "Gambarino", serif;
+  margin-top: 4px;
 }
 
 .hc-links {
@@ -256,40 +355,83 @@
 }
 
 .hc-more {
-  margin-top: 56px;
+  margin-top: 96px;
 }
 
-.hc-more h3 {
+.hc-more > h3 {
   color: var(--mute);
   text-transform: uppercase;
   letter-spacing: .06em;
   font-weight: 400;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.hc-more ul {
+.hc-index-list {
   list-style: none;
+  margin: 0;
   padding: 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.hc-more li {
-  display: flex;
-  flex-wrap: wrap;
+.hc-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
   align-items: baseline;
-  gap: 4px 16px;
-  padding: 10px 0;
+  gap: 6px 16px;
+  padding: 18px 0;
   border-top: 1px solid var(--line);
 }
 
-.hc-more-name {
-  font: 400 17px/1.2 "Geist Pixel", monospace;
+.hc-row-num {
+  color: var(--mute);
+}
+
+/* the whole row is one link: the stretched ::after covers it, the other links sit above it */
+.hc-row-name {
+  font: 400 20px/1.2 "Geist Pixel", monospace;
   text-decoration: none;
 }
 
-/* ---- about: compact, in columns ---- */
+.hc-row-name::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.hc-row:hover .hc-row-name,
+.hc-row:focus-within .hc-row-name {
+  color: var(--accent);
+}
+
+.hc-row-meta,
+.hc-row-links {
+  grid-column: 2;
+  position: relative;
+  z-index: 1;
+}
+
+.hc-row-links a {
+  color: var(--ink);
+}
+
+.hc-row-arrow {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  font: 400 18px/1 "Geist Mono", monospace;
+  transition: transform .2s ease;
+}
+
+.hc-row:hover .hc-row-arrow,
+.hc-row:focus-within .hc-row-arrow {
+  transform: translateX(4px);
+}
+
+/* ---- about: compact, the skills as tags under their names, the rest in columns ---- */
 .hc-about {
   display: grid;
-  gap: 40px 32px;
+  gap: 56px;
 }
 
 .hc-about h3 {
@@ -305,37 +447,72 @@
 .hc-about ul {
   list-style: none;
   padding: 0;
-  display: grid;
-  gap: 14px;
+  margin: 0;
 }
 
-.hc-about li {
+.hc-skills {
   display: grid;
-  gap: 2px;
+  gap: 22px 32px;
 }
 
 .hc-skills li {
-  display: block;
-  font: 17px/1.4 "Gambarino", serif;
+  display: grid;
+  gap: 6px;
+  align-content: start;
 }
 
 .hc-skill-name {
-  font: 12px/1.5 "Geist Mono", monospace;
-  color: var(--ink);
-  margin-right: 8px;
+  font: 400 18px/1.2 "Geist Pixel", monospace;
 }
 
+/* skills as plain tags: mono 11px, separated by " / ", no boxes */
 .hc-keywords {
-  color: var(--ink);
+  font: 11px/1.7 "Geist Mono", monospace;
+  letter-spacing: .02em;
 }
 
-/* ---- footer ---- */
+.hc-columns {
+  display: grid;
+  gap: 32px;
+}
+
+.hc-columns ul {
+  display: grid;
+  gap: 10px;
+}
+
+/* ---- footer: the big line to the e-mail, then the links row ---- */
 .hc-foot {
-  margin-top: 140px;
+  display: grid;
+  gap: 40px;
   padding-top: 28px;
   border-top: 1px solid var(--ink);
-  display: grid;
-  gap: 20px;
+}
+
+.hc-closing {
+  font: 400 clamp(40px, 7vw, 96px)/.95 "Geist Pixel", monospace;
+  overflow-wrap: break-word;
+}
+
+.hc-closing a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.hc-closing a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: .08em;
+  text-underline-offset: .12em;
+}
+
+.hc-foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px 32px;
 }
 
 .hc-foot-name {
@@ -364,48 +541,87 @@
   color: var(--mute);
 }
 
-/* ---- wide screens: section numbers in a left column, the body in the reading column ---- */
-@media (min-width: 800px) {
-  .hc-section {
-    display: grid;
-    grid-template-columns: 9rem minmax(0, 720px);
-    column-gap: 32px;
-  }
-
-  .hc-head {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: subgrid;
-    column-gap: 32px;
-  }
-
-  .hc-num {
-    grid-column: 1;
-    margin-top: 10px;
-    margin-bottom: 0;
-  }
-
-  .hc-section h2 {
-    grid-column: 2;
-  }
-
-  .hc-body {
-    grid-column: 2;
-  }
-}
-
+/* ---- wide screens: the case studies split in two, the projects and the about section gain columns ---- */
 @media (min-width: 640px) {
-  .hc-project {
-    grid-template-columns: 280px minmax(0, 1fr);
-    gap: 28px;
+  .hc-projects {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
   }
 
-  .hc-about {
+  .hc-project--lead {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: center;
+    column-gap: 40px;
+  }
+
+  .hc-project--lead .hc-media {
+    aspect-ratio: 16 / 10;
+  }
+
+  .hc-project--lead .hc-project-name {
+    font-size: clamp(34px, 4vw, 52px);
+  }
+
+  .hc-project--lead .hc-lead {
+    font-size: 21px;
+  }
+
+  .hc-skills {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .hc-about .hc-wide {
-    grid-column: 1 / -1;
+  .hc-columns {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hc-row {
+    grid-template-columns: 48px minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.1fr) 24px;
+  }
+
+  .hc-row-meta,
+  .hc-row-links {
+    grid-column: auto;
+  }
+
+  .hc-row-arrow {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  /* side by side: a thin rule between the figures, the first one flush with the column */
+  .hc-figures li {
+    padding: 16px 20px 14px;
+  }
+
+  .hc-figures li:first-child {
+    padding-left: 0;
+  }
+
+  .hc-figures li + li {
+    border-left: 1px solid var(--line);
+  }
+}
+
+@media (min-width: 800px) {
+  .hc {
+    --hc-gap: 160px;
+  }
+
+  .hc-exp {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .hc-exp-side {
+    grid-column: 1 / span 4;
+    position: sticky;
+    top: 96px;
+  }
+
+  .hc-exp-main {
+    grid-column: 6 / -1;
   }
 }
 
@@ -447,6 +663,10 @@
 @media (prefers-reduced-motion: reduce) {
   .hc-reveal {
     animation: none;
+  }
+
+  .hc-row-arrow {
+    transition: none;
   }
 }
 

@@ -1,6 +1,8 @@
 ---
+// The opening: the status line, the bio with its key phrases under a highlighter, and the calls to action.
+import { markPhrases } from './content';
 import type { UIStrings } from '../../i18n/fr';
-import type { Resume } from '../../lib/resume';
+import { htmlToText, type Resume } from '../../lib/resume';
 
 interface Props {
   t: UIStrings;
@@ -10,15 +12,32 @@ interface Props {
 }
 
 const { t, resume, cvHref, cvPdf } = Astro.props;
+// the summary is one paragraph: plain text is marked and rendered as text, so no markup comes from the phrases
+const bio = htmlToText(resume.summary);
+const segments = markPhrases(bio, t.home.introMarks);
 ---
 
 <div class="hc-intro hc-reveal">
   <p class="hc-status"><span class="hc-dot" aria-hidden="true"></span>{t.home.status}</p>
-  {resume.summary && <div class="hc-summary" set:html={resume.summary} />}
+  {
+    bio && (
+      <p class="hc-summary">
+        {segments.map((segment) => (segment.marked ? <mark>{segment.text}</mark> : segment.text))}
+      </p>
+    )
+  }
   <div class="hc-actions">
     {resume.email && <a class="hc-cta" href={`mailto:${resume.email}`}>{t.board.contact}</a>}
     <a class="hc-cta" href={cvPdf || cvHref} type={cvPdf ? 'application/pdf' : undefined}>
       {cvPdf ? t.home.cvPdf : t.home.cv}
     </a>
+    <p class="hc-note">
+      <svg class="hc-note-arrow" viewBox="0 0 48 30" aria-hidden="true" focusable="false">
+        <path d="M46 6C34 2 20 9 9 23" />
+        <path d="M9 23l9-2" />
+        <path d="M9 23l3-9" />
+      </svg>
+      <span>{t.home.replyNote}</span>
+    </p>
   </div>
 </div>

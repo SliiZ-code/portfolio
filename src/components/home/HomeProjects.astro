@@ -1,9 +1,9 @@
 ---
-// Projects in research-homepage format: media, title, meta, one or two sentences, links.
-// The hidden ones (not on the PDF) follow as a compact list.
+// Projects: the first featured one leads, large, with its text beside it; the other featured ones follow in
+// two columns. The hidden ones (not on the PDF) come after as a numbered index that continues the count.
 import HomeSection from './HomeSection.astro';
 import ProjectMedia from './ProjectMedia.astro';
-import { leadSentences, linkLabel, splitProjects } from './content';
+import { indexLabel, leadSentences, linkLabel, splitProjects } from './content';
 import { projectPath, type BoardProject } from '../../data/board';
 import { htmlToText, type Lang } from '../../lib/resume';
 import type { UIStrings } from '../../i18n/fr';
@@ -18,56 +18,61 @@ interface Props {
 const { lang, t, title, projects } = Astro.props;
 const { featured, more } = splitProjects(projects);
 
-const linksOf = (project: BoardProject) => [
-  { href: projectPath(lang, project.slug), label: t.home.projectPage },
-  ...(project.website.url ? [{ href: project.website.url, label: linkLabel(project.website) }] : []),
-];
 const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.description), 2);
 ---
 
 <HomeSection id="hc-projects" number="02" title={title}>
-  <ol class="hc-projects">
-    {featured.map((project) => (
-      <li class="hc-project hc-reveal">
-        <div class="hc-media">
-          <ProjectMedia project={project} label={project.displayName} />
-        </div>
-        <div class="hc-project-text">
-          <h3 class="hc-project-name"><a href={projectPath(lang, project.slug)}>{project.displayName}</a></h3>
-          {project.meta && <p class="hc-meta">{project.meta}</p>}
-          {leadOf(project) && <p class="hc-lead">{leadOf(project)}</p>}
-          <p class="hc-links">
-            {linksOf(project).map((link, index) => (
-              <>
-                {index > 0 && ' / '}
-                <a href={link.href}>{link.label}</a>
-              </>
-            ))}
-          </p>
-        </div>
-      </li>
-    ))}
-  </ol>
-
-  {more.length > 0 && (
-    <div class="hc-more hc-reveal">
-      <h3>{t.home.moreProjects}</h3>
-      <ul>
-        {more.map((project) => (
-          <li>
-            <a class="hc-more-name" href={projectPath(lang, project.slug)}>{project.displayName}</a>
-            {project.meta && <span class="hc-meta">{project.meta}</span>}
-            <span class="hc-links">
-              {linksOf(project).map((link, index) => (
-                <>
-                  {index > 0 && ' / '}
-                  <a href={link.href}>{link.label}</a>
-                </>
-              ))}
-            </span>
+  {
+    featured.length > 0 && (
+      <ol class="hc-projects">
+        {featured.map((project, index) => (
+          <li class:list={['hc-project', 'hc-reveal', { 'hc-project--lead': index === 0 }]}>
+            <div class="hc-media">
+              <ProjectMedia project={project} label={project.displayName} />
+            </div>
+            <div class="hc-project-text">
+              <p class="hc-index">{indexLabel(index + 1)}</p>
+              <h3 class="hc-project-name">
+                <a href={projectPath(lang, project.slug)}>{project.displayName}</a>
+              </h3>
+              {project.meta && <p class="hc-meta">{project.meta}</p>}
+              {leadOf(project) && <p class="hc-lead">{leadOf(project)}</p>}
+              <p class="hc-links">
+                <a href={projectPath(lang, project.slug)}>{t.home.projectPage}</a>
+                {project.website.url && (
+                  <>
+                    {' / '}
+                    <a href={project.website.url}>{linkLabel(project.website)}</a>
+                  </>
+                )}
+              </p>
+            </div>
           </li>
         ))}
-      </ul>
-    </div>
-  )}
+      </ol>
+    )
+  }
+
+  {
+    more.length > 0 && (
+      <div class="hc-more hc-reveal">
+        <h3>{t.home.moreProjects}</h3>
+        <ol class="hc-index-list">
+          {more.map((project, index) => (
+            <li class="hc-row">
+              <span class="hc-row-num" aria-hidden="true">{indexLabel(featured.length + index + 1)}</span>
+              <a class="hc-row-name" href={projectPath(lang, project.slug)}>{project.displayName}</a>
+              {project.meta && <span class="hc-meta hc-row-meta">{project.meta}</span>}
+              {project.website.url && (
+                <span class="hc-row-links">
+                  <a href={project.website.url}>{linkLabel(project.website)}</a>
+                </span>
+              )}
+              <span class="hc-row-arrow" aria-hidden="true">→</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    )
+  }
 </HomeSection>

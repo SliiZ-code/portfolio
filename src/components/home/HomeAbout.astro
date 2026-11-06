@@ -1,5 +1,5 @@
 ---
-// The compact part: skills across the top, then education, activities and languages in columns.
+// The compact part: skills as plain tags under their names, then education, activities and languages in columns.
 import HomeSection from './HomeSection.astro';
 import { joinMeta } from './content';
 import type { UIStrings } from '../../i18n/fr';
@@ -17,60 +17,62 @@ const { sectionTitles: titles } = resume;
 <HomeSection id="hc-about" number="03" title={t.home.about}>
   <div class="hc-about">
     {resume.skills.length > 0 && (
-      <div class="hc-block hc-wide hc-reveal">
+      <div class="hc-block hc-reveal">
         <h3>{titles.skills}</h3>
         <ul class="hc-skills">
           {resume.skills.map((skill) => (
             <li>
-              <span class="hc-skill-name">{skill.name}</span>
-              {skill.keywords.length > 0 && <span class="hc-keywords">{skill.keywords.join(' · ')}</span>}
+              <h4 class="hc-skill-name">{skill.name}</h4>
+              {skill.keywords.length > 0 && <p class="hc-keywords">{skill.keywords.join(' / ')}</p>}
             </li>
           ))}
         </ul>
       </div>
     )}
 
-    {resume.education.length > 0 && (
-      <div class="hc-block hc-reveal">
-        <h3>{titles.education}</h3>
-        <ul>
-          {resume.education.map((entry) => (
-            <li>
-              <span class="hc-strong">{entry.school}</span>
-              <span class="hc-line">{joinMeta(entry.degree, entry.area)}</span>
-              {entry.period && <span class="hc-meta">{entry.period}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+    <div class="hc-columns">
+      {resume.education.length > 0 && (
+        <div class="hc-block hc-reveal">
+          <h3>{titles.education}</h3>
+          <ul>
+            {resume.education.map((entry) => (
+              <li>
+                <span class="hc-strong">{entry.school}</span>
+                <span class="hc-line">{joinMeta(entry.degree, entry.area)}</span>
+                {entry.period && <span class="hc-meta">{entry.period}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-    {resume.volunteer.length > 0 && (
-      <div class="hc-block hc-reveal">
-        <h3>{titles.volunteer}</h3>
-        <ul>
-          {resume.volunteer.map((entry) => (
-            <li>
-              <span class="hc-strong">{entry.organization}</span>
-              {entry.period && <span class="hc-meta">{entry.period}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+      {resume.volunteer.length > 0 && (
+        <div class="hc-block hc-reveal">
+          <h3>{titles.volunteer}</h3>
+          <ul>
+            {resume.volunteer.map((entry) => (
+              <li>
+                <span class="hc-strong">{entry.organization}</span>
+                {entry.period && <span class="hc-meta">{entry.period}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-    {resume.languages.length > 0 && (
-      <div class="hc-block hc-reveal">
-        <h3>{titles.languages}</h3>
-        <ul>
-          {resume.languages.map((entry) => (
-            <li>
-              <span class="hc-strong">{entry.language}</span>
-              {entry.fluency && <span class="hc-meta">{entry.fluency}</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+      {resume.languages.length > 0 && (
+        <div class="hc-block hc-reveal">
+          <h3>{titles.languages}</h3>
+          <ul>
+            {resume.languages.map((entry) => (
+              <li>
+                <span class="hc-strong">{entry.language}</span>
+                {entry.fluency && <span class="hc-meta">{entry.fluency}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   </div>
 </HomeSection>
