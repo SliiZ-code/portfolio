@@ -62,3 +62,9 @@ describe('joinMeta', () => {
     expect(joinMeta(false, null)).toBe('');
   });
 });
+
+describe('leadSentences keeps version numbers whole', () => {
+  it('does not split "GPT-3.5"', () => {
+    expect(leadSentences('Uses GPT-3.5 to write. Then more. And more.', 2)).toBe('Uses GPT-3.5 to write. Then more.');
+  });
+});

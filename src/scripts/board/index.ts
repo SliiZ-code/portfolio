@@ -202,6 +202,9 @@ export async function initBoard(): Promise<void> {
     root.style.setProperty('--c', `${cell}px`);
     canvas!.width = vw * dpr;
     canvas!.height = vh * dpr;
+    // a toolbar resize skips the layout: the canvas keeps the size its cells were laid out for
+    canvas!.style.width = `${vw}px`;
+    canvas!.style.height = `${vh}px`;
     world = createWorld(grid.cols, grid.rows);
     structures = [];
     keepClear = [];
@@ -426,7 +429,8 @@ export async function initBoard(): Promise<void> {
   /** A click on a project row: the stage scales toward the row, then the page changes. */
   const dive = (event: MouseEvent, row: Row) => {
     // leaving without a dive (reduced motion, new tab): no slug may survive to be replayed on a later Back
-    if (reduced || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    // once the hero is scrolling away the zoom would play under the content: a plain navigation
+    if (reduced || scrollY > 0 || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       tracker.forget();
       return;
     }
@@ -434,8 +438,6 @@ export async function initBoard(): Promise<void> {
     if (diving) return;
     diving = true;
     tracker.remember(row.slug);
-    // a row can be clicked while the hero is half scrolled away: the zoom starts from the hero's top
-    if (scrollY > 0) scrollTo({ top: 0, behavior: 'smooth' });
     originOfRow(row);
     stage.style.transform = `scale(${DIVE_SCALE})`;
     setTimeout(() => {

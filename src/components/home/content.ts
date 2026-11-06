@@ -2,7 +2,6 @@ import type { Website } from '../../lib/resume';
 
 /**
  * A project the PDF hides (`hidden`) still belongs on the site; it just comes after the featured ones.
- * `parseResume` does not carry the flag through yet, so until it does every project counts as featured.
  */
 export const isHiddenProject = (project: object): boolean => (project as { hidden?: unknown }).hidden === true;
 
@@ -13,7 +12,8 @@ export const splitProjects = <T extends object>(projects: T[]): { featured: T[];
 
 /** The first `count` sentences of plain text, for a one-line teaser. */
 export const leadSentences = (text: string, count = 2): string => {
-  const sentences = text.match(/[^.!?…]+(?:[.!?…]+|$)/g) ?? [];
+  // a sentence ends on punctuation followed by a space or the end, so "GPT-3.5" or "Node.js" stay whole
+  const sentences = text.match(/[\s\S]+?(?:[.!?…]+(?=\s|$)|$)/g) ?? [];
   return sentences
     .slice(0, count)
     .map((sentence) => sentence.trim())

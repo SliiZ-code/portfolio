@@ -82,7 +82,8 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
   /* hover reveals the real media; focus does too, when a parent link has it */
   .pmedia:hover > canvas,
   .pmedia:focus-within > canvas,
-  :global(a:focus-visible) .pmedia > canvas {
+  :global(a:focus-visible) .pmedia > canvas,
+  :global(li:has(a:focus-visible)) .pmedia > canvas {
     opacity: 0;
   }
 
@@ -135,6 +136,18 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
   /** The figure's aspect ratio; the crop of the source follows it, as `object-fit: cover` does. */
   const ASPECT = 4 / 3;
   const FALLBACK_INK = '#1b1a17';
+  /** Rough lightness (0–1) of a #rgb, #rrggbb or rgb() colour; only used to compare ink and paper. */
+  const lightness = (colour: string): number => {
+    let rgb: number[] = [];
+    const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colour);
+    if (hex) {
+      const h = hex[1].length === 3 ? [...hex[1]].map((c) => c + c).join('') : hex[1];
+      rgb = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    } else {
+      rgb = (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    }
+    return rgb.length === 3 ? (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255 : 0;
+  };
   const FALLBACK_LIFE = '#ff8a00';
 
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -158,6 +171,8 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
     }
 
     let ink = FALLBACK_INK;
+    let invert = false;
+    let paper = '#e8e5dc';
     let life = FALLBACK_LIFE;
     let cols = 0;
     let rows = 0;
@@ -166,6 +181,8 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
       const style = getComputedStyle(figure);
       ink = style.getPropertyValue('--ink').trim() || FALLBACK_INK;
       life = style.getPropertyValue('--life-0').trim() || FALLBACK_LIFE;
+      paper = style.getPropertyValue('--paper').trim() || paper;
+      invert = lightness(ink) > lightness(paper);
     };
 
     /** The source's pixel size, or undefined while it cannot be read yet. */
@@ -185,8 +202,10 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
       try {
         workCtx.imageSmoothingQuality = 'high';
         workCtx.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, cols, rows);
-        const mask = ditherToMask(workCtx.getImageData(0, 0, cols, rows).data, cols, rows);
-        ctx.clearRect(0, 0, cols, rows);
+        const mask = ditherToMask(workCtx.getImageData(0, 0, cols, rows).data, cols, rows, invert);
+        // paper first: the real media sits underneath and must not show through the gaps
+        ctx.fillStyle = paper;
+        ctx.fillRect(0, 0, cols, rows);
         for (const [value, colour] of [
           [DITHER_INK, ink],
           [DITHER_HIGHLIGHT, life],
@@ -255,7 +274,7 @@ const glyph = { width: cols * CELL, height: pattern.length * CELL };
         if (!frame) frame = requestAnimationFrame(tick);
       });
 
-      const host = figure.closest('a') ?? figure;
+      const host = figure.closest('li, a') ?? figure;
       figure.addEventListener('pointerenter', () => {
         hovered = true;
         sync();

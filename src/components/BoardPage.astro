@@ -100,7 +100,7 @@ const description = htmlToText(resume.summary) || resume.headline;
   <!-- without JavaScript there is no board: the same content as a plain list -->
   <noscript>
     <style>
-      #stage, .hud, #hero-spacer { display: none; }
+      #stage, .hud, #hero-spacer, #content { display: none; }
       html, body { overflow: auto; }
     </style>
     <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />

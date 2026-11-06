@@ -457,3 +457,8 @@
     mask-image: none;
   }
 }
+
+/* a jump to a section lands below the fixed top corners */
+.home-content [id] {
+  scroll-margin-top: 72px;
+}

@@ -36,17 +36,19 @@ export function luminance(r: number, g: number, b: number): number {
  * on a denser share of cells, so the ink coverage follows the darkness. Transparent pixels stay paper.
  * Returns one mask value per pixel: DITHER_PAPER, DITHER_INK or DITHER_HIGHLIGHT.
  */
-export function ditherToMask(rgba: Uint8ClampedArray, w: number, h: number): Uint8Array {
+export function ditherToMask(rgba: Uint8ClampedArray, w: number, h: number, invert = false): Uint8Array {
   const mask = new Uint8Array(w * h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
       const p = i * 4;
       if (rgba[p + 3] < 128) continue;
-      const value = luminance(rgba[p], rgba[p + 1], rgba[p + 2]);
+      // light ink on dark paper (night): bright pixels take the ink, so the picture is not a negative
+      const lum = luminance(rgba[p], rgba[p + 1], rgba[p + 2]);
+      const value = invert ? 1 - lum : lum;
       const threshold = bayer4(x, y);
       if (value < threshold) mask[i] = DITHER_INK;
-      else if (value >= HIGHLIGHT_FROM && threshold < HIGHLIGHT_BELOW) mask[i] = DITHER_HIGHLIGHT;
+      else if (!invert && value >= HIGHLIGHT_FROM && threshold < HIGHLIGHT_BELOW) mask[i] = DITHER_HIGHLIGHT;
     }
   }
   return mask;

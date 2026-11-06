@@ -97,3 +97,12 @@ describe('ditherToMask', () => {
     for (const v of ditherToMask(data, 4, 4)) expect([DITHER_PAPER, DITHER_INK, DITHER_HIGHLIGHT]).toContain(v);
   });
 });
+
+describe('ditherToMask on light ink (night)', () => {
+  it('inks the bright pixels instead of the dark ones', () => {
+    const white = new Uint8ClampedArray([255, 255, 255, 255]);
+    const black = new Uint8ClampedArray([0, 0, 0, 255]);
+    expect(ditherToMask(white, 1, 1, true)[0]).toBe(DITHER_INK);
+    expect(ditherToMask(black, 1, 1, true)[0]).toBe(DITHER_PAPER);
+  });
+});

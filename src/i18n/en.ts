@@ -51,6 +51,7 @@ const en = {
   },
   home: {
     status: 'Looking for a research internship abroad · from June 2027 · 12 to 17 weeks',
+    footerNav: 'Links',
     cv: 'CV',
     cvPdf: 'CV (PDF)',
     about: 'About',

@@ -21,7 +21,7 @@
 [data-theme="paper"] {
   --paper: #e8e5dc;
   --ink: #1b1a17;
-  --mute: #75716a;
+  --mute: #6a665f;
   --line: #1b1a1714;
   --accent: #2433ff;
   /* newborn → young cells, warm to cool; older cells settle on the ink at half opacity */
@@ -405,6 +405,8 @@ html.scrolled .bl {
 /* the scroll cue at the foot of the hero: a pixel arrow on a paper chip, gone once the page moves */
 .scroll-cue {
   position: absolute;
+  /* above the fixed board (1), under the content that scrolls over it (3) */
+  z-index: 2;
   bottom: 14px;
   left: 50%;
   transform: translateX(-50%);

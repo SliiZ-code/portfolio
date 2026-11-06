@@ -15,7 +15,7 @@ const year = new Date().getFullYear();
 
 <footer class="hc-foot hc-reveal">
   <p class="hc-foot-name">{resume.name}</p>
-  <nav class="hc-foot-links" aria-label={t.board.elsewhere}>
+  <nav class="hc-foot-links" aria-label={t.home.footerNav}>
     <ul>
       {resume.profiles.map((profile) => (
         <li><a href={profile.url}>{profile.network}</a></li>
