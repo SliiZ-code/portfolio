@@ -43,14 +43,11 @@ const headingId = `${id}-title`;
     background: var(--line);
   }
 
-  /* wide screens: the body starts under the title, at the title's edge, in the 720px reading column */
+  /* wide screens: the body starts under the title and takes the whole content grid;
+     each block keeps its own reading measure (home.css) */
   @media (min-width: 800px) {
     .hc-section {
       display: block;
-    }
-
-    .hc-body {
-      max-width: 720px;
     }
   }
 </style>

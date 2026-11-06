@@ -37,6 +37,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
           class="pmedia-glyph"
           width={glyph.width}
           height={glyph.height}
+          style={`width:${((cols * 100) / 26).toFixed(1)}%`}
           viewBox={`0 0 ${glyph.width} ${glyph.height}`}
           aria-hidden="true"
           focusable="false"
@@ -94,7 +95,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     background-image:
       linear-gradient(var(--line) 1px, transparent 1px),
       linear-gradient(90deg, var(--line) 1px, transparent 1px);
-    background-size: 10px 10px;
+    background-size: var(--pc, 10px) var(--pc, 10px);
   }
 
   .pmedia-glyph {
@@ -155,6 +156,8 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
   const ASPECT = 4 / 3;
   /** A poster's cells are this many CSS pixels, as the SVG glyph is drawn at rest. */
   const POSTER_CELL = 10;
+  /** How many cells span a poster's width: the cell grows with the frame, never under POSTER_CELL. */
+  const POSTER_COLS = 26;
   /** A poster runs at the board's tempo: the board ticks every 120 ms. */
   const POSTER_RATE = 1000 / 120;
   /** On touch, a figure bursts when this much of it is in view. */
@@ -521,6 +524,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     let palette = readPalette(figure);
     let cssW = 0;
     let cssH = 0;
+    let cell = POSTER_CELL;
     let cols = 0;
     let rows = 0;
     let ox = 0;
@@ -546,7 +550,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
 
     const paint = (): void => {
       ctx.clearRect(0, 0, cssW, cssH);
-      if (world) paintLife(ctx, world, palette, POSTER_CELL);
+      if (world) paintLife(ctx, world, palette, cell);
     };
 
     /** Back to the seed, still. */
@@ -597,8 +601,10 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cols = Math.max(8, Math.floor(width / POSTER_CELL));
-      rows = Math.max(6, Math.floor(height / POSTER_CELL));
+      cell = Math.max(POSTER_CELL, Math.floor(width / POSTER_COLS));
+      figure.style.setProperty('--pc', `${cell}px`);
+      cols = Math.max(8, Math.floor(width / cell));
+      rows = Math.max(6, Math.floor(height / cell));
       ox = Math.floor((cols - seedData.w) / 2);
       oy = Math.floor((rows - seedData.h) / 2);
       rest();
