@@ -48,6 +48,16 @@ const en = {
     language: 'Language',
     theme: 'Theme',
   },
+  home: {
+    status: 'Looking for a research internship abroad · from June 2027 · 12 to 17 weeks',
+    cv: 'CV',
+    cvPdf: 'CV (PDF)',
+    about: 'About',
+    moreProjects: 'More projects',
+    projectPage: 'project page',
+    madeWith: 'made with a Game of Life',
+    top: '↑ back to top',
+  },
 } satisfies UIStrings;
 
 export default en;

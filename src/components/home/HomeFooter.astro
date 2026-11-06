@@ -1,0 +1,29 @@
+---
+import type { UIStrings } from '../../i18n/fr';
+import type { Resume } from '../../lib/resume';
+
+interface Props {
+  t: UIStrings;
+  resume: Resume;
+  cvHref: string;
+  cvPdf: string;
+}
+
+const { t, resume, cvHref, cvPdf } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class="hc-foot hc-reveal">
+  <p class="hc-foot-name">{resume.name}</p>
+  <nav class="hc-foot-links" aria-label={t.board.elsewhere}>
+    <ul>
+      {resume.profiles.map((profile) => (
+        <li><a href={profile.url}>{profile.network}</a></li>
+      ))}
+      {resume.email && <li><a href={`mailto:${resume.email}`}>{resume.email}</a></li>}
+      <li><a href={cvPdf || cvHref}>{cvPdf ? t.home.cvPdf : t.home.cv}</a></li>
+    </ul>
+  </nav>
+  <p class="hc-colophon">© {year} · {t.home.madeWith}</p>
+  <a class="hc-top" href="#">{t.home.top}</a>
+</footer>

@@ -1,7 +1,13 @@
 ---
-// Wave 0 stub: builder B fills this with the content sections (see docs/plan-home-v3.md).
+// The content that scrolls over the fixed board: intro, experience, projects, about, footer.
 import '../../styles/home.css';
+import HomeAbout from './HomeAbout.astro';
+import HomeExperience from './HomeExperience.astro';
+import HomeFooter from './HomeFooter.astro';
+import HomeIntro from './HomeIntro.astro';
+import HomeProjects from './HomeProjects.astro';
 import type { BoardProject } from '../../data/board';
+import { strings } from '../../i18n';
 import type { Lang, Resume } from '../../lib/resume';
 
 interface Props {
@@ -12,7 +18,20 @@ interface Props {
   cvPdf: string;
 }
 
-const { resume } = Astro.props;
+const { lang, resume, projects, cvHref, cvPdf } = Astro.props;
+const t = strings(lang);
 ---
 
-<section id="content" class="home-content" aria-label={resume.name}></section>
+<section id="content" class="home-content" aria-label={resume.name}>
+  <div class="hc">
+    <HomeIntro t={t} resume={resume} cvHref={cvHref} cvPdf={cvPdf} />
+    {resume.experience.length > 0 && (
+      <HomeExperience title={resume.sectionTitles.experience} entries={resume.experience} />
+    )}
+    {projects.length > 0 && (
+      <HomeProjects lang={lang} t={t} title={resume.sectionTitles.projects} projects={projects} />
+    )}
+    <HomeAbout t={t} resume={resume} />
+    <HomeFooter t={t} resume={resume} cvHref={cvHref} cvPdf={cvPdf} />
+  </div>
+</section>
