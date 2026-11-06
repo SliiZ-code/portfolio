@@ -4,6 +4,7 @@ import BoardHud from './BoardHud.astro';
 import BoardList from './BoardList.astro';
 import { getBoardProjects, projectPath } from '../data/board';
 import { strings } from '../i18n';
+import { METHUSELAH_PATTERNS } from '../scripts/board/patterns';
 import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
 import { getResume, htmlToText, type Lang } from '../lib/resume';
@@ -19,6 +20,21 @@ const t = strings(lang);
 const cvHref = lang === 'fr' ? '/cv/' : '/en/cv/';
 const cvPdf = cvPdfPath(lang);
 const { l: nameText, p: nameNarrow } = boardName(resume.name);
+
+// each row's seed as a tiny pixel glyph, centred in a box sized to the largest pattern so the rows align
+const patterns = Object.values(METHUSELAH_PATTERNS) as readonly (readonly (readonly number[])[])[];
+const glyphCols = Math.max(...patterns.map((grid) => Math.max(...grid.map((row) => row.length))));
+const glyphRows = Math.max(...patterns.map((grid) => grid.length));
+const glyphRects = (seed: keyof typeof METHUSELAH_PATTERNS) => {
+  const grid = METHUSELAH_PATTERNS[seed] as readonly (readonly number[])[];
+  const width = Math.max(...grid.map((row) => row.length));
+  const dx = Math.floor((glyphCols - width) / 2);
+  const dy = Math.floor((glyphRows - grid.length) / 2);
+  const rects: { x: number; y: number }[] = [];
+  grid.forEach((row, y) => row.forEach((on, x) => on && rects.push({ x: x + dx, y: y + dy })));
+  return rects;
+};
+const projectCount = String(projects.length).padStart(2, '0');
 
 const boardData = {
   name: { l: nameText, p: nameNarrow },
@@ -37,10 +53,22 @@ const description = htmlToText(resume.summary) || resume.headline;
       {resume.headline && <div class="name-note" id="name-note">{resume.headline}</div>}
       <!-- the projects: each row fires its seed onto the board, a click dives into its page -->
       <nav id="projects" aria-label={t.board.projects}>
+        <p class="phead">{t.board.projects} · {projectCount}</p>
         <ul>
           {projects.map((project) => (
             <li>
               <a class="proj" href={projectPath(lang, project.slug)} data-id={project.slug} data-seed={project.seed}>
+                <svg
+                  class="pglyph"
+                  viewBox={`0 0 ${glyphCols} ${glyphRows}`}
+                  style={`--gc:${glyphCols};--gr:${glyphRows}`}
+                  shape-rendering="crispEdges"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  {glyphRects(project.seed).map(({ x, y }) => <rect x={x} y={y} width="1" height="1" />)}
+                </svg>
                 <span class="pname">{project.boardName}</span>
                 {project.meta && <span class="pmeta">{project.meta}</span>}
               </a>

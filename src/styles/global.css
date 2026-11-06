@@ -140,24 +140,42 @@ button {
   scrollbar-width: none;
 }
 
+.phead {
+  margin: 0 0 6px;
+  font: 500 10px/1.2 "Geist Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--mute);
+  white-space: nowrap;
+}
+
 #projects ul {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 #projects.compact ul {
-  gap: 0;
+  gap: 2px;
 }
 
+#projects.compact .phead {
+  margin-bottom: 3px;
+}
+
+/* a row: the seed's glyph, then the name with its meta under it */
 .proj {
+  --g: 3px;
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 14px;
-  padding: 4px 0;
+  grid-template-columns: auto minmax(0, auto);
+  grid-template-areas: "glyph name" ". meta";
+  justify-content: start;
+  column-gap: 10px;
+  row-gap: 1px;
+  padding: 2px 0;
   text-decoration: none;
   cursor: pointer;
   pointer-events: auto;
@@ -165,41 +183,66 @@ button {
 }
 
 #projects.compact .proj {
-  padding: 1px 0;
+  --g: 2px;
+  column-gap: 8px;
+  row-gap: 0;
+  padding: 0;
 }
 
-#projects.compact .pname {
-  padding: 1px 6px;
-  font-size: 11px;
+.proj .pglyph {
+  grid-area: glyph;
+  align-self: center;
+  width: calc(var(--gc) * var(--g));
+  height: calc(var(--gr) * var(--g));
+  color: var(--ink);
+  background: var(--paper);
+  box-sizing: content-box;
+  padding: 2px;
+  margin-left: -2px;
+  transition: color .12s ease;
 }
 
 .proj .pname {
-  font: 500 12px/1.2 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  padding: 2px 6px;
-  margin-left: -6px;
+  grid-area: name;
+  font: 18px/1.15 "Geist Pixel", monospace;
+  color: var(--ink);
+  padding: 1px 5px;
+  margin-left: -5px;
   background: var(--paper);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color .12s ease, background-color .12s ease;
+}
+
+#projects.compact .pname {
+  padding: 0 4px;
+  margin-left: -4px;
+  font-size: 14px;
 }
 
 .proj .pmeta {
+  grid-area: meta;
+  justify-self: start;
+  max-width: 100%;
   font: 500 10px/1.2 "Geist Mono", monospace;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: var(--mute);
-  padding: 0 3px;
+  padding: 0 1px;
   background: var(--paper);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  justify-self: end;
 }
 
 #projects.narrow .pmeta {
   display: none;
+}
+
+.proj:hover .pglyph,
+.proj:focus-visible .pglyph {
+  color: var(--life-0);
 }
 
 .proj:hover .pname {
@@ -214,6 +257,13 @@ button {
 .proj:focus-visible .pname {
   color: var(--paper);
   background: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proj .pglyph,
+  .proj .pname {
+    transition: none;
+  }
 }
 
 /* the opening: the note and the rows start hidden and appear as the shockwave passes them */
@@ -793,7 +843,7 @@ a.flag:hover {
 /* phones and landscape phones: smaller tabs */
 @media (max-width: 760px), (max-height: 620px) {
   .proj .pname {
-    font-size: 11px;
+    font-size: 16px;
   }
 }
 
