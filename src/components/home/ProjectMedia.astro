@@ -1,6 +1,9 @@
 ---
-// Wave 0 stub: builder C turns this into the dithered media (see docs/plan-home-v3.md).
+// A project's media, drawn in the site's inks: the real video or image sits under an ordered-dithered
+// copy that fades out on hover or focus. A project without media gets its seed pattern as a poster.
+// See docs/plan-home-v3.md; the dithering lives in src/scripts/dither.ts.
 import { boardMedia, type BoardProject } from '../../data/board';
+import { METHUSELAH_PATTERNS } from '../../scripts/board/patterns';
 
 interface Props {
   project: BoardProject;
@@ -10,9 +13,285 @@ interface Props {
 
 const { project, label } = Astro.props;
 const media = project.media ?? boardMedia(project);
+const kind = media?.video ? 'video' : media?.image ? 'image' : undefined;
+
+/** The poster: the seed's live cells as squares on a 10px grid. */
+const CELL = 10;
+const pattern = METHUSELAH_PATTERNS[project.seed];
+const cols = Math.max(...pattern.map((row) => row.length));
+const cells = pattern.flatMap((row, y) => row.flatMap((alive, x) => (alive ? [{ x, y }] : [])));
+const glyph = { width: cols * CELL, height: pattern.length * CELL };
 ---
 
-<figure class="pmedia">
-  {media?.video && <video src={media.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
-  {!media?.video && media?.image && <img src={media.image} alt={label} loading="lazy" />}
+<figure class:list={['pmedia', { 'pmedia--poster': !kind }]} aria-label={label}>
+  {kind === 'video' && <video src={media?.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
+  {kind === 'image' && <img src={media?.image} alt={label} loading="lazy" decoding="async" />}
+  {kind && <canvas class="pmedia-dither" aria-hidden="true"></canvas>}
+  {
+    !kind && (
+      <>
+        <svg
+          class="pmedia-glyph"
+          width={glyph.width}
+          height={glyph.height}
+          viewBox={`0 0 ${glyph.width} ${glyph.height}`}
+          aria-hidden="true"
+          focusable="false"
+        >
+          {cells.map(({ x, y }) => (
+            <rect x={x * CELL} y={y * CELL} width={CELL} height={CELL} />
+          ))}
+        </svg>
+        <figcaption class="pmedia-caption">{project.seed.toUpperCase()}</figcaption>
+      </>
+    )
+  }
 </figure>
+
+<style>
+  .pmedia {
+    position: relative;
+    margin: 0;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background-color: var(--paper);
+    border: 1px solid var(--line);
+  }
+
+  .pmedia > video,
+  .pmedia > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .pmedia > canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  /* hover reveals the real media; focus does too, when a parent link has it */
+  .pmedia:hover > canvas,
+  .pmedia:focus-within > canvas,
+  :global(a:focus-visible) .pmedia > canvas {
+    opacity: 0;
+  }
+
+  .pmedia--poster {
+    display: grid;
+    place-items: center;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 10px 10px;
+  }
+
+  .pmedia-glyph {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    shape-rendering: crispEdges;
+  }
+
+  .pmedia-glyph rect {
+    fill: var(--ink);
+  }
+
+  .pmedia-caption {
+    position: absolute;
+    left: 8px;
+    bottom: 6px;
+    padding: 2px 4px;
+    background: var(--paper);
+    color: var(--mute);
+    font: 10px/1 "Geist Mono", monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pmedia > canvas {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { DITHER_HIGHLIGHT, DITHER_INK, ditherToMask } from '../../scripts/dither';
+
+  /** The dithered copy is redrawn at most this often while a video plays. */
+  const FRAME_MS = 80;
+  /** One dithered pixel is this many CSS pixels: a 280px figure is about 93 columns. */
+  const CELL_PX = 3;
+  /** The figure's aspect ratio; the crop of the source follows it, as `object-fit: cover` does. */
+  const ASPECT = 4 / 3;
+  const FALLBACK_INK = '#1b1a17';
+  const FALLBACK_LIFE = '#ff8a00';
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  /** Re-reads the colours and redraws, for every figure; one shared observer on the theme. */
+  const refreshers = new Set<() => void>();
+
+  const setup = (figure: HTMLElement): void => {
+    const canvas = figure.querySelector<HTMLCanvasElement>('canvas.pmedia-dither');
+    const video = figure.querySelector<HTMLVideoElement>('video');
+    const img = figure.querySelector<HTMLImageElement>('img');
+    const source = video ?? img;
+    if (!canvas || !source) return;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const work = document.createElement('canvas');
+    const workCtx = work.getContext('2d', { willReadFrequently: true });
+    if (!ctx || !workCtx) {
+      // no dithering on this browser: the real media still shows
+      canvas.remove();
+      return;
+    }
+
+    let ink = FALLBACK_INK;
+    let life = FALLBACK_LIFE;
+    let cols = 0;
+    let rows = 0;
+
+    const readColours = (): void => {
+      const style = getComputedStyle(figure);
+      ink = style.getPropertyValue('--ink').trim() || FALLBACK_INK;
+      life = style.getPropertyValue('--life-0').trim() || FALLBACK_LIFE;
+    };
+
+    /** The source's pixel size, or undefined while it cannot be read yet. */
+    const sourceSize = (): [number, number] | undefined => {
+      if (video) return video.videoWidth && video.videoHeight ? [video.videoWidth, video.videoHeight] : undefined;
+      if (img?.complete && img.naturalWidth) return [img.naturalWidth, img.naturalHeight];
+      return undefined;
+    };
+
+    const draw = (): void => {
+      const size = sourceSize();
+      if (!size || !cols || !rows) return;
+      const [sw, sh] = size;
+      const wide = sw / sh > ASPECT;
+      const cropW = wide ? sh * ASPECT : sw;
+      const cropH = wide ? sh : sw / ASPECT;
+      try {
+        workCtx.imageSmoothingQuality = 'high';
+        workCtx.drawImage(source, (sw - cropW) / 2, (sh - cropH) / 2, cropW, cropH, 0, 0, cols, rows);
+        const mask = ditherToMask(workCtx.getImageData(0, 0, cols, rows).data, cols, rows);
+        ctx.clearRect(0, 0, cols, rows);
+        for (const [value, colour] of [
+          [DITHER_INK, ink],
+          [DITHER_HIGHLIGHT, life],
+        ] as const) {
+          ctx.fillStyle = colour;
+          for (let i = 0; i < mask.length; i++) {
+            if (mask[i] === value) ctx.fillRect(i % cols, Math.floor(i / cols), 1, 1);
+          }
+        }
+      } catch {
+        // not readable yet: the next frame, load or seek draws it
+      }
+    };
+
+    const resize = (): void => {
+      const nextCols = Math.max(8, Math.round(figure.clientWidth / CELL_PX));
+      const nextRows = Math.max(6, Math.round(nextCols / ASPECT));
+      if (nextCols === cols && nextRows === rows) return;
+      cols = nextCols;
+      rows = nextRows;
+      work.width = canvas.width = cols;
+      work.height = canvas.height = rows;
+      draw();
+    };
+
+    readColours();
+    refreshers.add(() => {
+      readColours();
+      draw();
+    });
+    new ResizeObserver(resize).observe(figure);
+
+    if (img) img.addEventListener('load', draw);
+
+    if (video) {
+      let inView = false;
+      let hovered = false;
+      let focused = false;
+      let last = 0;
+      let frame = 0;
+
+      const tick = (now: number): void => {
+        frame = 0;
+        if (video.paused || video.ended) return;
+        if (now - last >= FRAME_MS) {
+          last = now;
+          draw();
+        }
+        frame = requestAnimationFrame(tick);
+      };
+
+      // play while on screen; under reduced motion, only while hovered or focused
+      const wantsPlay = (): boolean => inView && (!reducedMotion.matches || hovered || focused);
+      const sync = (): void => {
+        if (wantsPlay()) void video.play().catch(() => {});
+        else video.pause();
+      };
+
+      video.addEventListener('loadedmetadata', () => {
+        // step past the black first frame so there is something to dither before playback
+        if (video.currentTime === 0) video.currentTime = 0.1;
+      });
+      video.addEventListener('loadeddata', draw);
+      video.addEventListener('seeked', draw);
+      video.addEventListener('play', () => {
+        if (!frame) frame = requestAnimationFrame(tick);
+      });
+
+      const host = figure.closest('a') ?? figure;
+      figure.addEventListener('pointerenter', () => {
+        hovered = true;
+        sync();
+      });
+      figure.addEventListener('pointerleave', () => {
+        hovered = false;
+        sync();
+      });
+      host.addEventListener('focusin', () => {
+        focused = true;
+        sync();
+      });
+      host.addEventListener('focusout', () => {
+        focused = false;
+        sync();
+      });
+
+      new IntersectionObserver(([entry]) => {
+        inView = entry?.isIntersecting ?? false;
+        sync();
+      }).observe(figure);
+    }
+  };
+
+  const figures = document.querySelectorAll<HTMLElement>('figure.pmedia');
+  if (figures.length) {
+    new MutationObserver(() => refreshers.forEach((refresh) => refresh())).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  }
+  for (const figure of figures) {
+    try {
+      setup(figure);
+    } catch {
+      // a broken figure keeps its real media; the others still set up
+    }
+  }
+</script>
