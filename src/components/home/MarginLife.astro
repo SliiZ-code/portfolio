@@ -1,0 +1,74 @@
+---
+// A sparse Game of Life in the side margins of the content (src/scripts/margin-life.ts). Decorative: hidden from
+// assistive tech, and blank without JavaScript.
+---
+
+<div class="margin-life" aria-hidden="true" hidden>
+  <div class="margin-gutter" data-side="left" hidden></div>
+  <div class="margin-gutter" data-side="right" hidden></div>
+</div>
+
+<style>
+  /* covers the whole section; pointer-events off, so the text and links keep every click */
+  .margin-life {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* one column of cells per gutter, the height of the section; the script sets its left edge and width */
+  .margin-gutter {
+    position: absolute;
+    top: 0;
+    /* its own layer: the page scrolls it without re-rasterising every cell, and a generation repaints only what changed */
+    will-change: transform;
+  }
+
+  /* the living cells are created by the script, so their rules are global. Colours are the board's age buckets
+     (src/scripts/board/render.ts) at 70% opacity, from the --life-* and --ink tokens: a theme switch recolours them */
+  :global(.margin-gutter > i) {
+    position: absolute;
+    width: calc(var(--cell, 3px) - var(--gap, 0px));
+    height: calc(var(--cell, 3px) - var(--gap, 0px));
+    background: var(--life-0);
+    opacity: 0.7;
+  }
+
+  :global(.margin-gutter > i.b2) {
+    background: var(--life-1);
+  }
+
+  :global(.margin-gutter > i.b3) {
+    background: var(--life-2);
+    opacity: 0.644;
+  }
+
+  :global(.margin-gutter > i.b4) {
+    background: var(--life-3);
+    opacity: 0.546;
+  }
+
+  :global(.margin-gutter > i.b5) {
+    background: var(--ink);
+    opacity: 0.35;
+  }
+
+  /* a positioned box with z-index 1 paints over the z-index 0 layer: the text always sits above the life */
+  :global(.home-content > .hc) {
+    position: relative;
+    z-index: 1;
+  }
+</style>
+
+<script>
+  import { initMarginLife } from '../../scripts/margin-life';
+
+  document.querySelectorAll<HTMLElement>('section.home-content').forEach((section) => {
+    try {
+      initMarginLife(section);
+    } catch {
+      // the margins are decoration: a failure leaves them blank and the page as it was
+    }
+  });
+</script>
