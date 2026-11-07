@@ -1,17 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  indexLabel,
   isHiddenProject,
   joinMeta,
   langOfPath,
   leadSentences,
   linkLabel,
-  markPhrases,
   splitProjects,
 } from '../src/components/home/content';
-import { highlightsFor } from '../src/data/highlights';
-import { getResume, htmlToText } from '../src/lib/resume';
-import { strings } from '../src/i18n';
 
 describe('leadSentences', () => {
   it('keeps the first two sentences by default', () => {
@@ -81,81 +76,6 @@ describe('leadSentences keeps version numbers whole', () => {
   });
 });
 
-describe('markPhrases', () => {
-  const text = 'Main developer of Cerebro, an LLM tool. Cerebro scores LLM output.';
-
-  it('marks every exact occurrence and keeps the rest as plain runs', () => {
-    expect(markPhrases(text, ['Cerebro', 'LLM'])).toEqual([
-      { text: 'Main developer of ', marked: false },
-      { text: 'Cerebro', marked: true },
-      { text: ', an ', marked: false },
-      { text: 'LLM', marked: true },
-      { text: ' tool. ', marked: false },
-      { text: 'Cerebro', marked: true },
-      { text: ' scores ', marked: false },
-      { text: 'LLM', marked: true },
-      { text: ' output.', marked: false },
-    ]);
-  });
-
-  it('rejoins to the original text', () => {
-    const segments = markPhrases(text, ['Cerebro', 'LLM', 'tool']);
-    expect(segments.map((segment) => segment.text).join('')).toBe(text);
-  });
-
-  it('is case-sensitive and literal, never a regular expression', () => {
-    expect(markPhrases('cerebro (C++) a.*', ['Cerebro', 'C++', 'a.*'])).toEqual([
-      { text: 'cerebro (', marked: false },
-      { text: 'C++', marked: true },
-      { text: ') ', marked: false },
-      { text: 'a.*', marked: true },
-    ]);
-  });
-
-  it('keeps the first of overlapping phrases and drops the other', () => {
-    expect(markPhrases('réalité virtuelle', ['réalité', 'réalité virtuelle', 'virtuelle'])).toEqual([
-      { text: 'réalité virtuelle', marked: true },
-    ]);
-  });
-
-  it('marks an apostrophe phrase as written in the summary', () => {
-    expect(markPhrases("un stage à l'étranger", ["à l'étranger"])).toEqual([
-      { text: 'un stage ', marked: false },
-      { text: "à l'étranger", marked: true },
-    ]);
-  });
-
-  it('ignores phrases that are absent or empty, and returns nothing for empty text', () => {
-    expect(markPhrases('abc', ['zzz', ''])).toEqual([{ text: 'abc', marked: false }]);
-    expect(markPhrases('', ['abc'])).toEqual([]);
-  });
-
-  it('keeps markup-looking text as text', () => {
-    expect(markPhrases('<b>x</b> & y', ['<b>x</b>'])).toEqual([
-      { text: '<b>x</b>', marked: true },
-      { text: ' & y', marked: false },
-    ]);
-  });
-});
-
-describe('the bio highlights match the summaries', () => {
-  for (const lang of ['fr', 'en'] as const) {
-    it(`finds every ${lang} phrase in the ${lang} summary`, () => {
-      const bio = htmlToText(getResume(lang).summary);
-      const missing = strings(lang).home.introMarks.filter((phrase) => !bio.includes(phrase));
-      expect(missing).toEqual([]);
-    });
-  }
-});
-
-describe('indexLabel', () => {
-  it('pads to two digits', () => {
-    expect(indexLabel(1)).toBe('01');
-    expect(indexLabel(4)).toBe('04');
-    expect(indexLabel(12)).toBe('12');
-  });
-});
-
 describe('langOfPath', () => {
   it('reads the language from the path', () => {
     expect(langOfPath('/en/')).toBe('en');
@@ -163,35 +83,5 @@ describe('langOfPath', () => {
     expect(langOfPath('/en/projects/blink/')).toBe('en');
     expect(langOfPath('/')).toBe('fr');
     expect(langOfPath('/enfin/')).toBe('fr');
-  });
-});
-
-describe('highlightsFor', () => {
-  it('returns the figures of a company in the language asked for', () => {
-    expect(highlightsFor('CESI LINEACT', 'en')).toEqual([
-      { value: '360°', label: 'immersive VR video' },
-      { value: 'AES-256', label: 'encrypted robot access' },
-    ]);
-    expect(highlightsFor('CESI LINEACT', 'fr')[1]).toEqual({ value: 'AES-256', label: 'accès robot chiffré' });
-  });
-
-  it('matches the company name, ignoring surrounding spaces', () => {
-    expect(highlightsFor('  CAPFI ', 'fr')).toHaveLength(3);
-  });
-
-  it('gives nothing for a company without a set, and for names that are not keys', () => {
-    expect(highlightsFor('Acme', 'fr')).toEqual([]);
-    expect(highlightsFor('constructor', 'en')).toEqual([]);
-  });
-
-  it('gives FR and EN the same number of figures for every company', () => {
-    for (const company of ['CAPFI', 'CESI LINEACT']) {
-      expect(highlightsFor(company, 'fr')).toHaveLength(highlightsFor(company, 'en').length);
-    }
-  });
-
-  it('returns copies, so a caller cannot change the data', () => {
-    highlightsFor('CAPFI', 'en')[0].value = 'changed';
-    expect(highlightsFor('CAPFI', 'en')[0].value).toBe('200+');
   });
 });

@@ -1,35 +1,21 @@
 ---
-// The close: a big line that links to the e-mail, then the small links row as before.
+// The close: one quiet line.
 import type { UIStrings } from '../../i18n/fr';
 import type { Resume } from '../../lib/resume';
 
 interface Props {
   t: UIStrings;
   resume: Resume;
-  cvHref: string;
-  cvPdf: string;
 }
 
-const { t, resume, cvHref, cvPdf } = Astro.props;
+const { t, resume } = Astro.props;
 const year = new Date().getFullYear();
 ---
 
-<footer class="hc-foot hc-reveal">
-  <p class="hc-closing">
-    {resume.email ? <a href={`mailto:${resume.email}`}>{t.home.closing}</a> : t.home.closing}
-  </p>
-  <div class="hc-foot-row">
-    <p class="hc-foot-name">{resume.name}</p>
-    <nav class="hc-foot-links" aria-label={t.home.footerNav}>
-      <ul>
-        {resume.profiles.map((profile) => (
-          <li><a href={profile.url}>{profile.network}</a></li>
-        ))}
-        {resume.email && <li><a href={`mailto:${resume.email}`}>{resume.email}</a></li>}
-        <li><a href={cvPdf || cvHref}>{cvPdf ? t.home.cvPdf : t.home.cv}</a></li>
-      </ul>
-    </nav>
-  </div>
-  <p class="hc-colophon">© {year} · {t.home.madeWith}</p>
-  <a class="hc-top" href="#">{t.home.top}</a>
+<footer class="hc-foot">
+  <p>© {year} {resume.name}</p>
+  <nav aria-label={t.home.footerNav}>
+    {resume.email && <a href={`mailto:${resume.email}`}>{resume.email}</a>}
+    {resume.profiles.map((profile) => <a href={profile.url}>{profile.network}</a>)}
+  </nav>
 </footer>

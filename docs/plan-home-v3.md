@@ -70,3 +70,12 @@ Feedback after launch: the hero is great, the rest is boring. The content must c
 - **I, glider margins**: a sparse Game of Life lives in the page's side margins. Glider guns at section edges fire
   gliders down the gutters. It only runs while visible, is cheap, and is off under reduced motion. Owns
   `HomeContent.astro`, new `MarginLife.astro`, `src/scripts/margin-life.ts`.
+
+## Wave 4: the calm pass
+
+Feedback: "the layout looks AI generated". The tells were stacked devices: an uppercase mono status line, a highlighter
+on the bio, a handwritten note, numbered "01 /" rules, a row of KPI figures, accent-square bullets, uppercase labels,
+a giant closing line and fade-up reveals. All gone. The page now reads like a research homepage: section titles hang
+in a left column, the text keeps one measure on the right, projects are a small picture beside a short text, the rest
+of the resume is plain lines. The board identity stays where it earns its place: the pixel titles that assemble, the
+living media and the gliders in the margins.

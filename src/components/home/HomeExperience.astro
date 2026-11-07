@@ -1,62 +1,39 @@
 ---
-// Experience as case studies: on desktop the when, where and role stay in a sticky column on the left,
-// the key figures and what was done sit on the right.
+// Experience: each job as a short entry, the role and the place on one line, the dates beside them, then the text
+// from the resume.
 import HomeSection from './HomeSection.astro';
-import { langOfPath } from './content';
-import { highlightsFor } from '../../data/highlights';
-import type { Experience, Lang } from '../../lib/resume';
+import { joinMeta } from './content';
+import type { Experience } from '../../lib/resume';
 
 interface Props {
   title: string;
   entries: Experience[];
-  /** Defaults to the language of the page's path. */
-  lang?: Lang;
 }
 
 const { title, entries } = Astro.props;
-const lang: Lang = Astro.props.lang ?? langOfPath(Astro.url.pathname);
 ---
 
-<HomeSection id="hc-experience" number="01" title={title}>
-  <div class="hc-stack">
+<HomeSection id="hc-experience" title={title}>
+  <div class="hc-entries">
     {
-      entries.map((entry) => {
-        const figures = highlightsFor(entry.company, lang);
-        return (
-          <article class="hc-exp hc-reveal">
-            <header class="hc-exp-side">
-              {entry.period && <p class="hc-meta">{entry.period}</p>}
-              {entry.location && <p class="hc-meta">{entry.location}</p>}
-              <h3 class="hc-role">{entry.position || entry.company}</h3>
-              {entry.company && entry.position && (
-                <p class="hc-company">
-                  {entry.website.url ? <a href={entry.website.url}>{entry.company}</a> : entry.company}
-                </p>
-              )}
-            </header>
-            <div class="hc-exp-main">
-              {figures.length > 0 && (
-                <ul class="hc-figures">
-                  {figures.map((figure) => (
-                    <li>
-                      <p class="hc-fig-value">{figure.value}</p>
-                      <p class="hc-fig-label">{figure.label}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {entry.description && <div class="hc-desc" set:html={entry.description} />}
-              {entry.roles.map((role) => (
-                <div class="hc-sub">
-                  <h4 class="hc-role-sub">{role.position}</h4>
-                  {role.period && <p class="hc-meta">{role.period}</p>}
-                  {role.description && <div class="hc-desc" set:html={role.description} />}
-                </div>
-              ))}
+      entries.map((entry) => (
+        <article class="hc-entry">
+          <header class="hc-entry-head">
+            <h3 class="hc-entry-title">
+              {entry.position || entry.company}{entry.company && entry.position && ', '}{entry.company && entry.position && (entry.website.url ? <a href={entry.website.url}>{entry.company}</a> : entry.company)}
+            </h3>
+            <p class="hc-date">{joinMeta(entry.period, entry.location)}</p>
+          </header>
+          {entry.description && <div class="hc-desc" set:html={entry.description} />}
+          {entry.roles.map((role) => (
+            <div class="hc-sub">
+              <h4 class="hc-entry-title">{role.position}</h4>
+              {role.period && <p class="hc-date">{role.period}</p>}
+              {role.description && <div class="hc-desc" set:html={role.description} />}
             </div>
-          </article>
-        );
-      })
+          ))}
+        </article>
+      ))
     }
   </div>
 </HomeSection>

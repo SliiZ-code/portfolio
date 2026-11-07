@@ -29,298 +29,173 @@
   mask-repeat: repeat-x;
 }
 
-/* ---- layout: a 12-column grid, 1200px at most; every block spans the grid and sets its own columns ---- */
+/* ---- layout: a document. On wide screens the section titles hang in a left column and the text reads in a
+   single measure on the right; the intro and the footer start on the text's edge. ---- */
 .hc {
-  --hc-gap: 96px;
   --hc-pad: clamp(16px, 5vw, 64px);
+  --hc-side: 168px;
+  --hc-col: 40px;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-  row-gap: var(--hc-gap);
-  max-width: 1200px;
+  row-gap: 88px;
+  max-width: calc(var(--hc-side) + var(--hc-col) + 680px + 2 * var(--hc-pad));
   margin: 0 auto;
   /* the bottom padding keeps the last lines clear of the fixed HUD in the corner */
-  padding: 72px var(--hc-pad) 80px;
+  padding: 80px var(--hc-pad) 96px;
   color: var(--ink);
-  font: 12px/1.5 "Geist Mono", monospace;
+  font: 18px/1.5 "Gambarino", serif;
 }
 
 .hc > * {
-  grid-column: 1 / -1;
   min-width: 0;
 }
 
 .hc a {
   color: inherit;
-  text-underline-offset: .2em;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .18em;
 }
 
 .hc a:hover {
   color: var(--accent);
+  text-decoration-color: currentColor;
 }
 
 .hc p,
 .hc h3,
-.hc h4 {
+.hc h4,
+.hc dl,
+.hc dd {
   margin: 0;
 }
 
-.hc-stack {
-  display: grid;
-  gap: 80px;
+.hc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.hc-meta {
-  color: var(--mute);
-  letter-spacing: .02em;
-}
-
-.hc-strong {
+.hc-date,
+.hc-label {
   display: block;
-  font: 18px/1.3 "Gambarino", serif;
+  color: var(--mute);
+  font: 12px/1.6 "Geist Mono", monospace;
+}
+
+.hc-mute {
+  color: var(--mute);
 }
 
 .hc-line {
   display: block;
-  font: 16px/1.35 "Gambarino", serif;
 }
 
-/* ---- intro: status line, bio, the two calls to action and the note beside them ---- */
-.hc-intro {
-  display: grid;
-  gap: 36px;
+.hc-entry-title {
+  display: block;
+  font: 400 20px/1.3 "Gambarino", serif;
 }
 
-.hc-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font: 500 13px/1.4 "Geist Mono", monospace;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
-.hc-dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  background: var(--life-0);
-}
-
-.hc-summary {
-  max-width: 760px;
-  font: 400 clamp(22px, 2.2vw + 10px, 30px)/1.22 "Gambarino", serif;
-  text-wrap: pretty;
-}
-
-/* the highlighter: the key phrases of the bio, in the first life colour */
-.hc-summary mark {
-  background: color-mix(in srgb, var(--life-0) 28%, transparent);
-  color: inherit;
-  padding: 0 .08em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-.hc-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px 18px;
-}
-
-/* the two main calls to action: the ink chip, inverted on hover (as the board's .br .cta) */
-.hc-cta {
-  padding: 10px 16px;
-  background: var(--ink);
-  color: var(--paper);
-  font: 14px/1 "Geist Mono", monospace;
+.hc-entry-title a {
   text-decoration: none;
 }
 
-/* the generic `.hc a` rules above are more specific, so the chip's colours are repeated under `.hc` */
-.hc .hc-cta {
-  color: var(--paper);
+/* ---- intro ---- */
+.hc-intro {
+  display: grid;
+  gap: 28px;
+  max-width: 680px;
 }
 
-.hc .hc-cta:hover,
-.hc .hc-cta:focus-visible {
-  background: var(--accent);
-  color: var(--paper);
+.hc-summary {
+  font: 400 clamp(19px, 1vw + 14px, 24px)/1.4 "Gambarino", serif;
+  text-wrap: pretty;
 }
 
-/* a handwritten side note, tilted, that points back at the calls to action */
-.hc-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--accent);
-  font: 400 20px/1.1 "Shantell Sans", cursive;
-  transform: rotate(-2deg);
+.hc-reach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  font: 13px/1.6 "Geist Mono", monospace;
 }
 
-.hc-note-arrow {
-  flex: none;
-  width: 48px;
-  height: 30px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* ---- numbered sections: the number above the title, the body under it ---- */
+/* ---- sections: the title above the body on a phone, beside it on wide screens ---- */
 .hc-section {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 24px;
-}
-
-.hc-section > * {
-  grid-column: 1 / -1;
+  gap: 20px;
 }
 
 .hc-head {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 56px;
-}
-
-.hc-num {
-  color: var(--mute);
-}
-
-.hc-section h2 {
-  font: 34px/1 "Geist Pixel", monospace;
-  font-weight: 400;
-}
-
-/* ---- experience: case studies, a sticky column of facts beside the figures and the text ---- */
-.hc-exp {
-  display: grid;
-  gap: 28px;
-  padding-top: 28px;
-  border-top: 1px solid var(--line);
-}
-
-.hc-exp-side {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-
-.hc-role {
-  font: 400 32px/1.05 "Geist Pixel", monospace;
-  margin-top: 12px;
-}
-
-.hc-company {
-  font: 400 20px/1.3 "Gambarino", serif;
-  margin-top: 4px;
-}
-
-.hc-exp-main {
-  display: grid;
-  gap: 28px;
   min-width: 0;
 }
 
-/* the key figures: pixel numerals with a mono label, split by thin rules */
-.hc-figures {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.hc-body {
+  min-width: 0;
+  max-width: 680px;
+}
+
+/* ---- experience ---- */
+.hc-entries {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 176px), 1fr));
+  gap: 48px;
 }
 
-.hc-figures li {
-  display: grid;
-  gap: 8px;
-  align-content: start;
-  padding: 16px 0 14px;
-  border-top: 1px solid var(--line);
-}
-
-.hc-fig-value {
-  font: 400 clamp(40px, 5vw, 56px)/1 "Geist Pixel", monospace;
-  white-space: nowrap;
-}
-
-.hc-fig-label {
-  color: var(--mute);
-  font: 11px/1.4 "Geist Mono", monospace;
-  letter-spacing: .02em;
+.hc-entry-head {
+  margin-bottom: 12px;
 }
 
 .hc-sub {
-  margin-top: 4px;
+  margin-top: 20px;
 }
 
-.hc-role-sub {
-  font: 400 18px/1.2 "Geist Pixel", monospace;
-}
-
-/* rich text from the resume: bullets are small accent squares */
+/* rich text from the resume: a quiet dash for each point */
 .hc-desc {
-  font: 18px/1.45 "Gambarino", serif;
+  font: 17px/1.55 "Gambarino", serif;
+  text-wrap: pretty;
 }
 
 .hc-desc > * + * {
   margin-top: .6em;
 }
 
-.hc-desc ul {
-  list-style: none;
-  padding: 0;
-}
-
-.hc-desc li {
+.hc-desc ul li {
   position: relative;
-  padding-left: 1.2em;
+  padding-left: 1.1em;
 }
 
 .hc-desc li + li {
-  margin-top: .45em;
+  margin-top: .3em;
 }
 
 .hc-desc li::before {
-  content: "";
+  content: "–";
   position: absolute;
   left: 0;
-  top: .5em;
-  width: .42em;
-  height: .42em;
-  background: var(--accent);
+  color: var(--mute);
 }
 
 .hc-desc li > p {
   display: inline;
 }
 
-/* ---- projects: a large lead with its text beside it, then two columns; hidden ones as a numbered index ---- */
+/* ---- projects: a small picture beside the text ---- */
 .hc-projects {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
-  gap: 80px;
+  gap: 36px;
 }
 
 .hc-project {
   display: grid;
-  gap: 20px;
-  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
 }
 
-/* the media box: ProjectMedia fills it at 4:3; a wider box crops that frame from its middle */
+/* the media box: ProjectMedia fills it at 4:3 */
 .hc-media {
   position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  max-width: 320px;
 }
 
 .hc-media > .pmedia {
@@ -331,350 +206,96 @@
   width: 100%;
 }
 
-.hc-index {
-  color: var(--mute);
-  letter-spacing: .04em;
-}
-
-.hc-project-name {
-  font: 400 28px/1.08 "Geist Pixel", monospace;
-}
-
-.hc-project-name a {
-  text-decoration: none;
-}
-
-.hc-project-name a:hover {
-  color: var(--accent);
-}
-
 .hc-lead {
-  font: 19px/1.45 "Gambarino", serif;
-  margin-top: 4px;
+  font: 17px/1.5 "Gambarino", serif;
+  margin-top: 6px;
+  text-wrap: pretty;
 }
 
 .hc-links {
-  margin-top: 12px;
-  color: var(--mute);
-}
-
-.hc-links a {
-  color: var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font: 12px/1.6 "Geist Mono", monospace;
 }
 
 .hc-more {
-  margin-top: 96px;
+  margin-top: 48px;
 }
 
-.hc-more > h3 {
+.hc-plain {
+  display: grid;
+  gap: 18px;
+}
+
+/* ---- skills: name, then what it covers ---- */
+.hc-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.hc-rows dt {
+  font: 400 17px/1.5 "Gambarino", serif;
+}
+
+.hc-rows dd {
   color: var(--mute);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 400;
-  margin-bottom: 8px;
+  font: 16px/1.5 "Gambarino", serif;
 }
 
-.hc-index-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.hc-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 20px;
-  align-items: baseline;
-  gap: 6px 16px;
-  padding: 18px 0;
-  border-top: 1px solid var(--line);
-}
-
-.hc-row-num {
-  color: var(--mute);
-}
-
-/* the whole row is one link: the stretched ::after covers it, the other links sit above it */
-.hc-row-name {
-  font: 400 20px/1.2 "Geist Pixel", monospace;
-  text-decoration: none;
-}
-
-.hc-row-name::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.hc-row:hover .hc-row-name,
-.hc-row:focus-within .hc-row-name {
-  color: var(--accent);
-}
-
-.hc-row-meta,
-.hc-row-links {
-  grid-column: 2;
-  position: relative;
-  z-index: 1;
-}
-
-.hc-row-links a {
-  color: var(--ink);
-}
-
-.hc-row-arrow {
-  grid-column: 3;
-  grid-row: 1;
-  justify-self: end;
-  font: 400 18px/1 "Geist Mono", monospace;
-  transition: transform .2s ease;
-}
-
-.hc-row:hover .hc-row-arrow,
-.hc-row:focus-within .hc-row-arrow {
-  transform: translateX(4px);
-}
-
-/* ---- about: compact, the skills as tags under their names, the rest in columns ---- */
-.hc-about {
-  display: grid;
-  gap: 56px;
-}
-
-.hc-about h3 {
-  color: var(--mute);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  font-weight: 400;
-  padding-bottom: 6px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.hc-about ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.hc-skills {
-  display: grid;
-  gap: 22px 32px;
-}
-
-.hc-skills li {
-  display: grid;
-  gap: 6px;
-  align-content: start;
-}
-
-.hc-skill-name {
-  font: 400 18px/1.2 "Geist Pixel", monospace;
-}
-
-/* skills as plain tags: mono 11px, separated by " / ", no boxes */
-.hc-keywords {
-  font: 11px/1.7 "Geist Mono", monospace;
-  letter-spacing: .02em;
-}
-
-.hc-columns {
-  display: grid;
-  gap: 32px;
-}
-
-.hc-columns ul {
-  display: grid;
-  gap: 10px;
-}
-
-/* ---- footer: the big line to the e-mail, then the links row ---- */
+/* ---- footer ---- */
 .hc-foot {
-  display: grid;
-  gap: 40px;
-  padding-top: 28px;
-  border-top: 1px solid var(--ink);
-}
-
-.hc-closing {
-  font: 400 clamp(40px, 7vw, 96px)/.95 "Geist Pixel", monospace;
-  overflow-wrap: break-word;
-}
-
-.hc-closing a {
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.hc-closing a:hover {
-  color: var(--ink);
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-decoration-thickness: .08em;
-  text-underline-offset: .12em;
-}
-
-.hc-foot-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px 32px;
+  gap: 8px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--mute);
+  font: 12px/1.6 "Geist Mono", monospace;
 }
 
-.hc-foot-name {
-  font: 400 28px/1 "Geist Pixel", monospace;
-}
-
-.hc-foot-links ul {
-  list-style: none;
-  padding: 0;
+.hc-foot nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 22px;
+  gap: 4px 20px;
 }
 
-.hc-foot-links a {
-  text-decoration: none;
-}
-
-.hc-colophon {
-  color: var(--mute);
-}
-
-.hc-top {
-  justify-self: start;
-  text-decoration: none;
-  color: var(--mute);
-}
-
-/* ---- wide screens: the case studies split in two, the projects and the about section gain columns ---- */
-@media (min-width: 640px) {
-  .hc-projects {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 32px;
-  }
-
-  .hc-project--lead {
-    grid-column: 1 / -1;
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    align-items: center;
-    column-gap: 40px;
-  }
-
-  .hc-project--lead .hc-media {
-    aspect-ratio: 16 / 10;
-  }
-
-  .hc-project--lead .hc-project-name {
-    font-size: clamp(34px, 4vw, 52px);
-  }
-
-  .hc-project--lead .hc-lead {
-    font-size: 21px;
-  }
-
-  .hc-skills {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .hc-columns {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .hc-row {
-    grid-template-columns: 48px minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.1fr) 24px;
-  }
-
-  .hc-row-meta,
-  .hc-row-links {
-    grid-column: auto;
-  }
-
-  .hc-row-arrow {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  /* side by side: a thin rule between the figures, the first one flush with the column */
-  .hc-figures li {
-    padding: 16px 20px 14px;
-  }
-
-  .hc-figures li:first-child {
-    padding-left: 0;
-  }
-
-  .hc-figures li + li {
-    border-left: 1px solid var(--line);
-  }
-}
-
-@media (min-width: 800px) {
-  .hc {
-    --hc-gap: 160px;
-  }
-
-  .hc-exp {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    column-gap: 24px;
+@media (min-width: 560px) {
+  .hc-project {
+    grid-template-columns: 176px minmax(0, 1fr);
+    gap: 24px;
     align-items: start;
   }
 
-  .hc-exp-side {
-    grid-column: 1 / span 4;
+  .hc-rows > div {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 900px) {
+  .hc {
+    row-gap: 112px;
+  }
+
+  .hc-intro,
+  .hc-foot {
+    margin-left: calc(var(--hc-side) + var(--hc-col));
+  }
+
+  .hc-section {
+    grid-template-columns: var(--hc-side) minmax(0, 1fr);
+    column-gap: var(--hc-col);
+    align-items: start;
+  }
+
+  /* the title stays beside its section while it scrolls */
+  .hc-head {
     position: sticky;
-    top: 96px;
-  }
-
-  .hc-exp-main {
-    grid-column: 6 / -1;
-  }
-}
-
-/* ---- motion: sections and entries rise and fade in as they enter the view (scroll-driven) ---- */
-@keyframes hc-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes hc-pulse {
-  50% {
-    opacity: .25;
-  }
-}
-
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .hc-reveal {
-      animation: hc-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 40%;
-    }
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hc-dot {
-    animation: hc-pulse 2s steps(2, jump-none) infinite;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hc-reveal {
-    animation: none;
-  }
-
-  .hc-row-arrow {
-    transition: none;
+    top: 88px;
+    padding-top: 2px;
   }
 }
 

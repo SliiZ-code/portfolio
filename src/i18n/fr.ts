@@ -48,21 +48,11 @@ const fr = {
     theme: 'Thème',
   },
   home: {
-    status: "Cherche un stage de recherche à l'étranger · dès juin 2027 · 12 à 17 semaines",
     footerNav: 'Liens',
     cv: 'CV',
     cvPdf: 'CV (PDF)',
-    about: 'À propos',
     moreProjects: 'Autres projets',
     projectPage: 'page du projet',
-    madeWith: 'fait avec un jeu de la vie',
-    top: '↑ haut de page',
-    /** Phrases of the bio drawn with a highlighter; each must match the summary text exactly. */
-    introMarks: ['Cerebro', 'LLM', 'réalité virtuelle', "à l'étranger"],
-    /** The handwritten note beside the calls to action. */
-    replyNote: 'réponse sous 48\u00a0h',
-    /** The big closing line, which links to the e-mail. */
-    closing: 'Parlons-en.',
   },
 };
 

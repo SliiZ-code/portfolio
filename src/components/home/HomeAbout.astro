@@ -1,78 +1,75 @@
 ---
-// The compact part: skills as plain tags under their names, then education, activities and languages in columns.
+// The rest of the resume, each part as its own section in the same two columns: skills, education, activities,
+// languages. Plain lines, the way a CV reads.
 import HomeSection from './HomeSection.astro';
 import { joinMeta } from './content';
-import type { UIStrings } from '../../i18n/fr';
 import type { Resume } from '../../lib/resume';
 
 interface Props {
-  t: UIStrings;
   resume: Resume;
 }
 
-const { t, resume } = Astro.props;
+const { resume } = Astro.props;
 const { sectionTitles: titles } = resume;
 ---
 
-<HomeSection id="hc-about" number="03" title={t.home.about}>
-  <div class="hc-about">
-    {resume.skills.length > 0 && (
-      <div class="hc-block hc-reveal">
-        <h3>{titles.skills}</h3>
-        <ul class="hc-skills">
-          {resume.skills.map((skill) => (
-            <li>
-              <h4 class="hc-skill-name">{skill.name}</h4>
-              {skill.keywords.length > 0 && <p class="hc-keywords">{skill.keywords.join(' / ')}</p>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+{
+  resume.skills.length > 0 && (
+    <HomeSection id="hc-skills" title={titles.skills}>
+      <dl class="hc-rows">
+        {resume.skills.map((skill) => (
+          <div>
+            <dt>{skill.name}</dt>
+            <dd>{skill.keywords.join(', ')}</dd>
+          </div>
+        ))}
+      </dl>
+    </HomeSection>
+  )
+}
 
-    <div class="hc-columns">
-      {resume.education.length > 0 && (
-        <div class="hc-block hc-reveal">
-          <h3>{titles.education}</h3>
-          <ul>
-            {resume.education.map((entry) => (
-              <li>
-                <span class="hc-strong">{entry.school}</span>
-                <span class="hc-line">{joinMeta(entry.degree, entry.area)}</span>
-                {entry.period && <span class="hc-meta">{entry.period}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+{
+  resume.education.length > 0 && (
+    <HomeSection id="hc-education" title={titles.education}>
+      <ul class="hc-plain">
+        {resume.education.map((entry) => (
+          <li>
+            <span class="hc-entry-title">{joinMeta(entry.degree, entry.area)}</span>
+            <span class="hc-line">{entry.school}</span>
+            {entry.period && <span class="hc-date">{entry.period}</span>}
+          </li>
+        ))}
+      </ul>
+    </HomeSection>
+  )
+}
 
-      {resume.volunteer.length > 0 && (
-        <div class="hc-block hc-reveal">
-          <h3>{titles.volunteer}</h3>
-          <ul>
-            {resume.volunteer.map((entry) => (
-              <li>
-                <span class="hc-strong">{entry.organization}</span>
-                {entry.period && <span class="hc-meta">{entry.period}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+{
+  resume.volunteer.length > 0 && (
+    <HomeSection id="hc-volunteer" title={titles.volunteer}>
+      <ul class="hc-plain">
+        {resume.volunteer.map((entry) => (
+          <li>
+            <span class="hc-entry-title">{entry.organization}</span>
+            {entry.period && <span class="hc-date">{entry.period}</span>}
+          </li>
+        ))}
+      </ul>
+    </HomeSection>
+  )
+}
 
-      {resume.languages.length > 0 && (
-        <div class="hc-block hc-reveal">
-          <h3>{titles.languages}</h3>
-          <ul>
-            {resume.languages.map((entry) => (
-              <li>
-                <span class="hc-strong">{entry.language}</span>
-                {entry.fluency && <span class="hc-meta">{entry.fluency}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  </div>
-</HomeSection>
+{
+  resume.languages.length > 0 && (
+    <HomeSection id="hc-languages" title={titles.languages}>
+      <ul class="hc-plain">
+        {resume.languages.map((entry) => (
+          <li>
+            <span class="hc-entry-title">{entry.language}</span>
+            {entry.fluency && <span class="hc-date">{entry.fluency}</span>}
+          </li>
+        ))}
+      </ul>
+    </HomeSection>
+  )
+}

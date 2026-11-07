@@ -1,53 +1,22 @@
 ---
-// A numbered section: the number and a rule sit above a large pixel title, the body follows below.
+// A section of the page: the pixel title hangs in the left column, the body reads in the right one.
+// On a phone the title sits above the body.
 import PixelTitle from './PixelTitle.astro';
 
 interface Props {
   id: string;
-  number: string;
   title: string;
 }
 
-const { id, number, title } = Astro.props;
+const { id, title } = Astro.props;
 const headingId = `${id}-title`;
 ---
 
 <section class="hc-section" id={id} aria-labelledby={headingId}>
-  <header class="hc-head hc-reveal">
-    <p class="hc-num">{number} /</p>
+  <header class="hc-head">
     <PixelTitle id={headingId} text={title} />
   </header>
   <div class="hc-body">
     <slot />
   </div>
 </section>
-
-<style>
-  /* the title spans the content column: the number, a rule to the right edge, then the word */
-  .hc-head {
-    display: block;
-    margin-bottom: clamp(32px, 4vw, 56px);
-  }
-
-  .hc-num {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin: 0 0 clamp(16px, 2vw, 24px);
-  }
-
-  .hc-num::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--line);
-  }
-
-  /* wide screens: the body starts under the title and takes the whole content grid;
-     each block keeps its own reading measure (home.css) */
-  @media (min-width: 800px) {
-    .hc-section {
-      display: block;
-    }
-  }
-</style>

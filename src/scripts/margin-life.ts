@@ -327,12 +327,11 @@ export function initMarginLife(section: HTMLElement): void {
       const parent = node.parentElement;
       if (!node.textContent?.trim() || parent?.closest('script, style')) continue;
       range.selectNodeContents(node);
-      const numbered = !!parent?.closest('.hc-num');
       for (const r of Array.from(range.getClientRects())) {
         if (!r.width || !r.height) continue;
         const b = rel(r);
         keep.push(b);
-        if (!numbered) column.push(b);
+        column.push(b);
       }
     }
     hc!.querySelectorAll<HTMLElement>('img, video, picture, canvas, svg').forEach((el) => {

@@ -1,5 +1,5 @@
 ---
-// The content that scrolls over the fixed board: intro, experience, projects, about, footer.
+// The content that scrolls over the fixed board: intro, experience, projects, the rest of the resume, footer.
 import '../../styles/home.css';
 import HomeAbout from './HomeAbout.astro';
 import HomeExperience from './HomeExperience.astro';
@@ -33,7 +33,7 @@ const t = strings(lang);
     {projects.length > 0 && (
       <HomeProjects lang={lang} t={t} title={resume.sectionTitles.projects} projects={projects} />
     )}
-    <HomeAbout t={t} resume={resume} />
-    <HomeFooter t={t} resume={resume} cvHref={cvHref} cvPdf={cvPdf} />
+    <HomeAbout resume={resume} />
+    <HomeFooter t={t} resume={resume} />
   </div>
 </section>
