@@ -1,0 +1,321 @@
+---
+// A command palette (⌘K, Ctrl+K or "/"; the Menu button on a touch screen): jump to a section or a project, copy the
+// e-mail, open the CV, switch theme or language. A native <dialog>, so focus and Escape work without help.
+import { projectPath, type BoardProject } from '../data/board';
+import type { UIStrings } from '../i18n/fr';
+import type { Lang, Resume } from '../lib/resume';
+
+interface Props {
+  lang: Lang;
+  t: UIStrings;
+  resume: Resume;
+  projects: BoardProject[];
+  cvHref: string;
+  cvPdf: string;
+}
+
+const { lang, t, resume, projects, cvHref, cvPdf } = Astro.props;
+const p = t.palette;
+const titles = resume.sectionTitles;
+
+type Item = { label: string; hint?: string; href?: string; action?: string; external?: boolean };
+const sections: Item[] = ([
+  resume.experience.length > 0 && { label: titles.experience, href: '#hc-experience' },
+  projects.length > 0 && { label: titles.projects, href: '#hc-projects' },
+  resume.skills.length > 0 && { label: titles.skills, href: '#hc-skills' },
+  resume.education.length > 0 && { label: titles.education, href: '#hc-education' },
+  resume.volunteer.length > 0 && { label: titles.volunteer, href: '#hc-volunteer' },
+  resume.languages.length > 0 && { label: titles.languages, href: '#hc-languages' },
+  { label: p.top, action: 'top' },
+] as (Item | false)[]).filter((item): item is Item => !!item);
+const projectItems: Item[] = projects.map((project) => ({
+  label: project.displayName,
+  hint: project.meta,
+  href: projectPath(lang, project.slug),
+}));
+const actions: Item[] = ([
+  resume.email && { label: p.copyEmail, hint: resume.email, action: 'copy-email' },
+  resume.email && { label: p.writeEmail, href: `mailto:${resume.email}` },
+  { label: p.cv, href: cvPdf || cvHref },
+  { label: p.theme, action: 'theme' },
+  { label: p.lang, href: lang === 'fr' ? '/en/' : '/' },
+  ...resume.profiles.map((profile) => ({ label: profile.network, hint: profile.username, href: profile.url, external: true })),
+] as (Item | false | '')[]).filter((item): item is Item => !!item);
+const groups = [
+  { label: p.sections, items: sections },
+  { label: p.projects, items: projectItems },
+  { label: p.actions, items: actions },
+].filter((group) => group.items.length > 0);
+let n = 0;
+---
+
+<dialog class="cmdk" aria-label={p.openLabel} data-email={resume.email} data-copied={p.copied}>
+  <div class="cmdk-box">
+    <input
+      class="cmdk-input"
+      type="text"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="cmdk-list"
+      aria-autocomplete="list"
+      placeholder={p.placeholder}
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <ul class="cmdk-list" id="cmdk-list" role="listbox">
+      {
+        groups.map((group) => (
+          <li class="cmdk-group" role="presentation">
+            <p class="cmdk-glabel" aria-hidden="true">{group.label}</p>
+            <ul role="group" aria-label={group.label}>
+              {group.items.map((item) => (
+                <li
+                  class="cmdk-item"
+                  role="option"
+                  id={`cmdk-${n++}`}
+                  aria-selected="false"
+                  data-href={item.href}
+                  data-action={item.action}
+                  data-external={item.external ? '' : undefined}
+                >
+                  <span>{item.label}</span>
+                  {item.hint && <span class="cmdk-hint">{item.hint}</span>}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="cmdk-empty" hidden>{p.empty}</p>
+    <p class="cmdk-foot" aria-hidden="true">{p.hint}</p>
+  </div>
+</dialog>
+
+<style>
+  .cmdk {
+    width: min(580px, calc(100vw - 32px));
+    max-height: min(560px, calc(100svh - 120px));
+    margin: 14vh auto auto;
+    padding: 0;
+    border: 0;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 0 0 1px var(--ink), 8px 8px 0 0 var(--ink);
+  }
+
+  .cmdk::backdrop {
+    background: color-mix(in srgb, var(--paper) 55%, transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  .cmdk-box {
+    display: flex;
+    flex-direction: column;
+    max-height: inherit;
+  }
+
+  .cmdk-input {
+    flex: none;
+    padding: 18px 20px;
+    border: 0;
+    border-bottom: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    font: 400 19px/1.3 "Gambarino", serif;
+    outline: none;
+  }
+
+  .cmdk-input::placeholder {
+    color: var(--mute);
+  }
+
+  .cmdk-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    overscroll-behavior: contain;
+  }
+
+  .cmdk-list ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .cmdk-glabel {
+    margin: 10px 20px 4px;
+    color: var(--mute);
+    font: 11px/1.4 "Geist Mono", monospace;
+    letter-spacing: .04em;
+  }
+
+  .cmdk-group[hidden],
+  .cmdk-item[hidden] {
+    display: none;
+  }
+
+  .cmdk-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 9px 20px;
+    font: 14px/1.35 "Geist Mono", monospace;
+    cursor: pointer;
+  }
+
+  .cmdk-item[aria-selected="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .cmdk-hint {
+    color: var(--mute);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cmdk-item[aria-selected="true"] .cmdk-hint {
+    color: inherit;
+    opacity: .7;
+  }
+
+  .cmdk-empty,
+  .cmdk-foot {
+    margin: 0;
+    padding: 12px 20px;
+    color: var(--mute);
+    font: 12px/1.4 "Geist Mono", monospace;
+  }
+
+  .cmdk-foot {
+    border-top: 1px solid var(--line);
+  }
+
+  @media (hover: none) {
+    .cmdk-foot {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { foldForSearch } from '../scripts/palette';
+
+  const dialog = document.querySelector<HTMLDialogElement>('dialog.cmdk');
+  const input = dialog?.querySelector<HTMLInputElement>('.cmdk-input');
+  if (dialog && input && typeof dialog.showModal === 'function') {
+    const items = [...dialog.querySelectorAll<HTMLElement>('.cmdk-item')];
+    const groups = [...dialog.querySelectorAll<HTMLElement>('.cmdk-group')];
+    const empty = dialog.querySelector<HTMLElement>('.cmdk-empty')!;
+    const keys = new Map(items.map((item) => [item, foldForSearch(item.textContent ?? '')]));
+    let visible = items;
+    let at = 0;
+
+    const select = (index: number) => {
+      if (!visible.length) return;
+      at = (index + visible.length) % visible.length;
+      visible.forEach((item, i) => item.setAttribute('aria-selected', String(i === at)));
+      const current = visible[at]!;
+      input.setAttribute('aria-activedescendant', current.id);
+      current.scrollIntoView({ block: 'nearest' });
+    };
+    const filter = () => {
+      const words = foldForSearch(input.value).split(/\s+/).filter(Boolean);
+      items.forEach((item) => {
+        const key = keys.get(item) ?? '';
+        item.hidden = !words.every((word) => key.includes(word));
+        item.setAttribute('aria-selected', 'false');
+      });
+      groups.forEach((group) => {
+        group.hidden = !group.querySelector('.cmdk-item:not([hidden])');
+      });
+      visible = items.filter((item) => !item.hidden);
+      empty.hidden = visible.length > 0;
+      if (!visible.length) input.removeAttribute('aria-activedescendant');
+      select(0);
+    };
+    const open = () => {
+      if (dialog.open) return;
+      input.value = '';
+      filter();
+      dialog.showModal();
+      input.focus();
+    };
+    const toast = (text: string) => {
+      input.value = '';
+      input.placeholder = text;
+      setTimeout(() => {
+        dialog.close();
+        input.placeholder = input.getAttribute('placeholder') ?? '';
+      }, 700);
+    };
+    const placeholder = input.placeholder;
+    dialog.addEventListener('close', () => {
+      input.placeholder = placeholder;
+    });
+    const run = async (item: HTMLElement) => {
+      const { href, action } = item.dataset;
+      if (action === 'copy-email') {
+        try {
+          await navigator.clipboard.writeText(dialog.dataset.email ?? '');
+          toast(dialog.dataset.copied ?? '');
+        } catch {
+          location.href = `mailto:${dialog.dataset.email}`;
+        }
+        return;
+      }
+      dialog.close();
+      if (action === 'theme') document.querySelector<HTMLElement>('[data-theme-toggle]')?.click();
+      else if (action === 'top') scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      else if (href?.startsWith('#')) document.querySelector(href)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+      else if (href && item.dataset.external !== undefined) window.open(href, '_blank', 'noopener');
+      else if (href) location.href = href;
+    };
+
+    input.addEventListener('input', filter);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown') select(at + 1);
+      else if (event.key === 'ArrowUp') select(at - 1);
+      else if (event.key === 'Enter' && visible[at]) run(visible[at]!);
+      else return;
+      event.preventDefault();
+    });
+    dialog.addEventListener('pointermove', (event) => {
+      const item = (event.target as Element).closest<HTMLElement>('.cmdk-item');
+      const index = item ? visible.indexOf(item) : -1;
+      if (index >= 0 && index !== at) select(index);
+    });
+    dialog.addEventListener('click', (event) => {
+      // a click on the backdrop lands on the dialog itself
+      if (event.target === dialog) return dialog.close();
+      const item = (event.target as Element).closest<HTMLElement>('.cmdk-item');
+      if (item) run(item);
+    });
+    document.addEventListener('keydown', (event) => {
+      const typing = (event.target as Element | null)?.closest?.('input, textarea, [contenteditable="true"]');
+      if ((event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        if (dialog.open) dialog.close();
+        else open();
+      } else if (event.key === '/' && !typing && !dialog.open) {
+        event.preventDefault();
+        open();
+      }
+    });
+    // the key cap says what this keyboard uses
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+    document.querySelectorAll<HTMLElement>('[data-cmdk-open]').forEach((el) => {
+      el.hidden = false;
+      if (el.tagName !== 'BUTTON') return;
+      el.addEventListener('click', open);
+      const key = el.querySelector('.cmdk-key');
+      if (key && !mac) key.textContent = 'Ctrl K';
+    });
+  }
+</script>

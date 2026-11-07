@@ -91,3 +91,11 @@ Life, are added on top:
   beside the pointer and plays its Life burst, the other rows step back.
 - **Bookend**: the paper closes with the same dissolve band at the bottom and the board comes back under it, with the
   name and the project list: the page ends where it began.
+
+## Wave 6: lighter hero, command palette
+
+- The project list leaves the board: the projects are in the content just below. The board script keeps working
+  without it (the list is optional), the noscript list stays.
+- The scroll cue is larger, framed in ink and higher (9vh from the bottom), so it reads on every screen.
+- A command palette (⌘K / Ctrl+K / "/", a Menu button on touch): sections, projects, copy the e-mail, CV, theme,
+  language, profiles. Idea taken from the Nous Research and Hermes Agent sites (Nov 2026), drawn in the board's style.

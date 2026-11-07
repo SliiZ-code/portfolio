@@ -74,7 +74,8 @@ export async function initBoard(): Promise<void> {
   const note = document.getElementById('name-note');
   const list = document.getElementById('projects');
   const ctx = canvas?.getContext('2d');
-  if (!source?.textContent || !canvas || !stage || !list || !ctx) return;
+  // the project list on the board is optional: the projects are listed in the content below
+  if (!source?.textContent || !canvas || !stage || !ctx) return;
 
   let data: BoardConfig;
   try {
@@ -143,7 +144,7 @@ export async function initBoard(): Promise<void> {
   }
 
   const rows = new Map<string, Row>();
-  list.querySelectorAll<HTMLAnchorElement>('.proj').forEach((el) => {
+  list?.querySelectorAll<HTMLAnchorElement>('.proj').forEach((el) => {
     const seed = el.dataset.seed as MethuselahName | undefined;
     if (seed && METHUSELAH_PATTERNS[seed]) rows.set(el.dataset.id ?? '', { slug: el.dataset.id ?? '', seed, el });
   });
@@ -212,7 +213,7 @@ export async function initBoard(): Promise<void> {
     keepClear = [];
     nameRing = [];
     listBox = null;
-    list!.classList.remove('placed', 'compact', 'narrow', 'scroll');
+    list?.classList.remove('placed', 'compact', 'narrow', 'scroll');
 
     const at = namePlacement(grid, nameDims, orientation);
     addStructure(structures, {
@@ -226,12 +227,13 @@ export async function initBoard(): Promise<void> {
 
     // the list, as wide as its text wants: the room it needs decides whether the note runs on one line
     const measureList = () => {
-      const style = list!.style;
+      if (!list) return { w: 0, h: 0 };
+      const style = list.style;
       style.left = '0px';
       style.top = '0px';
       style.width = 'max-content';
       style.maxHeight = '';
-      const r = list!.getBoundingClientRect();
+      const r = list.getBoundingClientRect();
       return { w: Math.ceil(r.width), h: Math.ceil(r.height) };
     };
     let natural = measureList();
@@ -245,44 +247,46 @@ export async function initBoard(): Promise<void> {
       if (orientation === 'l') {
         const oneLine = note.getBoundingClientRect().right;
         const right = Math.max(oneLine, (at.x + at.w) * cell);
-        if (vw - 16 - right - 20 < Math.min(natural.w, 260)) note.style.maxWidth = `${at.w * cell}px`;
+        if (list && vw - 16 - right - 20 < Math.min(natural.w, 260)) note.style.maxWidth = `${at.w * cell}px`;
       }
       keepClear.push(rectToBox(note.getBoundingClientRect(), cell));
     }
 
-    // the list goes where the board has room: right of the name in landscape, under it on a phone
-    const obstacles: PxRect[] = [{ left: at.x * cell, top: at.y * cell, right: (at.x + at.w) * cell, bottom: (at.y + at.h) * cell }];
-    if (note) {
-      const r = pxRect(note);
-      if (r) obstacles.push(r);
+    if (list) {
+      // the list goes where the board has room: right of the name in landscape, under it on a phone
+      const obstacles: PxRect[] = [{ left: at.x * cell, top: at.y * cell, right: (at.x + at.w) * cell, bottom: (at.y + at.h) * cell }];
+      if (note) {
+        const r = pxRect(note);
+        if (r) obstacles.push(r);
+      }
+      const hudTop = document.querySelector('.hud.tr');
+      const hudBottom = document.querySelector('.hud.br');
+      const topLimit = Math.max(12, (hudTop ? pxRect(hudTop)?.bottom ?? 0 : 0) + 12);
+      const bottomRect = hudBottom ? pxRect(hudBottom) : null;
+      const bottomLimit = (bottomRect ? bottomRect.top - 12 : vh - 16);
+      const fit = () => {
+        natural = measureList();
+        return placeProjects({ vw, vh, orientation, natural, obstacles, topLimit, bottomLimit });
+      };
+      let spot = fit();
+      // too tall: tighter rows first, then a scroll; too narrow: the meta column goes
+      if (spot.overflow) {
+        list.classList.add('compact');
+        spot = fit();
+      }
+      if (spot.narrow) {
+        list.classList.add('narrow');
+        spot = fit();
+      }
+      list.style.left = `${spot.left}px`;
+      list.style.top = `${spot.top}px`;
+      list.style.width = `${spot.width}px`;
+      list.style.maxHeight = `${spot.height}px`;
+      list.classList.toggle('scroll', spot.overflow);
+      list.classList.add('placed');
+      const listRect = pxRect(list);
+      if (listRect) listBox = rectToBox(listRect, cell);
     }
-    const hudTop = document.querySelector('.hud.tr');
-    const hudBottom = document.querySelector('.hud.br');
-    const topLimit = Math.max(12, (hudTop ? pxRect(hudTop)?.bottom ?? 0 : 0) + 12);
-    const bottomRect = hudBottom ? pxRect(hudBottom) : null;
-    const bottomLimit = (bottomRect ? bottomRect.top - 12 : vh - 16);
-    const fit = () => {
-      natural = measureList();
-      return placeProjects({ vw, vh, orientation, natural, obstacles, topLimit, bottomLimit });
-    };
-    let spot = fit();
-    // too tall: tighter rows first, then a scroll; too narrow: the meta column goes
-    if (spot.overflow) {
-      list!.classList.add('compact');
-      spot = fit();
-    }
-    if (spot.narrow) {
-      list!.classList.add('narrow');
-      spot = fit();
-    }
-    list!.style.left = `${spot.left}px`;
-    list!.style.top = `${spot.top}px`;
-    list!.style.width = `${spot.width}px`;
-    list!.style.maxHeight = `${spot.height}px`;
-    list!.classList.toggle('scroll', spot.overflow);
-    list!.classList.add('placed');
-    const listRect = pxRect(list!);
-    if (listRect) listBox = rectToBox(listRect, cell);
 
     // the board starts busy, but not noisy: about one free cell in twelve is seeded
     const boxes = protectedBoxes();
@@ -343,7 +347,7 @@ export async function initBoard(): Promise<void> {
     if (!listBox || now - (lastFired.get(row.slug) ?? -Infinity) < STAMP_COOLDOWN) return;
     const pattern = METHUSELAH_PATTERNS[row.seed];
     const rect = row.el.getBoundingClientRect();
-    const bounds = list.getBoundingClientRect();
+    const bounds = list!.getBoundingClientRect();
     const level = Math.min(Math.max(rect.top + rect.height / 2, bounds.top), bounds.bottom) / cell;
     const blocked = [...keepClear, ...nameRing, ...structures.map((s) => coreBox(s))];
     const spot = stampSpot({ w: pattern[0].length, h: pattern.length }, level, listBox, blocked, grid);
@@ -357,17 +361,17 @@ export async function initBoard(): Promise<void> {
     const el = (target as Element | null)?.closest?.<HTMLElement>('.proj');
     return el ? rows.get(el.dataset.id ?? '') : undefined;
   };
-  list.addEventListener('pointerover', (event) => {
+  list?.addEventListener('pointerover', (event) => {
     const row = rowOf(event.target);
     if (row && !row.el.contains(event.relatedTarget as Node | null)) fire(row);
   });
   // a finger never hovers: touching the row fires it before the tap navigates
-  list.addEventListener('pointerdown', (event) => {
+  list?.addEventListener('pointerdown', (event) => {
     const row = event.pointerType !== 'mouse' && rowOf(event.target);
     if (row) fire(row);
   });
   // keyboard focus only: a mouse click focuses the row too, and a restored focus on Back must not fire
-  list.addEventListener('focusin', (event) => {
+  list?.addEventListener('focusin', (event) => {
     const row = rowOf(event.target);
     if (row && (event.target as Element).matches(':focus-visible')) fire(row);
   });
@@ -389,7 +393,7 @@ export async function initBoard(): Promise<void> {
   /** The dive zooms toward the middle of the project's row. */
   const originOfRow = (row: Row) => {
     const rect = row.el.getBoundingClientRect();
-    const bounds = list.getBoundingClientRect();
+    const bounds = list!.getBoundingClientRect();
     // the stage drifts with the hero's parallax (a `translate`, which the dive's `transform` does not touch): the origin is in its own box
     const box = stage.getBoundingClientRect();
     originAt(
@@ -451,7 +455,7 @@ export async function initBoard(): Promise<void> {
     }, DIVE_MS);
   };
 
-  list.addEventListener('click', (event) => {
+  list?.addEventListener('click', (event) => {
     const row = rowOf(event.target);
     if (row) dive(event, row);
   });
@@ -474,7 +478,7 @@ export async function initBoard(): Promise<void> {
   let intro: { el: HTMLElement; d: number; shown: boolean }[] | null = null;
   const startIntro = () => {
     intro = [];
-    const targets: Element[] = [...list.querySelectorAll('.proj')];
+    const targets: Element[] = list ? [...list.querySelectorAll('.proj')] : [];
     if (note) targets.push(note);
     for (const el of targets) {
       const r = el.getBoundingClientRect();

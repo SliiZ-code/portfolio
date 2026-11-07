@@ -20,6 +20,11 @@ const { t, profiles, email, cvHref, cvPdf, lang } = Astro.props;
 <div class="hud tl">{t.board.home}</div>
 
 <div class="hud tr">
+  <!-- the command palette (CommandPalette.astro); hidden until its script runs -->
+  <button class="cmdk-open" type="button" data-cmdk-open hidden aria-label={t.palette.openLabel} title={t.palette.openLabel}>
+    <span class="cmdk-key">⌘K</span><span class="cmdk-word">{t.palette.open}</span>
+  </button>
+  <span class="sep" data-cmdk-open hidden></span>
   <LangFlags t={t} lang={lang} frHref="/" enHref="/en/" />
   <span class="sep"></span>
   <ThemeToggle t={t} />
