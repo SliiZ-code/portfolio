@@ -69,7 +69,7 @@ Feedback after launch: the hero is great, the rest is boring. The content must c
   about section. Owns `HomeIntro/Experience/Projects/About/Footer.astro`, `home.css`, `highlights.ts`.
 - **I, glider margins**: a sparse Game of Life lives in the page's side margins. Glider guns at section edges fire
   gliders down the gutters. It only runs while visible, is cheap, and is off under reduced motion. Owns
-  `HomeContent.astro`, new `MarginLife.astro`, `src/scripts/margin-life.ts`.
+  `HomeContent.astro`, new `MarginLife.astro`, `src/scripts/margin-life.ts` (replaced by the living paper in wave 5).
 
 ## Wave 4: the calm pass
 
@@ -79,3 +79,15 @@ a giant closing line and fade-up reveals. All gone. The page now reads like a re
 in a left column, the text keeps one measure on the right, projects are a small picture beside a short text, the rest
 of the resume is plain lines. The board identity stays where it earns its place: the pixel titles that assemble, the
 living media and the gliders in the margins.
+
+## Wave 5: signature moments
+
+Feedback on the calm pass: "boring, where is the wow". The calm structure stays; three moments, all from the Game of
+Life, are added on top:
+- **Living paper** (`LivingPaper.astro`, `src/scripts/living-paper.ts`): the whole content is a Life board. The pointer
+  leaves seeds, a click drops a glider, gliders set off by themselves. Text and pictures are rocks: cells die on them, so
+  life flows around what you read. Off under reduced motion. Replaces the glider margins.
+- **Project index**: on a desktop with a mouse, projects are big names in rows; the hovered row's living picture floats
+  beside the pointer and plays its Life burst, the other rows step back.
+- **Bookend**: the paper closes with the same dissolve band at the bottom and the board comes back under it, with the
+  name and the project list: the page ends where it began.

@@ -94,13 +94,15 @@ const description = htmlToText(resume.summary) || resume.headline;
       </a>
     </div>
     <HomeContent lang={lang} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />
+    <!-- the end of the page dissolves back into the board: the hero comes round again -->
+    <div id="hero-tail" aria-hidden="true"></div>
   </main>
 
   <BoardHud lang={lang} t={t} profiles={resume.profiles} email={resume.email} cvHref={cvHref} cvPdf={cvPdf} />
   <!-- without JavaScript there is no board: the same content as a plain list -->
   <noscript>
     <style>
-      #stage, .hud, #hero-spacer, #content { display: none; }
+      #stage, .hud, #hero-spacer, #hero-tail, #content { display: none; }
       html, body { overflow: auto; }
     </style>
     <BoardList lang={lang} t={t} resume={resume} projects={projects} cvHref={cvHref} cvPdf={cvPdf} />

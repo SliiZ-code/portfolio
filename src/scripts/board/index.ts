@@ -101,7 +101,9 @@ export async function initBoard(): Promise<void> {
     root.classList.toggle('scrolled', isScrolled(scrollY));
     // reduced motion: no parallax, no slowdown; the board only pauses when covered, as before
     if (reduced) return;
-    const p = heroProgress(scrollY, innerHeight);
+    // the board shows at both ends of the page: the progress is the distance to the nearer one
+    const bottom = document.documentElement.scrollHeight - innerHeight - scrollY;
+    const p = heroProgress(Math.min(scrollY, bottom), innerHeight);
     root.style.setProperty('--hero-p', p.toFixed(3));
     interval = tickInterval(p, RATE);
   };
@@ -585,15 +587,21 @@ export async function initBoard(): Promise<void> {
     running = true;
     requestAnimationFrame(loop);
   };
-  // the hero's spacer leaves the viewport only when the content covers the hero entirely: the board pauses then
-  const hero = document.getElementById('hero-spacer');
-  if (hero && 'IntersectionObserver' in window) {
-    new IntersectionObserver(([entry]) => {
-      heroCovered = entry.intersectionRatio === 0;
+  // the board shows through the hero's spacer at the top and the tail at the bottom: it pauses while neither is in view
+  const windows = ['hero-spacer', 'hero-tail'].map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+  if (windows.length && 'IntersectionObserver' in window) {
+    const open = new Set<Element>();
+    const watcher = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) open.add(entry.target);
+        else open.delete(entry.target);
+      }
+      heroCovered = open.size === 0;
       if (heroCovered) return;
       dirty = true;
       wake();
-    }).observe(hero);
+    });
+    windows.forEach((el) => watcher.observe(el));
   }
   wake();
 }

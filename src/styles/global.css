@@ -154,11 +154,18 @@ button {
 }
 
 /* the hero is one screen of the board. The spacer lets pointer events through, so the board under it still answers. */
-#hero-spacer {
+#hero-spacer,
+#hero-tail {
   position: relative;
   height: 100vh;
   height: 100svh;
   pointer-events: none;
+}
+
+/* the tail is a little shorter: the board shows again under the corners, the bottom of the page still ends on it */
+#hero-tail {
+  height: 85vh;
+  height: 85svh;
 }
 
 .name-note {

@@ -1,0 +1,37 @@
+---
+// The living paper (src/scripts/living-paper.ts): one canvas fixed to the viewport, under the text. Decorative: hidden
+// from assistive tech, blank without JavaScript or under reduced motion.
+---
+
+<canvas class="living-paper" aria-hidden="true" hidden></canvas>
+
+<style>
+  /* fixed, so the canvas is always the viewport; it sits under the text (.hc is z-index 1) and lets every click through */
+  .living-paper {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  :global(.home-content > .hc) {
+    position: relative;
+    z-index: 1;
+  }
+</style>
+
+<script>
+  import { initLivingPaper } from '../../scripts/living-paper';
+
+  const section = document.querySelector<HTMLElement>('section.home-content');
+  const canvas = section?.querySelector<HTMLCanvasElement>('canvas.living-paper');
+  if (section && canvas) {
+    try {
+      initLivingPaper(section, canvas);
+    } catch {
+      // decoration: a failure leaves the paper plain
+    }
+  }
+</script>

@@ -1,6 +1,6 @@
 ---
-// Projects in the research-homepage format: a small picture (or the seed as a poster) beside the name, a line or
-// two and the links. The hidden ones (not on the PDF) follow as a plain list.
+// Projects. On a desktop with a mouse: an index of big names, the living picture of the row under the pointer
+// follows it. Elsewhere: a small picture (or the seed as a poster) beside the name, a line or two and the links. The hidden ones (not on the PDF) follow as a plain list.
 import HomeSection from './HomeSection.astro';
 import ProjectMedia from './ProjectMedia.astro';
 import { leadSentences, linkLabel, splitProjects } from './content';
@@ -24,17 +24,17 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
 <HomeSection id="hc-projects" title={title}>
   {
     featured.length > 0 && (
-      <ul class="hc-projects">
+      <ul class="hc-projects" data-hover-index>
         {featured.map((project) => (
           <li class="hc-project">
             <div class="hc-media">
               <ProjectMedia project={project} label={project.displayName} />
             </div>
             <div class="hc-project-text">
-              <h3 class="hc-entry-title">
+              <h3 class="hc-entry-title hc-project-name">
                 <a href={projectPath(lang, project.slug)}>{project.displayName}</a>
               </h3>
-              {project.meta && <p class="hc-date">{project.meta}</p>}
+              {project.meta && <p class="hc-date hc-project-meta">{project.meta}</p>}
               {leadOf(project) && <p class="hc-lead">{leadOf(project)}</p>}
               <p class="hc-links">
                 <a href={projectPath(lang, project.slug)}>{t.home.projectPage}</a>
@@ -63,3 +63,46 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
     )
   }
 </HomeSection>
+
+<script>
+  // the picture of the hovered row follows the pointer with a little lag; CSS shows it only on a fine pointer
+  const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 900px)');
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll<HTMLElement>('[data-hover-index]').forEach((list) => {
+    let tx = 0;
+    let ty = 0;
+    let x = 0;
+    let y = 0;
+    let frame = 0;
+    let placed = false;
+    const apply = () => {
+      list.style.setProperty('--mx', `${x.toFixed(1)}px`);
+      list.style.setProperty('--my', `${y.toFixed(1)}px`);
+    };
+    const follow = () => {
+      frame = 0;
+      const ease = still.matches ? 1 : 0.16;
+      x += (tx - x) * ease;
+      y += (ty - y) * ease;
+      apply();
+      if (Math.abs(tx - x) > 0.5 || Math.abs(ty - y) > 0.5) frame = requestAnimationFrame(follow);
+    };
+    list.addEventListener('pointermove', (event) => {
+      if (!fine.matches || event.pointerType === 'touch') return;
+      const box = list.getBoundingClientRect();
+      tx = event.clientX - box.left;
+      ty = event.clientY - box.top;
+      // the first move places the picture under the pointer at once, so it never flies in from a corner
+      if (!placed) {
+        placed = true;
+        x = tx;
+        y = ty;
+        apply();
+      }
+      if (!frame) frame = requestAnimationFrame(follow);
+    });
+    list.addEventListener('pointerleave', () => {
+      placed = false;
+    });
+  });
+</script>

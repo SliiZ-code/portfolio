@@ -248,11 +248,13 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     const host = figure.closest<HTMLElement>('li, a') ?? figure;
     let hovered = false;
     let focused = false;
-    figure.addEventListener('pointerenter', () => {
+    // the whole row answers: in the desktop index the picture floats under the cursor and never gets the pointer itself
+    const hoverHost = figure.closest<HTMLElement>('li') ?? figure;
+    hoverHost.addEventListener('pointerenter', () => {
       hovered = true;
       onChange(hovered, focused);
     });
-    figure.addEventListener('pointerleave', () => {
+    hoverHost.addEventListener('pointerleave', () => {
       hovered = false;
       onChange(hovered, focused);
     });
