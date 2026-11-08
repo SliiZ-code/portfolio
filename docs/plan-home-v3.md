@@ -99,3 +99,14 @@ Life, are added on top:
 - The scroll cue is larger, framed in ink and higher (9vh from the bottom), so it reads on every screen.
 - A command palette (⌘K / Ctrl+K / "/", a Menu button on touch): sections, projects, copy the e-mail, CV, theme,
   language, profiles. Idea taken from the Nous Research and Hermes Agent sites (Nov 2026), drawn in the board's style.
+
+## Wave 7: ideas from the libraries in Teknium's "Uncommon web" catalogue
+
+- Horizon (after dithercn / Paper Shaders dithering): the band where the board meets the paper is a 40-cell tide of
+  8×8 Bayer dither whose shoreline rolls on slow waves and swells when scrolling fast (`src/scripts/horizon.ts`,
+  `Horizon.astro`). The static CSS band stays as the no-JS fallback.
+- Section titles emerge from a Life soup (after Glitched Writer): B3/S23 runs around the title while the glyph cells
+  lock in and the strays die off (`emergeStep` in `src/scripts/pixel-title.ts`).
+- Magnet type on the project index (after magnettype.com): names in Fraunces Variable, each letter's weight follows
+  the pointer (`src/scripts/magnet-type.ts`). The hovered row's picture now floats above the pointer so it never hides
+  the name.

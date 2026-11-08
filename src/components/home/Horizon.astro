@@ -1,0 +1,55 @@
+---
+// The horizon (src/scripts/horizon.ts): a tide of dither cells where the board meets the paper, at the top of the
+// content and again at the bottom. Decorative and hidden until the script runs; without it the static band in
+// home.css stays.
+---
+
+<div class="hz hz-top" aria-hidden="true"><canvas hidden></canvas></div>
+<div class="hz hz-bottom" aria-hidden="true"><canvas hidden></canvas></div>
+
+<style>
+  .hz {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--dissolve);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hz-top {
+    top: 0;
+  }
+
+  .hz-bottom {
+    bottom: 0;
+  }
+
+  .hz canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .hz-bottom canvas {
+    position: absolute;
+    bottom: 0;
+  }
+
+  @media print {
+    .hz {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { initHorizon } from '../../scripts/horizon';
+
+  document.querySelectorAll<HTMLCanvasElement>('.hz canvas').forEach((canvas, i) => {
+    try {
+      initHorizon(canvas, i === 1, i * 2.3);
+    } catch {
+      // decoration: the static band in home.css stays
+    }
+  });
+</script>

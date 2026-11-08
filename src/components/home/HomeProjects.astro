@@ -1,6 +1,7 @@
 ---
 // Projects. On a desktop with a mouse: an index of big names, the living picture of the row under the pointer
 // follows it. Elsewhere: a small picture (or the seed as a poster) beside the name, a line or two and the links. The hidden ones (not on the PDF) follow as a plain list.
+import '@fontsource-variable/fraunces/wght.css';
 import HomeSection from './HomeSection.astro';
 import ProjectMedia from './ProjectMedia.astro';
 import { leadSentences, linkLabel, splitProjects } from './content';
@@ -65,6 +66,10 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
 </HomeSection>
 
 <script>
+  import { initMagnetType } from '../../scripts/magnet-type';
+
+  document.querySelectorAll<HTMLElement>('[data-hover-index]').forEach(initMagnetType);
+
   // the picture of the hovered row follows the pointer with a little lag; CSS shows it only on a fine pointer
   const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 900px)');
   const still = matchMedia('(prefers-reduced-motion: reduce)');

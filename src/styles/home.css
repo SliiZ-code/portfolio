@@ -2,10 +2,11 @@
 .home-content {
   position: relative;
   z-index: 3;
-  /* the edge where the paper meets the board: a sixteen-cell band (48px at the usual 3px cell) of ordered dither, cut in the board's cells (--c, set on
+  /* the edge where the paper meets the board: a 40-cell band (120px at the usual 3px cell): a moving tide of ordered dither drawn by
+     src/scripts/horizon.ts, or without it a fixed sixteen-cell dither at the band's paper side, cut in the board's cells (--c, set on
      <html> by the board), so the paper dissolves into cells instead of ending in a straight line. The band sits inside the
      top padding, so no text is masked. Static: it stays on under reduced motion. */
-  --dissolve: calc(var(--c, 3px) * 16);
+  --dissolve: calc(var(--c, 3px) * 40);
   /* a big cell makes a deeper band: the text starts below it, never under it */
   padding-top: max(0px, calc(var(--dissolve) - 72px));
   --dither: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 16%27 shape-rendering=%27crispEdges%27%3E%3Cpath fill=%27%23000%27 d=%27M0 0h1v1h-1zM4 0h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM2 8h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM1 9h1v1h-1zM3 9h1v1h-1zM5 9h1v1h-1zM7 9h1v1h-1zM0 10h1v1h-1zM2 10h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM7 10h1v1h-1zM1 11h1v1h-1zM3 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM0 12h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM0 13h1v1h-1zM1 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM0 14h1v1h-1zM1 14h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM3 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM7 15h1v1h-1z%27/%3E%3C/svg%3E");
@@ -26,10 +27,17 @@
   pointer-events: none;
   -webkit-mask-image: var(--dither);
   mask-image: var(--dither);
-  -webkit-mask-size: calc(var(--c, 3px) * 8) var(--dissolve);
-  mask-size: calc(var(--c, 3px) * 8) var(--dissolve);
+  -webkit-mask-size: calc(var(--c, 3px) * 8) calc(var(--c, 3px) * 16);
+  mask-size: calc(var(--c, 3px) * 8) calc(var(--c, 3px) * 16);
+  -webkit-mask-position: 0 100%;
+  mask-position: 0 100%;
   -webkit-mask-repeat: repeat-x;
   mask-repeat: repeat-x;
+}
+
+.home-content.has-horizon::before,
+.home-content.has-horizon::after {
+  display: none;
 }
 
 .home-content::after {
@@ -42,8 +50,10 @@
   transform: scaleY(-1);
   -webkit-mask-image: var(--dither);
   mask-image: var(--dither);
-  -webkit-mask-size: calc(var(--c, 3px) * 8) var(--dissolve);
-  mask-size: calc(var(--c, 3px) * 8) var(--dissolve);
+  -webkit-mask-size: calc(var(--c, 3px) * 8) calc(var(--c, 3px) * 16);
+  mask-size: calc(var(--c, 3px) * 8) calc(var(--c, 3px) * 16);
+  -webkit-mask-position: 0 100%;
+  mask-position: 0 100%;
   -webkit-mask-repeat: repeat-x;
   mask-repeat: repeat-x;
 }
@@ -378,18 +388,35 @@
     color: var(--ink);
   }
 
+  /* magnet type (src/scripts/magnet-type.ts): the names switch to a variable serif and each letter's weight
+     follows the pointer */
+  .is-magnet .hc-project-name {
+    font-family: "Fraunces Variable", "Gambarino", serif;
+    font-weight: 320;
+    letter-spacing: -.02em;
+  }
+
+  .mt-word {
+    white-space: nowrap;
+  }
+
+  .mt-letter {
+    font-variation-settings: "wght" var(--w, 320);
+  }
+
   .hc-project .hc-media {
     position: absolute;
     left: 0;
     top: 0;
     z-index: 5;
-    width: 340px;
+    width: 300px;
     max-width: none;
     pointer-events: none;
     opacity: 0;
-    /* beside the pointer, never over the name being read */
-    translate: calc(var(--mx, 0px) + 48px) calc(var(--my, 0px) - 50%);
+    /* above the pointer, over the dimmed row before it, never over the name being read (or swelling) */
+    translate: calc(var(--mx, 0px) - 50%) calc(var(--my, 0px) - 100% - 52px);
     scale: .92;
+    transform-origin: 50% 100%;
     transition: opacity .25s ease, scale .35s cubic-bezier(.2, .7, .2, 1);
   }
 

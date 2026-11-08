@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  bucketColour,
   cellSize,
   coverage,
-  easeOutCubic,
-  flightProgress,
+  emergeStep,
+  makeSoup,
   maskToCells,
-  scatterStart,
+  soupBucket,
 } from '../src/scripts/pixel-title';
 
-/** A seeded generator (mulberry32), so the scatter is the same on every run. */
+/** A seeded generator (mulberry32), so the soup is the same on every run. */
 function seeded(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
@@ -20,58 +19,6 @@ function seeded(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-
-describe('easeOutCubic', () => {
-  it('starts at 0 and lands on 1', () => {
-    expect(easeOutCubic(0)).toBe(0);
-    expect(easeOutCubic(1)).toBe(1);
-  });
-
-  it('is fast at first: half way through the time it is most of the way', () => {
-    expect(easeOutCubic(0.5)).toBeCloseTo(0.875, 10);
-  });
-
-  it('never goes back, and clamps outside 0 to 1', () => {
-    let last = -1;
-    for (let i = 0; i <= 100; i++) {
-      const value = easeOutCubic(i / 100);
-      expect(value).toBeGreaterThanOrEqual(last);
-      last = value;
-    }
-    expect(easeOutCubic(-1)).toBe(0);
-    expect(easeOutCubic(2)).toBe(1);
-  });
-});
-
-describe('bucketColour', () => {
-  it('maps the four tokens: newborn, growing, grown, ink', () => {
-    expect(bucketColour(0)).toBe(0);
-    expect(bucketColour(1 / 3)).toBe(1);
-    expect(bucketColour(2 / 3)).toBe(2);
-    expect(bucketColour(1)).toBe(3);
-  });
-
-  it('picks the nearest token for the progress in between', () => {
-    expect(bucketColour(0.16)).toBe(0);
-    expect(bucketColour(0.2)).toBe(1);
-    expect(bucketColour(0.5)).toBe(2);
-    expect(bucketColour(0.9)).toBe(3);
-  });
-
-  it('clamps progress outside 0 to 1', () => {
-    expect(bucketColour(-1)).toBe(0);
-    expect(bucketColour(2)).toBe(3);
-  });
-});
-
-describe('flightProgress', () => {
-  it('waits out the delay, then runs for the flight time', () => {
-    expect(flightProgress(100, 200)).toBe(0);
-    expect(flightProgress(650, 200)).toBeCloseTo(0.5, 10);
-    expect(flightProgress(2000, 200)).toBe(1);
-    expect(flightProgress(Infinity, 200)).toBe(1);
-  });
-});
 
 describe('cellSize', () => {
   it('is about 6px at the desktop size and scales down with the font', () => {
@@ -84,40 +31,38 @@ describe('cellSize', () => {
   });
 });
 
-describe('scatterStart', () => {
-  const spread = { x: 400, y: 200 };
+describe('emergeStep', () => {
+  const cols = 12;
+  const rows = 8;
+  const target = new Uint8Array(cols * rows);
+  for (let x = 3; x < 9; x++) target[4 * cols + x] = 1;
 
-  it('starts a cell on its target when the random draw is the middle', () => {
-    expect(scatterStart({ x: 10, y: 20 }, () => 0.5, spread)).toEqual({ x: 10, y: 20 });
+  it('ends exactly on the title at k = 1', () => {
+    const soup = makeSoup(cols, rows, seeded(7));
+    emergeStep(soup, target, 1, seeded(8));
+    expect([...soup.alive]).toEqual([...target]);
+    expect(soupBucket(soup, 4 * cols + 3)).toBe(3);
   });
 
-  it('keeps most starts within the spread around the target', () => {
-    const rng = seeded(7);
-    const target = { x: 300, y: 80 };
-    let inside = 0;
-    for (let i = 0; i < 2000; i++) {
-      const start = scatterStart(target, rng, spread);
-      if (Math.abs(start.x - target.x) <= spread.x && Math.abs(start.y - target.y) <= spread.y) inside++;
+  it('runs plain B3/S23 at k = 0: a blinker turns', () => {
+    const soup = makeSoup(5, 5, () => 1);
+    soup.alive[2 * 5 + 1] = soup.alive[2 * 5 + 2] = soup.alive[2 * 5 + 3] = 1;
+    emergeStep(soup, new Uint8Array(25), 0, () => 1);
+    expect([1, 2, 3].map((y) => soup.alive[y * 5 + 2])).toEqual([1, 1, 1]);
+    expect(soup.alive[2 * 5 + 1]).toBe(0);
+  });
+
+  it('keeps a locked cell alive and clears stray cells as k grows', () => {
+    const soup = makeSoup(cols, rows, seeded(3), 0.5);
+    const rng = seeded(4);
+    let strays = Infinity;
+    for (let g = 1; g <= 20; g++) {
+      const before = [...soup.locked];
+      emergeStep(soup, target, g / 21, rng);
+      before.forEach((l, i) => l && expect(soup.alive[i]).toBe(1));
+      if (g === 20) strays = soup.alive.reduce((n, a, i) => n + (a && !target[i] ? 1 : 0), 0);
     }
-    // most starts fall inside the spread (about 89%); the off-edge ones fall outside it
-    expect(inside / 2000).toBeGreaterThan(0.8);
-    expect(inside / 2000).toBeLessThan(0.95);
-  });
-
-  it('is never further than 1.5 times the spread from its target', () => {
-    const rng = seeded(11);
-    const target = { x: 0, y: 0 };
-    for (let i = 0; i < 2000; i++) {
-      const start = scatterStart(target, rng, spread);
-      expect(Math.abs(start.x)).toBeLessThanOrEqual(spread.x * 1.5);
-      expect(Math.abs(start.y)).toBeLessThanOrEqual(spread.y * 1.5);
-    }
-  });
-
-  it('is repeatable for the same seed', () => {
-    const a = scatterStart({ x: 1, y: 2 }, seeded(3), spread);
-    const b = scatterStart({ x: 1, y: 2 }, seeded(3), spread);
-    expect(a).toEqual(b);
+    expect(strays).toBeLessThan(cols * rows * 0.1);
   });
 });
 

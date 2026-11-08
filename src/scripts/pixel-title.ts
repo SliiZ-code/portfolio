@@ -1,13 +1,9 @@
 /**
- * Pixel titles: a section title in Geist Pixel assembles from scattered square cells the first time it enters the
- * view, then settles into the crisp heading. The helpers at the top are pure and unit-tested; `initPixelTitles`
- * drives the DOM.
+ * Pixel titles: the first time a section title enters the view, a soup of Game of Life cells boils around it and the
+ * title emerges from it: each generation runs B3/S23, then the glyph cells lock in one by one and the stray cells die
+ * off, until only the word is left and the crisp heading returns. The helpers at the top are pure and unit-tested;
+ * `initPixelTitles` drives the DOM.
  */
-
-export interface Point {
-  x: number;
-  y: number;
-}
 
 /** A cell of the title's grid, in cell units from the top-left of the glyph grid. */
 export interface Cell {
@@ -15,55 +11,84 @@ export interface Cell {
   row: number;
 }
 
-/** Half-width and half-height of the area each cell can start in, around its own target. */
-export interface Spread {
-  x: number;
-  y: number;
-}
+/** Generations in the emergence, and how long each one shows. */
+export const GENERATIONS = 22;
+export const GENERATION_MS = 48;
+/** Share of the soup that is alive at the start. */
+export const SOUP_DENSITY = 0.32;
+/** Cells of soup around the title on each side. */
+export const MARGIN = 10;
 
-/** Each cell flies for this long, and waits up to MAX_DELAY_MS before it leaves. */
-export const FLIGHT_MS = 900;
-export const MAX_DELAY_MS = 250;
-
-/** Share of the cells that start beyond the scatter area, so some come in from outside the title. */
-export const OFF_EDGE_CHANCE = 0.2;
-
-/** Colour buckets, from newborn to landed: the four tokens a cell passes through. */
+/** Colour buckets: young, older and old stray cells, then a locked glyph cell. */
 export const COLOUR_TOKENS = ['--life-0', '--life-1', '--life-2', '--ink'] as const;
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
-
-/** Ease-out: fast at first, then settling onto the target. */
-export function easeOutCubic(t: number): number {
-  const u = 1 - clamp01(t);
-  return 1 - u * u * u;
-}
-
-/** The colour bucket (0 to 3) for a cell's linear progress: the nearest of the four tokens. */
-export function bucketColour(progress: number): number {
-  return Math.round(clamp01(progress) * (COLOUR_TOKENS.length - 1));
-}
-
-/** A cell's linear progress (0 to 1) after `elapsed` ms, for a cell that waits `delay` ms first. */
-export function flightProgress(elapsed: number, delay: number, duration = FLIGHT_MS): number {
-  return clamp01((elapsed - delay) / duration);
-}
 
 /** The size of one cell for a title of this font size: about 6px at the desktop size, 2.5px at the least. */
 export function cellSize(fontPx: number): number {
   return Math.max(2.5, fontPx / 22);
 }
 
+/** The emergence state on a cols × rows grid: alive cells, their age in generations, and the glyph cells locked in. */
+export interface Soup {
+  cols: number;
+  rows: number;
+  alive: Uint8Array;
+  age: Uint8Array;
+  locked: Uint8Array;
+}
+
+/** A soup of the given density, with nothing locked yet. */
+export function makeSoup(cols: number, rows: number, rng: () => number, density = SOUP_DENSITY): Soup {
+  const alive = new Uint8Array(cols * rows);
+  for (let i = 0; i < alive.length; i++) alive[i] = rng() < density ? 1 : 0;
+  return { cols, rows, alive, age: new Uint8Array(cols * rows), locked: new Uint8Array(cols * rows) };
+}
+
 /**
- * Where a cell starts: a random point around its target, within `spread`. Some cells start beyond it,
- * so they come in from outside the title's edges.
+ * One generation toward the title. `k` (0 to 1) is how far along the emergence is: B3/S23 runs on the free cells,
+ * then each glyph cell locks in with a chance that grows with `k` (a locked cell stays alive), and each stray cell
+ * dies with the same chance. At `k` = 1 the soup is exactly the title.
  */
-export function scatterStart(target: Point, rng: () => number, bounds: Spread): Point {
-  const reach = rng() < OFF_EDGE_CHANCE ? 1.5 : 1;
-  return {
-    x: target.x + (rng() * 2 - 1) * bounds.x * reach,
-    y: target.y + (rng() * 2 - 1) * bounds.y * reach,
-  };
+export function emergeStep(soup: Soup, target: Uint8Array, k: number, rng: () => number): void {
+  const { cols, rows, alive, age, locked } = soup;
+  const next = new Uint8Array(alive.length);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const i = y * cols + x;
+      if (locked[i]) {
+        next[i] = 1;
+        continue;
+      }
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= rows) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          if ((dx || dy) && xx >= 0 && xx < cols) n += alive[yy * cols + xx];
+        }
+      }
+      next[i] = n === 3 || (n === 2 && alive[i]) ? 1 : 0;
+    }
+  }
+  const chance = clamp01(k) ** 1.6;
+  for (let i = 0; i < next.length; i++) {
+    if (target[i]) {
+      if (k >= 1 || (!locked[i] && rng() < chance)) locked[i] = 1;
+      if (locked[i]) next[i] = 1;
+    } else if (k >= 1 || rng() < chance) {
+      next[i] = 0;
+    }
+    age[i] = next[i] ? Math.min(255, alive[i] ? age[i] + 1 : 0) : 0;
+    alive[i] = next[i];
+  }
+}
+
+/** The colour bucket of cell `i`: ink once locked, else by age (newborn, young, older). */
+export function soupBucket(soup: Soup, i: number): number {
+  if (soup.locked[i]) return 3;
+  return soup.age[i] < 1 ? 0 : soup.age[i] < 3 ? 1 : 2;
 }
 
 /** The cells whose alpha reaches the threshold (0 to 255), in row-major order. */
@@ -156,7 +181,7 @@ function rasterTitle(text: string, fontPx: number, lineHeight: number, spacing: 
   return { cells: maskToCells(alpha, cols, rows, THRESHOLD), cols, rows, cell, top };
 }
 
-/** Assemble one title: the cells fly from scattered starts onto the glyphs, then the crisp heading returns. */
+/** Assemble one title: the soup boils, the glyph cells lock in, then the crisp heading returns. */
 async function assemble(root: HTMLElement): Promise<void> {
   const heading = root.querySelector<HTMLElement>('.pt-text');
   const canvas = root.querySelector<HTMLCanvasElement>('.pt-canvas');
@@ -176,21 +201,17 @@ async function assemble(root: HTMLElement): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!raster || !ctx || raster.cells.length === 0) return;
 
-  const { cells, cols, rows, cell, top } = raster;
-  const spread: Spread = { x: 0.4 * window.innerWidth, y: 0.3 * window.innerHeight };
+  const { cells, cols: glyphCols, rows: glyphRows, cell, top } = raster;
+  const cols = glyphCols + MARGIN * 2;
+  const rows = glyphRows + MARGIN * 2;
+  const target = new Uint8Array(cols * rows);
+  for (const c of cells) target[(c.row + MARGIN) * cols + c.col + MARGIN] = 1;
 
-  // The canvas covers the whole scatter area, so cells can fly in from around the title. It is clipped to the
-  // viewport: cells beyond it are not on screen, and a canvas that hangs off the page would widen the scroll.
-  const rect = root.getBoundingClientRect();
-  const viewWidth = document.documentElement.clientWidth;
-  const viewHeight = document.documentElement.clientHeight;
-  const x0 = Math.max(-spread.x, -rect.left);
-  const y0 = Math.max(top - spread.y, -rect.top);
-  const x1 = Math.max(x0 + 1, Math.min(cols * cell + spread.x, viewWidth - rect.left));
-  const y1 = Math.max(y0 + 1, Math.min(top + rows * cell + spread.y, viewHeight - rect.top));
-  const width = x1 - x0;
-  const height = y1 - y0;
-  // device pixels per CSS pixel: at most 2, and fewer on a large scatter area, to keep the backing store small
+  // the canvas covers the title and its margin of soup, in the title's own coordinates
+  const x0 = -MARGIN * cell;
+  const y0 = top - MARGIN * cell;
+  const width = cols * cell;
+  const height = rows * cell;
   const scale = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
   canvas.style.left = `${x0}px`;
   canvas.style.top = `${y0}px`;
@@ -202,57 +223,33 @@ async function assemble(root: HTMLElement): Promise<void> {
   const tokens = getComputedStyle(document.documentElement);
   const colours = COLOUR_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
 
-  const count = cells.length;
-  const tx = new Float32Array(count);
-  const ty = new Float32Array(count);
-  const sx = new Float32Array(count);
-  const sy = new Float32Array(count);
-  const delay = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    tx[i] = cells[i].col * cell;
-    ty[i] = top + cells[i].row * cell;
-    const start = scatterStart({ x: tx[i], y: ty[i] }, Math.random, spread);
-    sx[i] = start.x;
-    sy[i] = start.y;
-    delay[i] = Math.random() * MAX_DELAY_MS;
-  }
-
+  const soup = makeSoup(cols, rows, Math.random);
   const size = cell * 0.9;
   const inset = (cell - size) / 2;
-  const bucketOf = new Uint8Array(count);
-  const px = new Float32Array(count);
-  const py = new Float32Array(count);
 
-  /** Draws one frame, with one fillStyle per colour bucket. Returns true once every cell has landed. */
-  const draw = (elapsed: number): boolean => {
-    let landed = true;
-    for (let i = 0; i < count; i++) {
-      const progress = flightProgress(elapsed, delay[i]);
-      if (progress < 1) landed = false;
-      const eased = easeOutCubic(progress);
-      px[i] = sx[i] + (tx[i] - sx[i]) * eased;
-      py[i] = sy[i] + (ty[i] - sy[i]) * eased;
-      bucketOf[i] = bucketColour(progress);
-    }
+  const draw = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(scale, 0, 0, scale, -x0 * scale, -y0 * scale);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
     for (let b = 0; b < colours.length; b++) {
       ctx.fillStyle = colours[b];
       ctx.beginPath();
-      for (let i = 0; i < count; i++) {
-        if (bucketOf[i] === b) ctx.rect(px[i] + inset, py[i] + inset, size, size);
+      for (let i = 0; i < soup.alive.length; i++) {
+        if (soup.alive[i] && soupBucket(soup, i) === b) {
+          ctx.rect((i % cols) * cell + inset, Math.floor(i / cols) * cell + inset, size, size);
+        }
       }
       ctx.fill();
     }
-    return landed;
   };
 
   let frame = 0;
+  let generation = 0;
   const finish = () => {
     cancelAnimationFrame(frame);
     running.delete(finish);
-    draw(Infinity);
+    emergeStep(soup, target, 1, Math.random);
+    draw();
     // the heading's colour returns and the canvas fades out over 150ms (see PixelTitle.astro)
     root.classList.remove('is-assembling');
     window.setTimeout(() => {
@@ -262,15 +259,21 @@ async function assemble(root: HTMLElement): Promise<void> {
   };
 
   // the first frame is drawn before the heading goes transparent, so nothing flashes
-  draw(0);
+  draw();
   root.classList.add('is-assembling');
-  const started = performance.now();
-  const step = () => {
-    if (draw(performance.now() - started)) {
-      finish();
-    } else {
-      frame = requestAnimationFrame(step);
+  let last = performance.now();
+  const step = (now: number) => {
+    if (now - last >= GENERATION_MS) {
+      last = now;
+      generation++;
+      if (generation >= GENERATIONS) {
+        finish();
+        return;
+      }
+      emergeStep(soup, target, generation / GENERATIONS, Math.random);
+      draw();
     }
+    frame = requestAnimationFrame(step);
   };
   running.add(finish);
   frame = requestAnimationFrame(step);
@@ -295,7 +298,7 @@ export function initPixelTitles(): void {
   );
   titles.forEach((title) => observer.observe(title));
 
-  // a resize mid-flight would misplace the cells: settle the running titles on their final frame
+  // a resize mid-way would misplace the cells: settle the running titles on their final frame
   window.addEventListener(
     'resize',
     () => {
