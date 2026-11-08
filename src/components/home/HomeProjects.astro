@@ -1,6 +1,6 @@
 ---
-// Projects. On a desktop with a mouse: an index of big names, the living picture of the row under the pointer
-// follows it. Elsewhere: a small picture (or the seed as a poster) beside the name, a line or two and the links. The hidden ones (not on the PDF) follow as a plain list.
+// Projects. On a desktop with a mouse: an index of big names, no pictures; each name swells under the pointer.
+// Elsewhere: a small picture (or the seed as a poster) beside the name, a line or two and the links. The hidden ones (not on the PDF) follow as a plain list.
 import '@fontsource-variable/fraunces/wght.css';
 import HomeSection from './HomeSection.astro';
 import ProjectMedia from './ProjectMedia.astro';
@@ -69,45 +69,4 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
   import { initMagnetType } from '../../scripts/magnet-type';
 
   document.querySelectorAll<HTMLElement>('[data-hover-index]').forEach(initMagnetType);
-
-  // the picture of the hovered row follows the pointer with a little lag; CSS shows it only on a fine pointer
-  const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 900px)');
-  const still = matchMedia('(prefers-reduced-motion: reduce)');
-  document.querySelectorAll<HTMLElement>('[data-hover-index]').forEach((list) => {
-    let tx = 0;
-    let ty = 0;
-    let x = 0;
-    let y = 0;
-    let frame = 0;
-    let placed = false;
-    const apply = () => {
-      list.style.setProperty('--mx', `${x.toFixed(1)}px`);
-      list.style.setProperty('--my', `${y.toFixed(1)}px`);
-    };
-    const follow = () => {
-      frame = 0;
-      const ease = still.matches ? 1 : 0.16;
-      x += (tx - x) * ease;
-      y += (ty - y) * ease;
-      apply();
-      if (Math.abs(tx - x) > 0.5 || Math.abs(ty - y) > 0.5) frame = requestAnimationFrame(follow);
-    };
-    list.addEventListener('pointermove', (event) => {
-      if (!fine.matches || event.pointerType === 'touch') return;
-      const box = list.getBoundingClientRect();
-      tx = event.clientX - box.left;
-      ty = event.clientY - box.top;
-      // the first move places the picture under the pointer at once, so it never flies in from a corner
-      if (!placed) {
-        placed = true;
-        x = tx;
-        y = ty;
-        apply();
-      }
-      if (!frame) frame = requestAnimationFrame(follow);
-    });
-    list.addEventListener('pointerleave', () => {
-      placed = false;
-    });
-  });
 </script>

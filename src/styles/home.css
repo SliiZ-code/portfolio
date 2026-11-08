@@ -333,8 +333,8 @@
   }
 }
 
-/* ---- the project index: a desktop with a mouse. Big names in rows; the picture of the hovered row floats under the
-   pointer (--mx, --my, set by HomeProjects), the other rows step back. ---- */
+/* ---- the project index: a desktop with a mouse. Big names in rows, no pictures; the hovered row's name swells
+   under the pointer and the other rows step back. ---- */
 @media (hover: hover) and (pointer: fine) and (min-width: 900px) {
   .hc-projects {
     position: relative;
@@ -404,41 +404,15 @@
     font-variation-settings: "wght" var(--w, 320);
   }
 
+  /* the index is names only: no picture on hover */
   .hc-project .hc-media {
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 5;
-    width: 300px;
-    max-width: none;
-    pointer-events: none;
-    opacity: 0;
-    /* above the pointer, over the dimmed row before it, never over the name being read (or swelling) */
-    translate: calc(var(--mx, 0px) - 50%) calc(var(--my, 0px) - 100% - 52px);
-    scale: .92;
-    transform-origin: 50% 100%;
-    transition: opacity .25s ease, scale .35s cubic-bezier(.2, .7, .2, 1);
-  }
-
-  .hc-project:hover .hc-media,
-  .hc-project:focus-within .hc-media {
-    opacity: 1;
-    scale: 1;
-  }
-
-  /* a keyboard user gets the picture beside the row's text, not at a pointer that is elsewhere */
-  .hc-project:focus-within:not(:hover) .hc-media {
-    translate: none;
-    left: auto;
-    right: 0;
-    top: auto;
+    display: none;
   }
 }
 
 @media (hover: hover) and (pointer: fine) and (min-width: 900px) and (prefers-reduced-motion: reduce) {
   .hc-project,
-  .hc-project-name,
-  .hc-project .hc-media {
+  .hc-project-name {
     transition: none;
   }
 

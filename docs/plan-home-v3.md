@@ -110,3 +110,4 @@ Life, are added on top:
 - Magnet type on the project index (after magnettype.com): names in Fraunces Variable, each letter's weight follows
   the pointer (`src/scripts/magnet-type.ts`). The hovered row's picture now floats above the pointer so it never hides
   the name.
+- The desktop index shows names only: the hover pictures are gone (the user asked); phones keep the small pictures.

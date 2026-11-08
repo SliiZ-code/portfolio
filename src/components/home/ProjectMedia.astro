@@ -248,9 +248,10 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     const host = figure.closest<HTMLElement>('li, a') ?? figure;
     let hovered = false;
     let focused = false;
-    // the whole row answers: in the desktop index the picture floats under the cursor and never gets the pointer itself
+    // the whole row answers; a picture the layout hides (the desktop index shows names only) stays asleep
     const hoverHost = figure.closest<HTMLElement>('li') ?? figure;
     hoverHost.addEventListener('pointerenter', () => {
+      if (figure.offsetParent === null) return;
       hovered = true;
       onChange(hovered, focused);
     });
@@ -259,6 +260,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
       onChange(hovered, focused);
     });
     host.addEventListener('focusin', () => {
+      if (figure.offsetParent === null) return;
       focused = true;
       onChange(hovered, focused);
     });
