@@ -24,7 +24,10 @@ const bio = htmlToText(resume.summary);
 </div>
 
 <script>
-  import { initFlowText } from '../../scripts/flow-text';
-
-  document.querySelectorAll<HTMLElement>('.hc-summary').forEach(initFlowText);
+  // the flowing text is for a fine pointer only: its module (pretext's tables are most of it) loads only there, so a phone
+  // never downloads it. The same query as flow-text.ts; reduced motion is left to that module, which follows it live.
+  const paragraphs = document.querySelectorAll<HTMLElement>('.hc-summary');
+  if (paragraphs.length && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    import('../../scripts/flow-text').then(({ initFlowText }) => paragraphs.forEach(initFlowText));
+  }
 </script>

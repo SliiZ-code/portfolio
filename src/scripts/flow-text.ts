@@ -73,6 +73,43 @@ export function clampBox(x: number, y: number, w: number, h: number, areaW: numb
   return { x: clamp(x, 0, areaW - w), y: clamp(y, 0, areaH - h) };
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * The first spot for a `box` in an `area` where the text still takes `goal` rows, or the spot that takes the fewest
+ * when none does. Spots are tried nearest `preferred` first, so the default spot wins whenever it works; `rowsAt`
+ * says how many rows the text takes with the box at a spot, and `step` is the grid the spots are cut on.
+ */
+export function settleSpot(
+  preferred: Point,
+  area: { width: number; height: number },
+  box: { w: number; h: number },
+  rowsAt: (x: number, y: number) => number,
+  goal: number,
+  step: number,
+): Point {
+  const spots: Point[] = [preferred];
+  for (let y = 0; y <= area.height - box.h; y += step) {
+    for (let x = 0; x <= area.width - box.w; x += step) spots.push({ x, y });
+  }
+  const dist = (p: Point) => (p.x - preferred.x) ** 2 + (p.y - preferred.y) ** 2;
+  spots.sort((a, b) => dist(a) - dist(b));
+  let best = preferred;
+  let bestRows = Infinity;
+  for (const spot of spots) {
+    const rows = rowsAt(spot.x, spot.y);
+    if (rows <= goal) return spot;
+    if (rows < bestRows) {
+      best = spot;
+      bestRows = rows;
+    }
+  }
+  return best;
+}
+
 /**
  * The horizontal runs of a row `width` wide that a box leaves free, each cut back by `gap` from the box. Call it for a
  * row the box blocks; runs narrower than `minSlot` are dropped.
@@ -95,6 +132,8 @@ export interface Piece<C> {
   width: number;
   end: C;
   text: string;
+  /** True when the piece ends inside a word: the word did not fit, so it was cut. */
+  broken?: boolean;
 }
 
 export interface FlowOptions<C> {
@@ -114,7 +153,8 @@ export interface FlowOptions<C> {
 /**
  * Breaks a paragraph into lines that avoid `box`. A row the box meets is cut into the runs beside it, and the text
  * carries on through them in order, so the words read left to right on both sides of the cell. A line too wide for a
- * narrow run waits for a wider one; only a row with no box at all may hold a word wider than the paragraph.
+ * narrow run, or one that cuts a word, waits for a wider run; only a row with no box at all may hold a word wider than
+ * the paragraph.
  */
 export function flowLines<C>(options: FlowOptions<C>): { lines: Placed[]; rows: number } {
   const { width, lineHeight, box, gap, minSlot, next } = options;
@@ -129,7 +169,7 @@ export function flowLines<C>(options: FlowOptions<C>): { lines: Placed[]; rows: 
     for (const [from, to] of slots) {
       const piece = next(to - from, cursor);
       if (!piece) return { lines, rows: lastRow + 1 };
-      if (blocked && piece.width > to - from + 1e-6) continue;
+      if (blocked && (piece.broken || piece.width > to - from + 1e-6)) continue;
       lines.push({ x: from, y: top, text: piece.text, width: piece.width });
       cursor = piece.end;
       lastRow = row;
@@ -185,22 +225,27 @@ export function initFlowText(paragraph: HTMLElement): void {
   let life = 0;
   let onScreen = true;
   let drag: { id: number; sx: number; sy: number; ox: number; oy: number } | null = null;
+  const endDrag = () => {
+    drag = null;
+    canvas.classList.remove('is-grabbing');
+  };
   let world = newPulsarWorld();
 
   const cells = () => PULSAR_WINDOW * cell;
 
-  function prepareText(): void {
+  function prepareText(): PreparedTextWithSegments {
     const type = readType(paragraph);
     font = type.font;
     spacing = type.spacing;
     lineHeight = type.lineHeight;
     prepared = prepareWithSegments(text, font, spacing ? { letterSpacing: spacing } : undefined);
+    return prepared;
   }
 
-  /** Reads the sizes the flow depends on: the paragraph's width and type, and the board's cell (--c). Resize and font changes only. */
+  /** Reads the sizes the flow depends on: the paragraph's width and type, and the board's cell (--c). On enable, resize and font change. */
   function measure(): void {
     const type = readType(paragraph);
-    if (!prepared || type.font !== font || type.spacing !== spacing) prepareText();
+    const current = !prepared || type.font !== font || type.spacing !== spacing ? prepareText() : prepared;
     lineHeight = type.lineHeight;
     // the paragraph's width and height as the browser has them now (one layout, on resize and on enable only)
     width = paragraph.clientWidth;
@@ -213,8 +258,9 @@ export function initFlowText(paragraph: HTMLElement): void {
     canvas.width = Math.round(px * dpr);
     canvas.height = Math.round(px * dpr);
     canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (!pos) pos = { x: Math.round((width - px) / 2), y: Math.round(lineHeight) };
-    pos = clampBox(pos.x, pos.y, px, px, width, height);
+    // the start spot is chosen on enable, while the paragraph is still its plain height (see startSpot)
+    const start = pos ?? startSpot(current);
+    pos = clampBox(start.x, start.y, px, px, width, height);
   }
 
   /** Draws the live cells of the pulsar window in the ink colour. */
@@ -230,23 +276,40 @@ export function initFlowText(paragraph: HTMLElement): void {
     }
   }
 
-  /** Breaks the text round the cell and places the lines. Runs on drag and resize, never on a generation. */
-  function relayout(): void {
-    if (!on || !prepared || !pos) return;
-    const current = prepared;
-    const px = cells();
-    const { lines, rows } = flowLines<LayoutCursor>({
+  /** The lines of the text round a cell at `box` (null for none), and the rows they take. `words` false: rows only, no text. */
+  function layOut(current: PreparedTextWithSegments, box: Box | null, words = true) {
+    return flowLines<LayoutCursor>({
       width,
       lineHeight,
-      box: { x: pos.x, y: pos.y, w: px, h: px },
+      box,
       gap: GAP,
       minSlot: MIN_SLOT,
       start: { segmentIndex: 0, graphemeIndex: 0 },
       next: (maxWidth, from) => {
         const range = layoutNextLineRange(current, maxWidth, from);
-        return range && { width: range.width, end: range.end, text: materializeLineRange(current, range).text };
+        if (!range) return null;
+        // a line that ends inside a word (grapheme above zero) is one the run cannot hold whole
+        const text = words ? materializeLineRange(current, range).text : '';
+        return { width: range.width, end: range.end, text, broken: range.end.graphemeIndex > 0 };
       },
     });
+  }
+
+  /** The first spot for the pattern: its default (centred, first row), or the nearest that keeps the paragraph's height. */
+  function startSpot(current: PreparedTextWithSegments): Point {
+    const px = cells();
+    const preferred = clampBox(Math.round((width - px) / 2), Math.round(lineHeight), px, px, width, height);
+    const goal = Math.round(height / lineHeight);
+    // a trial only counts rows, so it builds no words; a 4px grid finds the spots that a 12px one steps over
+    const rowsAt = (x: number, y: number) => layOut(current, { x, y, w: px, h: px }, false).rows;
+    return settleSpot(preferred, { width, height }, { w: px, h: px }, rowsAt, goal, 4);
+  }
+
+  /** Breaks the text round the cell and places the lines. Runs on drag and resize, never on a generation. */
+  function relayout(): void {
+    if (!on || !prepared || !pos) return;
+    const px = cells();
+    const { lines, rows } = layOut(prepared, { x: pos.x, y: pos.y, w: px, h: px });
     lines.forEach((line, i) => {
       let el = lineEls[i];
       if (!el) {
@@ -255,8 +318,9 @@ export function initFlowText(paragraph: HTMLElement): void {
         lineEls[i] = el;
         flow.append(el);
       }
-      // the space that ends a line hangs past it (pretext leaves it out of the width): a pre span would keep it in its box
-      const shown = line.text.trimEnd();
+      // each line ends with one space, so copying the flow reads its words apart (the lines are separate boxes with no
+      // space between them); the space paints nothing. pretext leaves the space out of the line's width.
+      const shown = `${line.text.trimEnd()} `;
       if (el.textContent !== shown) el.textContent = shown;
       el.style.left = `${Math.round(line.x)}px`;
       el.style.top = `${Math.round(line.y)}px`;
@@ -313,8 +377,7 @@ export function initFlowText(paragraph: HTMLElement): void {
     if (!on) return;
     on = false;
     stopLife();
-    drag = null;
-    canvas.classList.remove('is-grabbing');
+    endDrag();
     paragraph.classList.remove('is-flowing');
     paragraph.style.minHeight = '';
     minHeight = '';
@@ -344,13 +407,10 @@ export function initFlowText(paragraph: HTMLElement): void {
     pos = clampBox(drag.ox + event.clientX - drag.sx, drag.oy + event.clientY - drag.sy, px, px, width, height);
     scheduleRelayout();
   });
-  const release = (event: PointerEvent) => {
-    if (!drag || event.pointerId !== drag.id) return;
-    drag = null;
-    canvas.classList.remove('is-grabbing');
-  };
-  canvas.addEventListener('pointerup', release);
-  canvas.addEventListener('pointercancel', release);
+  // the capture ends on release, on a cancel, or when the window loses the pointer (alt-tab): no button, no drag
+  canvas.addEventListener('lostpointercapture', (event) => {
+    if (drag?.id === event.pointerId) endDrag();
+  });
 
   // the page scrolls under a still pointer, and the paragraph is only drawn while on screen
   new IntersectionObserver(([entry]) => {
@@ -365,6 +425,7 @@ export function initFlowText(paragraph: HTMLElement): void {
     if (!on || resizeFrame) return;
     resizeFrame = requestAnimationFrame(() => {
       resizeFrame = 0;
+      if (!on) return;
       measure();
       relayout();
       paint();

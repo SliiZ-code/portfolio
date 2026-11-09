@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { countLive, stepWorld } from '../src/scripts/board/life';
-import { PULSAR_WINDOW, WORLD_SIZE, clamp, clampBox, flowLines, freeSlots, newPulsarWorld, type Box } from '../src/scripts/flow-text';
+import { PULSAR_WINDOW, WORLD_SIZE, clamp, clampBox, flowLines, freeSlots, newPulsarWorld, settleSpot, type Box } from '../src/scripts/flow-text';
 
 describe('clamp', () => {
   it('pins a value into its range', () => {
@@ -23,6 +23,26 @@ describe('clampBox', () => {
 
   it('pins a box wider than its area to the left edge', () => {
     expect(clampBox(50, 50, 200, 10, 100, 100)).toEqual({ x: 0, y: 50 });
+  });
+});
+
+describe('settleSpot', () => {
+  const area = { width: 300, height: 200 };
+  const box = { w: 50, h: 50 };
+
+  it('keeps the preferred spot when the text needs no more rows there', () => {
+    expect(settleSpot({ x: 120, y: 40 }, area, box, () => 4, 4, 10)).toEqual({ x: 120, y: 40 });
+  });
+
+  it('moves to the nearest spot that keeps the goal rows', () => {
+    // only a box left of x=100 leaves the text its rows
+    const rowsAt = (x: number) => (x < 100 ? 4 : 5);
+    expect(settleSpot({ x: 150, y: 40 }, area, box, rowsAt, 4, 10)).toEqual({ x: 90, y: 40 });
+  });
+
+  it('falls back to the spot that needs the fewest rows when none keeps the goal', () => {
+    const rowsAt = (x: number) => (x === 200 ? 6 : 7);
+    expect(settleSpot({ x: 50, y: 40 }, area, box, rowsAt, 4, 10)).toEqual({ x: 200, y: 40 });
   });
 });
 
@@ -137,6 +157,21 @@ describe('flowLines', () => {
     // the rows the obstacle meets stay empty, so the wide word lands below it, across the full width
     expect(wide!.y).toBeGreaterThanOrEqual(box.y + box.h + GAP);
     expect(lines.map((l) => l.text).join(' ')).toBe(text);
+  });
+
+  it('does not split a word to fill a narrow run beside the cell', () => {
+    // a word that fits only a short run comes back cut mid-word (pretext breaks what does not fit); a cut piece is refused
+    // beside the cell, so the whole word waits for a full row below
+    const next = (maxWidth: number, from: number) => {
+      if (from >= 1) return null;
+      return maxWidth >= 120
+        ? { width: 120, end: 1, text: 'researching' }
+        : { width: maxWidth, end: 0, text: 'resear', broken: true };
+    };
+    const box: Box = { x: 60, y: 0, w: 80, h: 20 };
+    const { lines } = flowLines({ width: 200, lineHeight: LH, box, gap: GAP, minSlot: 40, start: 0, next });
+    expect(lines.map((l) => l.text)).toEqual(['researching']);
+    expect(lines[0].y).toBe(2 * LH);
   });
 
   it('reports the number of rows it used, blocked ones included', () => {
