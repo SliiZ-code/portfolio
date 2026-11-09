@@ -22,3 +22,9 @@ const bio = htmlToText(resume.summary);
     {resume.profiles.map((profile) => <a href={profile.url}>{profile.network}</a>)}
   </p>
 </div>
+
+<script>
+  import { initFlowText } from '../../scripts/flow-text';
+
+  document.querySelectorAll<HTMLElement>('.hc-summary').forEach(initFlowText);
+</script>
