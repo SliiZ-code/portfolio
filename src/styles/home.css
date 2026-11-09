@@ -388,9 +388,9 @@
     color: var(--ink);
   }
 
-  /* magnet type (src/scripts/magnet-type.ts): the names switch to a variable serif and each letter's weight
-     follows the pointer */
-  .is-magnet .hc-project-name {
+  /* magnet type (src/scripts/magnet-type.ts): the names are set in a variable serif from the first paint, so the
+     face does not swap when the script splits the letters; each letter's weight then follows the pointer */
+  .hc-projects[data-hover-index] .hc-project-name {
     font-family: "Fraunces Variable", "Gambarino", serif;
     font-weight: 320;
     letter-spacing: -.02em;
@@ -398,6 +398,12 @@
 
   .mt-word {
     white-space: nowrap;
+  }
+
+  /* the whole name for screen readers; a copied selection takes the visible letters only */
+  .hc-project-name .sr-only {
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .mt-letter {

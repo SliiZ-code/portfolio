@@ -65,6 +65,14 @@
     mask-image: linear-gradient(to top, transparent, #000 var(--dissolve), rgb(0 0 0 / .55) calc(var(--dissolve) + 40px), transparent);
   }
 
+  /* a touch screen scrolls the lines with the text: iOS ignores a fixed background anyway, and elsewhere it would
+     repaint both layers on every scroll frame */
+  @media (hover: none) {
+    .hz-grid {
+      background-attachment: scroll;
+    }
+  }
+
   @media print {
     .hz-grid,
     .hz {

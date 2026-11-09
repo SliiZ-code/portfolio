@@ -52,7 +52,6 @@ export function initMagnetType(list: HTMLElement): void {
 
   const letters = [...list.querySelectorAll<HTMLElement>('.hc-project-name > a, .hc-project-name > span')].flatMap(splitLetters);
   if (letters.length === 0) return;
-  list.classList.add('is-magnet');
   const weights = new Float32Array(letters.length).fill(REST_WEIGHT);
 
   let px = 0;

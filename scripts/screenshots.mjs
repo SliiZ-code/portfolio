@@ -93,27 +93,6 @@ await visit('/', {
   },
 });
 
-await visit('/projets/jeu-de-la-vie/', {
-  label: 'project-fr',
-  viewport: { width: 1440, height: 900 },
-  settle: 2800,
-});
-
-await visit('/projets/blink/', { label: 'project-blink-desktop', viewport: { width: 1440, height: 900 }, settle: 2800 });
-await visit('/projets/blink/', { label: 'project-blink-mobile', viewport: { width: 390, height: 844 }, settle: 2800 });
-
-// the project only exists once RxResume has it; without it these shots fail the wait
-const asciiReady = async (page) => {
-  await page.waitForSelector('.pix-box[data-state="ready"]', { timeout: 15000 });
-  await page.waitForTimeout(600);
-};
-
-const arduino = 'larduino-en-pixels';
-await visit(`/projets/${arduino}/`, { label: 'arduino-fr', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
-await visit(`/projets/${arduino}/`, { label: 'arduino-night', viewport: { width: 1440, height: 900 }, theme: 'night', settle: 1500, before: asciiReady });
-await visit('/en/projects/the-arduino-in-pixels/', { label: 'arduino-en', viewport: { width: 1440, height: 900 }, settle: 1500, before: asciiReady });
-await visit(`/projets/${arduino}/`, { label: 'arduino-mobile', viewport: { width: 390, height: 844 }, settle: 1500, before: asciiReady });
-
 // dive into a project's row: the stage scales toward it before the page changes
 await visit('/', {
   label: 'dive',
