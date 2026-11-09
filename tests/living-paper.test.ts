@@ -188,21 +188,42 @@ describe('bucketCells', () => {
 
 describe('paperTuning', () => {
   it('keeps the desktop paper as it was', () => {
-    const t = paperTuning({ coarse: false, cores: 8 });
+    const t = paperTuning({ coarse: false });
     expect(t.stepMs).toBeCloseTo(1000 / 12);
     expect(t.maxDpr).toBe(2);
     expect(t.pauseWhileScrolling).toBe(false);
   });
 
   it('lightens the paper on a touch screen: slower, one pixel per cell pixel, still while the finger scrolls', () => {
-    const t = paperTuning({ coarse: true, cores: 8 });
+    const t = paperTuning({ coarse: true });
     expect(t.stepMs).toBeGreaterThan(1000 / 12);
     expect(t.maxDpr).toBe(1);
     expect(t.pauseWhileScrolling).toBe(true);
   });
+});
 
-  it('slows down a weak desktop and ignores an unknown core count', () => {
-    expect(paperTuning({ coarse: false, cores: 2 }).stepMs).toBeGreaterThan(1000 / 12);
-    expect(paperTuning({ coarse: false, cores: 0 }).stepMs).toBeCloseTo(1000 / 12);
+describe('stepGrid with a window where everything dies', () => {
+  // a lone cell dies in one step; frozen life outside the window must stay in the live band
+  const setup = () => {
+    const grid = createGrid(8, 40);
+    plant(grid, 3, 3);
+    plant(grid, 3, 30);
+    return grid;
+  };
+
+  it('keeps frozen life above the window in the band', () => {
+    const grid = setup();
+    stepGrid(grid, new Uint8Array(8 * 40), 20, 39);
+    expect(grid.cells[3 * 8 + 3]).toBeGreaterThan(0);
+    expect(grid.lo).toBeLessThanOrEqual(3);
+    expect(grid.hi).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps frozen life below the window in the band', () => {
+    const grid = setup();
+    stepGrid(grid, new Uint8Array(8 * 40), 0, 15);
+    expect(grid.cells[30 * 8 + 3]).toBeGreaterThan(0);
+    expect(grid.lo).toBeLessThanOrEqual(30);
+    expect(grid.hi).toBeGreaterThanOrEqual(30);
   });
 });

@@ -147,10 +147,12 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
     if (!visible || still.matches) return;
     frame = requestAnimationFrame(tick);
     if (now - last < frameMs) return;
+    const elapsed = last ? now - last : frameMs;
     last = now;
     // the board sets --c inline on <html>; a cheap read catches a change that came without a resize
     if ((parseFloat(root.style.getPropertyValue('--c')) || cell) !== cell) size();
-    swell *= 0.94;
+    // the swell fades by time, not by frame, so a phone at 15 fps calms down as fast as a desktop at 30
+    swell *= 0.94 ** (Math.min(elapsed, 250) / (1000 / 30));
     draw(now / 1000);
   };
 
@@ -164,8 +166,9 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
   canvas.hidden = false;
   canvas.closest('.home-content')?.classList.add('has-horizon');
 
-  new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting;
+  new IntersectionObserver((entries) => {
+    // several entries can queue up during a fast scroll: the last one is the current state
+    visible = entries[entries.length - 1]!.isIntersecting;
     start();
   }).observe(canvas);
   new ResizeObserver(() => {

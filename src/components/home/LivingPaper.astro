@@ -14,6 +14,8 @@
     height: 100vh;
     z-index: 0;
     pointer-events: none;
+    /* a phone draws the paper at one canvas pixel per CSS pixel; the browser scales it up with hard edges */
+    image-rendering: pixelated;
   }
 
   :global(.home-content > .hc) {

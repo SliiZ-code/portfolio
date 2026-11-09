@@ -122,9 +122,14 @@ export function stepGrid(grid: Grid, next: Uint8Array, from = 0, to = grid.rows 
   // the old band is cleared in the source, which becomes the scratch buffer of the next step
   cells.fill(0, y0 * cols, (y1 + 1) * cols);
   cells.set(next.subarray(y0 * cols, (y1 + 1) * cols), y0 * cols);
-  // rows outside the window may still hold frozen life: the band keeps covering them
-  grid.lo = grid.lo < y0 ? Math.min(lo, grid.lo) : lo;
-  grid.hi = grid.hi > y1 ? Math.max(hi, grid.hi) : hi;
+  // rows outside the window may still hold frozen life, on either side: the band keeps covering them even when
+  // everything inside the window died (else the frozen life would drop out of the band and never come back)
+  const above = grid.lo < y0;
+  const below = grid.hi > y1;
+  const outLo = above ? grid.lo : below ? Math.max(grid.lo, y1 + 1) : rows;
+  const outHi = below ? grid.hi : above ? Math.min(grid.hi, y0 - 1) : -1;
+  grid.lo = Math.min(lo, outLo);
+  grid.hi = Math.max(hi, outHi);
   return alive;
 }
 
@@ -180,18 +185,17 @@ export interface PaperTuning {
 /**
  * How hard the paper works on this device. A phone repaints a full-screen canvas on a slow CPU while it scrolls, so
  * it gets fewer generations, one canvas pixel per CSS pixel (cells are whole-pixel squares, so nothing blurs) and no
- * generations mid-scroll. A desktop keeps the full show unless it reports a weak CPU. `cores` 0 means unknown.
+ * generations mid-scroll. A desktop keeps the full show.
  */
-export function paperTuning({ coarse, cores }: { coarse: boolean; cores: number }): PaperTuning {
+export function paperTuning({ coarse }: { coarse: boolean }): PaperTuning {
   if (coarse) return { stepMs: 1000 / 8, maxDpr: 1, pauseWhileScrolling: true };
-  if (cores > 0 && cores <= 4) return { stepMs: 1000 / 10, maxDpr: 2, pauseWhileScrolling: false };
   return { stepMs: STEP_MS, maxDpr: 2, pauseWhileScrolling: false };
 }
 
 /** Generations are skipped for this long after the last scroll event. */
 export const SCROLL_QUIET_MS = 140;
 /** The step window reaches this many viewport heights above and below the screen. */
-export const STEP_REACH = 0.75;
+export const STEP_REACH = 1.5;
 
 /** Every cell on the line between two cells, so a fast pointer still leaves a continuous trail. */
 export function lineCells(x0: number, y0: number, x1: number, y1: number): [number, number][] {
@@ -211,7 +215,7 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   const hc = section.querySelector<HTMLElement>('.hc');
   if (!ctx || !hc) return;
   const root = document.documentElement;
-  const tuning = paperTuning({ coarse: matchMedia('(pointer: coarse)').matches, cores: navigator.hardwareConcurrency || 0 });
+  const tuning = paperTuning({ coarse: matchMedia('(pointer: coarse)').matches });
 
   let cell = 6;
   let grid = createGrid(1, 1);
@@ -336,7 +340,8 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
       // life far off screen waits where it is; the window reaches a good way past the edges so what scrolls in is alive
       const reach = Math.ceil((innerHeight * STEP_REACH) / cell);
       const [first, last] = visibleRows(box.top, cell, innerHeight, grid.rows, reach);
-      if (first <= last) {
+      // a window that misses the live band changes nothing: no step, and no redraw of an unchanged canvas
+      if (first <= last && first <= grid.hi + 1 && last >= grid.lo - 1) {
         stepGrid(grid, scratch, first, last);
         dirty = true;
       }
