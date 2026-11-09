@@ -136,8 +136,7 @@ button {
 }
 
 /* ---- the hero scrolling away: index.ts sets --hero-p on <html> (0 at the top, 1 once the content covers it) ----
-   the stage drifts up at 30% of the scroll (`translate`, so the dive's `transform` still composes), the canvas dims
-   to 35%, and the note and the list fade out by half way. Only the custom property changes per frame. Off under reduced motion. */
+   the stage drifts up at 30% of the scroll, the canvas dims to 35%, and the note fades out by half way. Only the custom property changes per frame. Off under reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
   #stage {
     translate: 0 calc(var(--hero-p, 0) * -30vh);
@@ -147,8 +146,7 @@ button {
     opacity: calc(1 - var(--hero-p, 0) * .65);
   }
 
-  #name-note,
-  #projects {
+  #name-note {
     opacity: max(0, calc(1 - var(--hero-p, 0) * 2));
   }
 }
@@ -178,153 +176,8 @@ button {
   pointer-events: none;
 }
 
-/* ---- the projects: a list of rows, each fires its seed onto the board ---- */
-#projects {
-  position: absolute;
-  z-index: 1;
-  /* the script sets left, top, width and the height it can take */
-  width: max-content;
-  pointer-events: none;
-}
-
-#projects:not(.placed) {
-  visibility: hidden;
-}
-
-#projects.scroll {
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.phead {
-  margin: 0 0 6px;
-  font: 500 10px/1.2 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--mute);
-  white-space: nowrap;
-}
-
-#projects ul {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-#projects.compact ul {
-  gap: 2px;
-}
-
-#projects.compact .phead {
-  margin-bottom: 3px;
-}
-
-/* a row: the seed's glyph, then the name with its meta under it */
-.proj {
-  --g: 3px;
-  display: grid;
-  grid-template-columns: auto minmax(0, auto);
-  grid-template-areas: "glyph name" ". meta";
-  justify-content: start;
-  column-gap: 10px;
-  row-gap: 1px;
-  padding: 2px 0;
-  text-decoration: none;
-  cursor: pointer;
-  pointer-events: auto;
-  -webkit-user-drag: none;
-}
-
-#projects.compact .proj {
-  --g: 2px;
-  column-gap: 8px;
-  row-gap: 0;
-  padding: 0;
-}
-
-.proj .pglyph {
-  grid-area: glyph;
-  align-self: center;
-  width: calc(var(--gc) * var(--g));
-  height: calc(var(--gr) * var(--g));
-  color: var(--ink);
-  background: var(--paper);
-  box-sizing: content-box;
-  padding: 2px;
-  margin-left: -2px;
-  transition: color .12s ease;
-}
-
-.proj .pname {
-  grid-area: name;
-  font: 18px/1.15 "Geist Pixel", monospace;
-  color: var(--ink);
-  padding: 1px 5px;
-  margin-left: -5px;
-  background: var(--paper);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color .12s ease, background-color .12s ease;
-}
-
-#projects.compact .pname {
-  padding: 0 4px;
-  margin-left: -4px;
-  font-size: 14px;
-}
-
-.proj .pmeta {
-  grid-area: meta;
-  justify-self: start;
-  max-width: 100%;
-  font: 500 10px/1.2 "Geist Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--mute);
-  padding: 0 1px;
-  background: var(--paper);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#projects.narrow .pmeta {
-  display: none;
-}
-
-.proj:hover .pglyph,
-.proj:focus-visible .pglyph {
-  color: var(--life-0);
-}
-
-.proj:hover .pname {
-  color: var(--paper);
-  background: var(--ink);
-}
-
-.proj:focus-visible {
-  outline: none;
-}
-
-.proj:focus-visible .pname {
-  color: var(--paper);
-  background: var(--accent);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .proj .pglyph,
-  .proj .pname {
-    transition: none;
-  }
-}
-
-/* the opening: the note and the rows start hidden and appear as the shockwave passes them */
-#stage.intro .name-note,
-#stage.intro .proj {
+/* the opening: the note starts hidden and appears as the shockwave passes it */
+#stage.intro .name-note {
   opacity: 0;
   transition: none;
 }
@@ -1006,13 +859,6 @@ a.flag:hover {
 .cv-project-link:hover {
   color: var(--accent);
   border-color: var(--accent);
-}
-
-/* phones and landscape phones: smaller tabs */
-@media (max-width: 760px), (max-height: 620px) {
-  .proj .pname {
-    font-size: 16px;
-  }
 }
 
 @media (max-width: 760px) {

@@ -113,3 +113,11 @@ Life, are added on top:
 - The desktop index shows names only: the hover pictures are gone (the user asked); phones keep the small pictures.
 - The project detail pages are gone: names link to the project's own site (GitHub), and the old /projets/<slug>/ and
   /en/projects/<slug>/ URLs redirect to the projects section of the home page.
+
+## Wave 8: review, phone speed, cleanup
+
+- Review fixes on the palette, magnet type and horizon grid.
+- Phone speed: the living paper steps only rows near the screen and runs lighter on touch; horizon 15 fps on touch.
+- Removed what only served the hero project list and the project pages: the dive and zoom-out (back.ts,
+  return-flag.ts), list placement and seeds (board/projects.ts; the wave maths moved to board/wave.ts), the 3D pixel
+  viewer and three.js, arduino.glb, overlay notes and short names, the project i18n block and the old list CSS.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardMedia, boardNote, overlayFor, overlayKeyFor } from '../src/data/board';
+import { boardMedia, overlayFor, overlayKeyFor } from '../src/data/board';
 import type { Project } from '../src/lib/resume';
 
 const project = (name: string, slug: string): Project => ({
@@ -17,7 +17,6 @@ describe('overlay aliases', () => {
     const en = project('Game of Life', 'game-of-life');
     expect(overlayKeyFor(en)).toBe('jeu-de-la-vie');
     expect(overlayFor(en)?.seed).toBe('r-pentomino');
-    expect(boardNote(en, 'en')?.text).toBe('the R-pentomino: five cells,\n1103 generations of chaos');
     expect(boardMedia(en)).toEqual({ video: '/media/conway.mp4' });
   });
 

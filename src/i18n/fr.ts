@@ -17,17 +17,6 @@ const fr = {
     themeNight: 'Mode nuit',
     themePaper: 'Mode papier',
   },
-  project: {
-    back: '← retour au plateau',
-    stamp: 'page projet',
-    capture: 'capture · pixelisée en direct',
-    live: 'modèle 3D · pixelisé en direct · glisse pour le tourner',
-    loading: 'chargement…',
-    unavailable: "[WebGL indisponible : pas d'expérience ici]",
-    noCapture: '[pas encore de capture]',
-    visit: 'voir le projet ↗',
-    backBoard: 'retour au plateau',
-  },
   cv: {
     back: '← retour au plateau',
     stamp: 'curriculum vitæ',

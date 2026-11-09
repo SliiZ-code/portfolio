@@ -19,17 +19,6 @@ const en = {
     themeNight: 'Night mode',
     themePaper: 'Paper mode',
   },
-  project: {
-    back: '← back to the board',
-    stamp: 'project page',
-    capture: 'capture · pixelated live',
-    live: '3D model · pixelated live · drag to rotate',
-    loading: 'loading…',
-    unavailable: '[WebGL unavailable: no experiment here]',
-    noCapture: '[no capture yet]',
-    visit: 'view the project ↗',
-    backBoard: 'back to the board',
-  },
   cv: {
     back: '← back to the board',
     stamp: 'curriculum vitæ',

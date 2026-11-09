@@ -46,10 +46,8 @@ describe('known project overlay', () => {
     }
   });
 
-  it('keeps the board names short and the resume names whole', () => {
-    expect(bySlug['worldwide-weather-watcher'].boardName).toBe('Weather Watcher');
+  it('keeps the resume names whole', () => {
     expect(bySlug['worldwide-weather-watcher'].displayName).toBe('Worldwide Weather Watcher');
-    expect(bySlug['jeu-de-la-vie'].boardName).toBe('Jeu de la vie');
   });
 
   it('shows only the language under each name', () => {
@@ -59,28 +57,9 @@ describe('known project overlay', () => {
     expect(bySlug.blink.tag).toBe('Python');
   });
 
-  it('keeps the media and the page notes', () => {
+  it('keeps the media', () => {
     expect(bySlug['jeu-de-la-vie'].media).toEqual({ video: '/media/conway.mp4' });
     expect(bySlug.thrive.media).toEqual({ image: '/media/thrive.jpg' });
-    expect(bySlug.blink.note?.text).toContain('diehard');
-  });
-
-  it('describes the seed in the page notes, in both languages', () => {
-    const notes = (lang: 'fr' | 'en') => Object.fromEntries(Object.entries(BOARD_OVERLAY).map(([key, overlay]) => [key, overlay.note?.[lang]]));
-    expect(notes('fr')).toEqual({
-      'jeu-de-la-vie': 'le R-pentomino : cinq cellules,\n1103 générations de chaos',
-      thrive: 'un gland : sept cellules\nqui poussent 5206 générations',
-      'worldwide-weather-watcher': "un pi-heptomino :\nil s'agite, puis il se pose",
-      blink: 'un diehard : il disparaît\naprès 130 générations',
-      'larduino-en-pixels': "un B-heptomino :\nil fait naître des planeurs",
-    });
-    expect(notes('en')).toEqual({
-      'jeu-de-la-vie': 'the R-pentomino: five cells,\n1103 generations of chaos',
-      thrive: 'an acorn: seven cells\nthat grow for 5206 generations',
-      'worldwide-weather-watcher': 'a pi-heptomino:\nit stirs, then it settles',
-      blink: 'a diehard: gone\nafter 130 generations',
-      'larduino-en-pixels': 'a B-heptomino:\nit gives birth to gliders',
-    });
   });
 
   it('ignores overlay entries that are not in the resume', () => {
@@ -120,13 +99,11 @@ describe('projects outside the overlay', () => {
   it('keep their place in the list', () => {
     expect(projects).toHaveLength(5);
     expect(auto.displayName).toBe('Unlisted Project');
-    expect(auto.boardName).toBe('Unlisted Project');
   });
 
   it('get a deterministic methuselah and no tag', () => {
     expect(METHUSELAHS).toContain(auto.seed);
     expect(auto.tag).toBe('');
-    expect(auto.note).toBeUndefined();
     const again = getBoardProjects(withProjects(base, [...base.projects, extra('Unlisted Project')])).find((p) => p.slug === 'extra-0')!;
     expect(again.seed).toBe(auto.seed);
   });
@@ -154,7 +131,7 @@ describe('overlay aliases', () => {
   });
 });
 
-describe('the Arduino experiment', () => {
+describe('the Arduino project', () => {
   const arduino = (lang: 'fr' | 'en'): Project => {
     const name = lang === 'fr' ? "L'Arduino en pixels" : 'The Arduino in pixels';
     return { ...extra(name), slug: slugify(name) };
@@ -165,7 +142,6 @@ describe('the Arduino experiment', () => {
       expect(overlayFor(arduino(lang))).toMatchObject({
         seed: 'b-heptomino',
         tag: 'three.js',
-        experiment: { kind: 'pixel-model', src: '/media/arduino.glb' },
       });
     }
     expect(slugify("L'Arduino en pixels")).toBe('larduino-en-pixels');
@@ -177,12 +153,6 @@ describe('the Arduino experiment', () => {
     expect(getBoardProjects(base).map((project) => project.slug)).not.toContain('larduino-en-pixels');
     const project = getBoardProjects(withProjects(base, [...base.projects, arduino('fr')])).find((entry) => entry.slug === 'larduino-en-pixels')!;
     expect(project).toMatchObject({ seed: 'b-heptomino', tag: 'three.js' });
-    expect(project.note?.text.length).toBeGreaterThan(0);
-  });
-
-  it('is the only overlay entry with an experiment', () => {
-    const withExperiment = Object.keys(BOARD_OVERLAY).filter((key) => BOARD_OVERLAY[key].experiment);
-    expect(withExperiment).toEqual(['larduino-en-pixels']);
   });
 });
 
