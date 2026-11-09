@@ -261,6 +261,40 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* the counter digits roll like an odometer (board/odometer.ts). Each column is a window one line tall on a ribbon of
+   two slots. At rest the window does not clip: its text takes the paper halo like the rest of the HUD, and the empty
+   slot below stays hidden. Only a digit that is travelling is clipped to its window (.is-rolling). */
+.odometer {
+  display: inline-flex;
+}
+
+/* no fixed width: a column is as wide as its digit with the inherited letter-spacing, so the text after the counter
+   stays where it was */
+.odometer-digit {
+  position: relative;
+  height: 1.2em;
+  line-height: 1.2em;
+}
+
+.odometer-digit.is-rolling {
+  overflow: hidden;
+}
+
+.odometer-ribbon {
+  display: flex;
+  flex-direction: column;
+}
+
+.odometer-num {
+  display: block;
+  height: 1.2em;
+  line-height: 1.2em;
+}
+
+.odometer-num:empty {
+  visibility: hidden;
+}
+
 /* once the hero starts to scroll away (html.scrolled, set by index.ts) the counter and hint step back */
 .bl {
   transition: opacity .3s ease;

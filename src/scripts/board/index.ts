@@ -17,6 +17,7 @@ import {
 import { waveFront, waveTravel } from './wave';
 import { createRenderBuffers, draw, BUCKETS, type Colors, type RenderState, type Shockwave } from './render';
 import { bindInput } from './input';
+import { createOdometer } from './odometer';
 import type { BoardConfig, Structure } from './types';
 
 const RATE = 120;
@@ -240,9 +241,11 @@ export async function initBoard(): Promise<void> {
 
   const genEl = document.getElementById('gen');
   const popEl = document.getElementById('pop');
+  const genOdometer = genEl ? createOdometer(genEl) : null;
+  const popOdometer = popEl ? createOdometer(popEl) : null;
   const updateCounters = (gen: number) => {
-    if (genEl) genEl.textContent = String(gen).padStart(4, '0');
-    if (popEl) popEl.textContent = String(countLive(world.cells) + structurePopulation(structures));
+    genOdometer?.set(String(gen).padStart(4, '0'));
+    popOdometer?.set(countLive(world.cells) + structurePopulation(structures));
   };
 
   // ---- drawing ----
