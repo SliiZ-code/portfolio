@@ -100,15 +100,22 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
   let lastY = window.scrollY;
   const frameMs = 1000 / horizonFps(matchMedia('(pointer: coarse)').matches);
 
+  const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  let paperValue = '';
+  /** Reads the page's paper colour; recolours the band only when it changed. */
   const readPaper = () => {
-    const probe = document.createElement('canvas').getContext('2d');
-    if (!probe) return;
-    probe.fillStyle = getComputedStyle(root).getPropertyValue('--paper').trim() || '#fff';
+    const value = getComputedStyle(root).getPropertyValue('--paper').trim();
+    // no value yet (the stylesheet is not applied): keep what we have rather than paint the band white
+    if (!probe || !value || value === paperValue) return;
+    paperValue = value;
+    probe.clearRect(0, 0, 1, 1);
+    probe.fillStyle = value;
     probe.fillRect(0, 0, 1, 1);
     const [r, g, b] = probe.getImageData(0, 0, 1, 1).data;
     paper = [r, g, b];
     colorize();
   };
+  let lastPaperCheck = 0;
 
   // the paper colour only changes with the theme or the size, so each frame writes alpha alone
   const colorize = () => {
@@ -151,6 +158,12 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
     last = now;
     // the board sets --c inline on <html>; a cheap read catches a change that came without a resize
     if ((parseFloat(root.style.getPropertyValue('--c')) || cell) !== cell) size();
+    // the band must match the paper exactly, or its solid rows read as a strip: a stylesheet that lands late, or any
+    // other change of --paper that no theme event announces, is caught within a second
+    if (now - lastPaperCheck > 1000) {
+      lastPaperCheck = now;
+      readPaper();
+    }
     // the swell fades by time, not by frame, so a phone at 15 fps calms down as fast as a desktop at 30
     swell *= 0.94 ** (Math.min(elapsed, 250) / (1000 / 30));
     draw(now / 1000);

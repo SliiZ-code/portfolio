@@ -197,17 +197,21 @@ button {
   user-select: none;
 }
 
-.hud>* {
-  background: var(--paper);
-  box-shadow: 0 0 0 4px var(--paper);
+/* the corners have no box: a solid box cut a flat block out of the board and out of the dither where the paper meets
+   it. A soft halo in the paper colour keeps the text readable over live cells instead, and fades into whatever is
+   under it */
+.hud {
+  text-shadow: 0 0 2px var(--paper), 0 0 4px var(--paper), 0 0 8px var(--paper), 0 0 12px var(--paper);
 }
 
-/* the corners sit in a paper box, so they stay readable over the content; the text keeps its place */
+.hud svg {
+  filter: drop-shadow(0 0 2px var(--paper)) drop-shadow(0 0 5px var(--paper));
+}
+
 .tl {
   top: 10px;
   left: 10px;
   padding: 4px 6px;
-  background: var(--paper);
   font: 20px "Geist Pixel";
 }
 
@@ -215,7 +219,6 @@ button {
   top: 8px;
   right: 10px;
   padding: 4px 6px;
-  background: var(--paper);
   gap: 10px;
 }
 
@@ -234,7 +237,6 @@ button {
   bottom: 10px;
   right: 10px;
   padding: 4px 6px;
-  background: var(--paper);
 }
 
 /* the two main calls to action, Contact and CV: the ink chip, inverted on hover */
@@ -243,7 +245,7 @@ button {
   background: var(--ink);
   color: var(--paper);
   text-decoration: none;
-  box-shadow: 0 0 0 4px var(--paper);
+  text-shadow: none;
 }
 
 .br .cta:hover,
