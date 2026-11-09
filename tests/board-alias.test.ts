@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { boardMedia, boardNote, findAlternateProject, overlayFor, overlayKeyFor } from '../src/data/board';
-import type { Project, Resume } from '../src/lib/resume';
-import { sampleResume } from './fixtures';
+import { boardMedia, boardNote, overlayFor, overlayKeyFor } from '../src/data/board';
+import type { Project } from '../src/lib/resume';
 
 const project = (name: string, slug: string): Project => ({
   id: slug,
@@ -12,7 +11,6 @@ const project = (name: string, slug: string): Project => ({
   website: { url: '', label: '' },
 });
 
-const withProjects = (lang: Resume['lang'], projects: Project[]): Resume => ({ ...sampleResume(lang), lang, projects });
 
 describe('overlay aliases', () => {
   it('resolves the overlay through an alias slug', () => {
@@ -28,47 +26,3 @@ describe('overlay aliases', () => {
   });
 });
 
-describe('findAlternateProject by id', () => {
-  const withId = (name: string, slug: string, id: string): Project => ({ ...project(name, slug), id });
-
-  it('matches the same entry across languages by id before anything else', () => {
-    const fr = [withId('Mon app', 'mon-app', 'a1'), withId('Autre', 'autre', 'b2')];
-    const en = withProjects('en', [withId('Other', 'other', 'b2'), withId('My app', 'my-app', 'a1')]);
-    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('my-app');
-    expect(findAlternateProject(fr[1], fr, en)?.slug).toBe('other');
-  });
-
-  it('prefers the id over the overlay key', () => {
-    const fr = [withId('Blink', 'blink', 'x1')];
-    const en = withProjects('en', [withId('Blink', 'blink', 'zzz'), withId('Blink bis', 'blink-bis', 'x1')]);
-    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('blink-bis');
-  });
-
-  it('ignores empty ids and falls back to the overlay key', () => {
-    const fr = [withId('Blink', 'blink', '')];
-    const en = withProjects('en', [withId('Other', 'other', ''), withId('Blink', 'blink', '')]);
-    expect(findAlternateProject(fr[0], fr, en)?.slug).toBe('blink');
-  });
-});
-
-describe('findAlternateProject', () => {
-  const frProjects = [project('Jeu de la vie', 'jeu-de-la-vie'), project('Blink', 'blink')];
-  const fr = withProjects('fr', frProjects);
-
-  it('finds the other-language project by overlay key', () => {
-    const en = withProjects('en', [project('Blink', 'blink'), project('Game of Life', 'game-of-life')]);
-    expect(findAlternateProject(frProjects[0], fr.projects, en)?.slug).toBe('game-of-life');
-  });
-
-  it('falls back to the same index when the lists have the same size', () => {
-    const en = withProjects('en', [project('One', 'one'), project('Two', 'two')]);
-    const mine = [project('Un', 'un'), project('Deux', 'deux')];
-    expect(findAlternateProject(mine[1], mine, en)?.slug).toBe('two');
-  });
-
-  it('returns undefined when nothing matches', () => {
-    const en = withProjects('en', [project('One', 'one')]);
-    const mine = [project('Un', 'un'), project('Deux', 'deux')];
-    expect(findAlternateProject(mine[1], mine, en)).toBeUndefined();
-  });
-});

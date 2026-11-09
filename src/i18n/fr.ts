@@ -39,7 +39,6 @@ const fr = {
     present: 'aujourd’hui',
     level: 'niveau',
     grade: 'note',
-    projectPage: 'voir la page ↗',
     contactHeading: 'Contact',
     linksHeading: 'Liens',
   },
@@ -69,7 +68,6 @@ const fr = {
     cv: 'CV',
     cvPdf: 'CV (PDF)',
     moreProjects: 'Autres projets',
-    projectPage: 'page du projet',
   },
 };
 

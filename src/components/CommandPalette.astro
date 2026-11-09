@@ -1,7 +1,7 @@
 ---
 // A command palette (⌘K, Ctrl+K or "/"; the Menu button on a touch screen): jump to a section or a project, copy the
 // e-mail, open the CV, switch theme or language. A native <dialog>, so focus and Escape work without help.
-import { projectPath, type BoardProject } from '../data/board';
+import type { BoardProject } from '../data/board';
 import type { UIStrings } from '../i18n/fr';
 import type { Lang, Resume } from '../lib/resume';
 
@@ -31,7 +31,9 @@ const sections: Item[] = ([
 const projectItems: Item[] = projects.map((project) => ({
   label: project.displayName,
   hint: project.meta,
-  href: projectPath(lang, project.slug),
+  // a project opens its own site when it has one, else the page scrolls to the projects
+  href: project.website.url || '#hc-projects',
+  external: !!project.website.url,
 }));
 const actions: Item[] = ([
   resume.email && { label: p.copyEmail, hint: resume.email, action: 'copy-email' },

@@ -5,7 +5,7 @@ import '@fontsource-variable/fraunces/wght.css';
 import HomeSection from './HomeSection.astro';
 import ProjectMedia from './ProjectMedia.astro';
 import { leadSentences, linkLabel, splitProjects } from './content';
-import { projectPath, type BoardProject } from '../../data/board';
+import type { BoardProject } from '../../data/board';
 import { htmlToText, type Lang } from '../../lib/resume';
 import type { UIStrings } from '../../i18n/fr';
 
@@ -16,7 +16,7 @@ interface Props {
   projects: BoardProject[];
 }
 
-const { lang, t, title, projects } = Astro.props;
+const { t, title, projects } = Astro.props;
 const { featured, more } = splitProjects(projects);
 
 const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.description), 2);
@@ -33,12 +33,11 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
             </div>
             <div class="hc-project-text">
               <h3 class="hc-entry-title hc-project-name">
-                <a href={projectPath(lang, project.slug)}>{project.displayName}</a>
+                {project.website.url ? <a href={project.website.url}>{project.displayName}</a> : <span>{project.displayName}</span>}
               </h3>
               {project.meta && <p class="hc-date hc-project-meta">{project.meta}</p>}
               {leadOf(project) && <p class="hc-lead">{leadOf(project)}</p>}
               <p class="hc-links">
-                <a href={projectPath(lang, project.slug)}>{t.home.projectPage}</a>
                 {project.website.url && <a href={project.website.url}>{linkLabel(project.website)}</a>}
               </p>
             </div>
@@ -55,7 +54,7 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
         <ul class="hc-plain">
           {more.map((project) => (
             <li>
-              <a href={projectPath(lang, project.slug)}>{project.displayName}</a>
+              {project.website.url ? <a href={project.website.url}>{project.displayName}</a> : project.displayName}
               {project.meta && <span class="hc-date"> {project.meta}</span>}
             </li>
           ))}

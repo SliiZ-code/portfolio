@@ -157,28 +157,6 @@ export const boardMedia = (
 ): BoardOverlay['media'] =>
   overlayFor(project)?.media ?? findMedia([project.slug, overlayKeyFor(project) ?? '', alternate?.slug ?? ''], exists);
 
-/**
- * FR and EN resumes are separate documents, but a duplicated entry keeps its id: match on
- * that first, then on the overlay key, then fall back to the same index when both lists
- * have the same size.
- */
-export function findAlternateProject(project: Project, projects: Project[], other: Resume): Project | undefined {
-  if (project.id) {
-    const same = other.projects.find((candidate) => candidate.id === project.id);
-    if (same) return same;
-  }
-  const key = overlayKeyFor(project);
-  if (key) {
-    const matched = other.projects.find((candidate) => overlayKeyFor(candidate) === key);
-    if (matched) return matched;
-  }
-  const index = projects.findIndex((candidate) => candidate.slug === project.slug);
-  if (index !== -1 && projects.length === other.projects.length) return other.projects[index];
-  return undefined;
-}
-
-export const projectPath = (lang: Lang, slug: string): string => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
-
 export function getBoardProjects(resume: Resume): BoardProject[] {
   return resume.projects.map((project) => {
     const overlay = overlayFor(project);

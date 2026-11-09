@@ -16,11 +16,14 @@ export function magnetWeight(distance: number, radius = RADIUS, rest = REST_WEIG
   return rest + (peak - rest) * t * t * (3 - 2 * t);
 }
 
-/** Wraps each letter of the link's text in a span; the link keeps its name for assistive tech. */
-function splitLetters(link: HTMLAnchorElement): HTMLSpanElement[] {
+/** Wraps each letter of the name in a span; a visually hidden copy keeps the name whole for assistive tech. */
+function splitLetters(link: HTMLElement): HTMLSpanElement[] {
   const text = link.textContent ?? '';
-  link.setAttribute('aria-label', text);
   link.textContent = '';
+  const whole = document.createElement('span');
+  whole.className = 'sr-only';
+  whole.textContent = text;
+  link.append(whole);
   const letters: HTMLSpanElement[] = [];
   for (const word of text.split(/(\s+)/)) {
     if (/^\s+$/.test(word)) {
@@ -47,7 +50,7 @@ export function initMagnetType(list: HTMLElement): void {
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   if (!fine.matches || still.matches) return;
 
-  const letters = [...list.querySelectorAll<HTMLAnchorElement>('.hc-project-name a')].flatMap(splitLetters);
+  const letters = [...list.querySelectorAll<HTMLElement>('.hc-project-name > a, .hc-project-name > span')].flatMap(splitLetters);
   if (letters.length === 0) return;
   list.classList.add('is-magnet');
   const weights = new Float32Array(letters.length).fill(REST_WEIGHT);

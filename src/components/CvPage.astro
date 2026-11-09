@@ -14,7 +14,6 @@ const resume = getResume(lang);
 const t = strings(lang);
 const boardHref = lang === 'fr' ? '/' : '/en/';
 const cvPath = (language: Lang) => (language === 'fr' ? '/cv/' : '/en/cv/');
-const projectPath = (slug: string) => (lang === 'fr' ? `/projets/${slug}/` : `/en/projects/${slug}/`);
 const pdf = cvPdfPath(lang);
 const title = `CV — ${resume.name}`;
 const where = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' · ');
@@ -132,12 +131,8 @@ const levels = (level: number) => Array.from({ length: 5 }, (_, index) => index 
                 <h3>{project.name}</h3>
                 {project.period && <div class="where">{project.period}</div>}
                 {project.description && <div class="description" set:html={project.description} />}
-                <a class="cv-project-link" href={projectPath(project.slug)}>{t.cv.projectPage}</a>
                 {project.website.url && (
-                  <>
-                    <span class="where"> · </span>
-                    <a class="cv-project-link" href={project.website.url}>{t.cv.website} ↗</a>
-                  </>
+                  <a class="cv-project-link" href={project.website.url}>{t.cv.website} ↗</a>
                 )}
               </div>
             ))}

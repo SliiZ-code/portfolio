@@ -111,3 +111,5 @@ Life, are added on top:
   the pointer (`src/scripts/magnet-type.ts`). The hovered row's picture now floats above the pointer so it never hides
   the name.
 - The desktop index shows names only: the hover pictures are gone (the user asked); phones keep the small pictures.
+- The project detail pages are gone: names link to the project's own site (GitHub), and the old /projets/<slug>/ and
+  /en/projects/<slug>/ URLs redirect to the projects section of the home page.

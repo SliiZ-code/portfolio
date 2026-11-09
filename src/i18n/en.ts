@@ -41,7 +41,6 @@ const en = {
     present: 'present',
     level: 'level',
     grade: 'grade',
-    projectPage: 'view the page ↗',
     contactHeading: 'Contact',
     linksHeading: 'Links',
   },
@@ -71,7 +70,6 @@ const en = {
     cv: 'CV',
     cvPdf: 'CV (PDF)',
     moreProjects: 'More projects',
-    projectPage: 'project page',
   },
 } satisfies UIStrings;
 
