@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BAYER8, HORIZON_ROWS, density, fillHorizon, shoreline } from '../src/scripts/horizon';
+import { BAYER8, HORIZON_ROWS, density, fillHorizon, horizonFps, paintMask, shoreline } from '../src/scripts/horizon';
 
 describe('horizon', () => {
   it('Bayer thresholds are 64 distinct values in (0, 1)', () => {
@@ -36,3 +36,43 @@ describe('horizon', () => {
     expect(rowSum(HORIZON_ROWS - 4)).toBeGreaterThan(rowSum(6));
   });
 });
+
+describe('horizonFps', () => {
+  it('runs at 30 on a fine pointer and halves on touch', () => {
+    expect(horizonFps(false)).toBe(30);
+    expect(horizonFps(true)).toBe(15);
+  });
+});
+
+describe('paintMask', () => {
+  it('writes only the alpha of the paper colour, flipped for the bottom band', () => {
+    const cols = 2;
+    const rows = 3;
+    const mask = Uint8Array.from([1, 0, 0, 0, 0, 1]);
+    const data = new Uint8ClampedArray(cols * rows * 4);
+    paintMask(data, mask, cols, rows, false);
+    expect(Array.from(data).filter((_, i) => i % 4 === 3)).toEqual([255, 0, 0, 0, 0, 255]);
+    expect(Array.from(data).filter((_, i) => i % 4 !== 3).every((v) => v === 0)).toBe(true);
+    paintMask(data, mask, cols, rows, true);
+    expect(Array.from(data).filter((_, i) => i % 4 === 3)).toEqual([0, 255, 0, 0, 255, 0]);
+  });
+});
+
+describe('fillHorizon agrees with the per-cell definition', () => {
+  it('marks a cell exactly where density beats its Bayer threshold', () => {
+    const cols = 90;
+    const rows = HORIZON_ROWS;
+    const out = new Uint8Array(cols * rows);
+    for (const [t, swell, phase] of [[0, 0, 0], [3.7, 0.6, 2.3], [41.2, 1, 4.6]] as const) {
+      fillHorizon(out, cols, rows, t, swell, phase);
+      for (let x = 0; x < cols; x++) {
+        const lo = shoreline(x, t, swell, phase);
+        for (let y = 0; y < rows; y++) {
+          const want = density(y, rows, lo) > BAYER8[((y & 7) << 3) | (x & 7)]! ? 1 : 0;
+          expect(out[y * cols + x]).toBe(want);
+        }
+      }
+    }
+  });
+});
+

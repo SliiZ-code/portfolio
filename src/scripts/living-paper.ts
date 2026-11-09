@@ -72,13 +72,16 @@ export const plantGlider = (grid: Grid, x: number, y: number, hx: number, hy: nu
 
 /**
  * One generation of B3/S23 into `next` (same size), with dead edges. A cell on a rock dies. Only the rows that can
- * change are visited: the live band and one row each side. Returns the number of live cells.
+ * change are visited: the live band and one row each side, cut to `from`..`to` when the caller wants a window (the
+ * rows near the viewport). Life outside the window is frozen as it is and stays inside the live band, so it picks up
+ * again when the window comes back. Returns the number of live cells in the rows it stepped.
  */
-export function stepGrid(grid: Grid, next: Uint8Array): number {
+export function stepGrid(grid: Grid, next: Uint8Array, from = 0, to = grid.rows - 1): number {
   const { cols, rows, cells, blocked } = grid;
   if (grid.lo > grid.hi) return 0;
-  const y0 = Math.max(0, grid.lo - 1);
-  const y1 = Math.min(rows - 1, grid.hi + 1);
+  const y0 = Math.max(0, grid.lo - 1, from);
+  const y1 = Math.min(rows - 1, grid.hi + 1, to);
+  if (y0 > y1) return 0;
   next.fill(0, y0 * cols, (y1 + 1) * cols);
   let lo = rows;
   let hi = -1;
@@ -119,9 +122,20 @@ export function stepGrid(grid: Grid, next: Uint8Array): number {
   // the old band is cleared in the source, which becomes the scratch buffer of the next step
   cells.fill(0, y0 * cols, (y1 + 1) * cols);
   cells.set(next.subarray(y0 * cols, (y1 + 1) * cols), y0 * cols);
-  grid.lo = lo;
-  grid.hi = hi;
+  // rows outside the window may still hold frozen life: the band keeps covering them
+  grid.lo = grid.lo < y0 ? Math.min(lo, grid.lo) : lo;
+  grid.hi = grid.hi > y1 ? Math.max(hi, grid.hi) : hi;
   return alive;
+}
+
+/**
+ * The rows of a grid that sit under the viewport, widened by `margin` rows each side, as [first, last] inclusive.
+ * `top` is the grid's top edge in viewport px. When nothing is in range, first > last.
+ */
+export function visibleRows(top: number, cell: number, viewHeight: number, rows: number, margin = 0): [number, number] {
+  const first = Math.max(0, Math.floor(-top / cell) - margin);
+  const last = Math.min(rows - 1, Math.ceil((viewHeight - top) / cell) + margin);
+  return [first, last];
 }
 
 /** Marks the cells under a box (in px, relative to the grid's origin) as rock, with PAD cells around it. */
@@ -136,6 +150,48 @@ export function blockRect(grid: Grid, cell: number, left: number, top: number, r
 /** The colour bucket of a live cell: the board's warm→cool ramp, then the settled ink. */
 export const paperBucket = (age: number): number => ageBucket(age);
 export const SETTLED_BUCKET = AGE_STEPS.length;
+
+/**
+ * Sorts the live cells of rows `first`..`last` into one list per colour bucket, as flat indices into the grid, so the
+ * canvas takes one path per colour instead of one scan of the rows per colour. `lists` must be big enough for the rows.
+ */
+export function bucketCells(grid: Grid, first: number, last: number, lists: Int32Array[], counts: Int32Array): void {
+  counts.fill(0);
+  const { cols, cells } = grid;
+  const from = Math.max(first, grid.lo);
+  const to = Math.min(last, grid.hi);
+  for (let k = from * cols, end = (to + 1) * cols; k < end; k++) {
+    const age = cells[k]!;
+    if (!age) continue;
+    const bucket = paperBucket(age);
+    lists[bucket]![counts[bucket]!++] = k;
+  }
+}
+
+export interface PaperTuning {
+  /** Milliseconds between generations. */
+  stepMs: number;
+  /** The canvas never renders at more than this many device pixels per CSS pixel. */
+  maxDpr: number;
+  /** Generations wait while the page is being scrolled; the drawing still follows the scroll. */
+  pauseWhileScrolling: boolean;
+}
+
+/**
+ * How hard the paper works on this device. A phone repaints a full-screen canvas on a slow CPU while it scrolls, so
+ * it gets fewer generations, one canvas pixel per CSS pixel (cells are whole-pixel squares, so nothing blurs) and no
+ * generations mid-scroll. A desktop keeps the full show unless it reports a weak CPU. `cores` 0 means unknown.
+ */
+export function paperTuning({ coarse, cores }: { coarse: boolean; cores: number }): PaperTuning {
+  if (coarse) return { stepMs: 1000 / 8, maxDpr: 1, pauseWhileScrolling: true };
+  if (cores > 0 && cores <= 4) return { stepMs: 1000 / 10, maxDpr: 2, pauseWhileScrolling: false };
+  return { stepMs: STEP_MS, maxDpr: 2, pauseWhileScrolling: false };
+}
+
+/** Generations are skipped for this long after the last scroll event. */
+export const SCROLL_QUIET_MS = 140;
+/** The step window reaches this many viewport heights above and below the screen. */
+export const STEP_REACH = 0.75;
 
 /** Every cell on the line between two cells, so a fast pointer still leaves a continuous trail. */
 export function lineCells(x0: number, y0: number, x1: number, y1: number): [number, number][] {
@@ -155,6 +211,7 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   const hc = section.querySelector<HTMLElement>('.hc');
   if (!ctx || !hc) return;
   const root = document.documentElement;
+  const tuning = paperTuning({ coarse: matchMedia('(pointer: coarse)').matches, cores: navigator.hardwareConcurrency || 0 });
 
   let cell = 6;
   let grid = createGrid(1, 1);
@@ -206,42 +263,60 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   };
 
   const sizeCanvas = () => {
-    const dpr = Math.min(2, devicePixelRatio || 1);
+    const dpr = Math.min(tuning.maxDpr, devicePixelRatio || 1);
     canvas.width = Math.round(innerWidth * dpr);
     canvas.height = Math.round(innerHeight * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
 
-  // ---- drawing: only the rows in view ----
+  // ---- drawing: only the rows in view, one path per colour ----
   let dirty = true;
-  const draw = () => {
+  // what is already on the canvas: an empty paper is not cleared again on every scroll event
+  let blank = false;
+  let lists: Int32Array[] = [];
+  const counts = new Int32Array(SETTLED_BUCKET + 1);
+  const draw = (top: number, left: number) => {
     dirty = false;
+    if (grid.lo > grid.hi) {
+      if (!blank) ctx.clearRect(0, 0, innerWidth, innerHeight);
+      blank = true;
+      return;
+    }
+    blank = false;
     ctx.clearRect(0, 0, innerWidth, innerHeight);
-    if (grid.lo > grid.hi) return;
-    const box = section.getBoundingClientRect();
-    const first = Math.max(grid.lo, Math.floor(-box.top / cell));
-    const last = Math.min(grid.hi, Math.ceil((innerHeight - box.top) / cell));
+    const [first, last] = visibleRows(top, cell, innerHeight, grid.rows);
+    const need = Math.max(0, last - first + 1) * grid.cols;
+    if (!lists.length || lists[0]!.length < need) lists = Array.from({ length: SETTLED_BUCKET + 1 }, () => new Int32Array(need));
+    bucketCells(grid, first, last, lists, counts);
     const size = cell - 1;
+    const cols = grid.cols;
     for (let bucket = 0; bucket <= SETTLED_BUCKET; bucket++) {
+      const n = counts[bucket]!;
+      if (!n) continue;
       const settled = bucket === SETTLED_BUCKET;
       ctx.fillStyle = settled ? ink : colors[bucket] || ink;
       ctx.globalAlpha = settled ? SETTLED_ALPHA : 0.9;
-      for (let y = first; y <= last; y++) {
-        const row = y * grid.cols;
-        const py = box.top + y * cell;
-        for (let x = 0; x < grid.cols; x++) {
-          const age = grid.cells[row + x]!;
-          if (age && paperBucket(age) === bucket) ctx.fillRect(box.left + x * cell, py, size, size);
-        }
+      ctx.beginPath();
+      const list = lists[bucket]!;
+      for (let i = 0; i < n; i++) {
+        const k = list[i]!;
+        const y = (k / cols) | 0;
+        ctx.rect(left + (k - y * cols) * cell, top + y * cell, size, size);
       }
+      ctx.fill();
     }
     ctx.globalAlpha = 1;
+  };
+  const drawNow = () => {
+    const box = section.getBoundingClientRect();
+    draw(box.top, box.left);
   };
 
   // ---- the loop: steps while anything lives and the section is in view ----
   let inView = false;
   let running = false;
   let lastStep = 0;
+  let lastScroll = -Infinity;
   let lastAmbient = performance.now();
   const loop = (now: number) => {
     if (!inView || document.hidden) {
@@ -249,16 +324,24 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
       return;
     }
     requestAnimationFrame(loop);
-    if (now - lastAmbient > AMBIENT_MS) {
+    // one layout read per frame, shared by the step window, the ambient glider and the drawing
+    const box = section.getBoundingClientRect();
+    const scrolling = tuning.pauseWhileScrolling && now - lastScroll < SCROLL_QUIET_MS;
+    if (now - lastAmbient > AMBIENT_MS && !scrolling) {
       lastAmbient = now;
-      ambient();
+      ambient(box.top);
     }
-    if (now - lastStep > STEP_MS && grid.lo <= grid.hi) {
+    if (now - lastStep > tuning.stepMs && grid.lo <= grid.hi && !scrolling) {
       lastStep = now;
-      stepGrid(grid, scratch);
-      dirty = true;
+      // life far off screen waits where it is; the window reaches a good way past the edges so what scrolls in is alive
+      const reach = Math.ceil((innerHeight * STEP_REACH) / cell);
+      const [first, last] = visibleRows(box.top, cell, innerHeight, grid.rows, reach);
+      if (first <= last) {
+        stepGrid(grid, scratch, first, last);
+        dirty = true;
+      }
     }
-    if (dirty) draw();
+    if (dirty) draw(box.top, box.left);
   };
   const wake = () => {
     if (running || !inView || document.hidden) return;
@@ -267,10 +350,9 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   };
 
   // a glider sets off from the open paper in view, towards the bottom, on a side with room
-  const ambient = () => {
-    const box = section.getBoundingClientRect();
-    const top = Math.max(0, Math.floor(-box.top / cell));
-    const bottom = Math.min(grid.rows - 4, Math.floor((innerHeight - box.top) / cell));
+  const ambient = (sectionTop: number) => {
+    const top = Math.max(0, Math.floor(-sectionTop / cell));
+    const bottom = Math.min(grid.rows - 4, Math.floor((innerHeight - sectionTop) / cell));
     for (let tries = 0; tries < 12; tries++) {
       const x = Math.floor(Math.random() * (grid.cols - 4));
       const y = top + Math.floor(Math.random() * Math.max(1, bottom - top));
@@ -341,9 +423,10 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   });
   document.fonts?.ready.then(rebuildSoon).catch(() => {});
   addEventListener('scroll', () => {
-    if (!dirty && grid.lo <= grid.hi) {
+    lastScroll = performance.now();
+    if (grid.lo <= grid.hi) {
       dirty = true;
-      if (!running) draw();
+      if (!running) drawNow();
     }
   }, { passive: true });
   document.addEventListener('visibilitychange', wake);
@@ -357,6 +440,6 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
     grid.cells.fill(0);
     grid.lo = grid.rows;
     grid.hi = -1;
-    draw();
+    drawNow();
   });
 }
