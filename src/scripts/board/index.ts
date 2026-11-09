@@ -1,6 +1,6 @@
 import { GLIDERS, METHUSELAH_PATTERNS, type MethuselahName } from './patterns';
 import { rasterize } from './rasterize';
-import { addFeedGlider, clearBoxes, createWorld, idx, seedWorld, spawn, stepWorld, type World } from './life';
+import { addFeedGlider, clearBoxes, countLive, createWorld, idx, seedWorld, spawn, stepWorld, type World } from './life';
 import { addStructure, stepStructures, structurePopulation } from './structures';
 import {
   boxMinus,
@@ -96,6 +96,9 @@ export async function initBoard(): Promise<void> {
   // the loop's tick interval at the current progress: RATE at the top, Infinity once the board is frozen
   let interval = RATE;
   let frame = 0;
+  // the page height is read when it changes, not on every scroll frame: asking for it mid-scroll forces a layout
+  let pageHeight = root.scrollHeight;
+  let heroP = '';
   const heroFrame = () => {
     frame = 0;
     // the HUD counter and the scroll cue step back as the hero scrolls away; the corners stay
@@ -103,9 +106,14 @@ export async function initBoard(): Promise<void> {
     // reduced motion: no parallax, no slowdown; the board only pauses when covered, as before
     if (reduced) return;
     // the board shows at both ends of the page: the progress is the distance to the nearer one
-    const bottom = document.documentElement.scrollHeight - innerHeight - scrollY;
+    const bottom = pageHeight - innerHeight - scrollY;
     const p = heroProgress(Math.min(scrollY, bottom), innerHeight);
-    root.style.setProperty('--hero-p', p.toFixed(3));
+    // a custom property on <html> restyles the page: only write it when the value moved
+    const next = p.toFixed(3);
+    if (next !== heroP) {
+      heroP = next;
+      root.style.setProperty('--hero-p', next);
+    }
     interval = tickInterval(p, RATE);
   };
   const onHeroScroll = () => {
@@ -113,6 +121,12 @@ export async function initBoard(): Promise<void> {
   };
   addEventListener('scroll', onHeroScroll, { passive: true });
   addEventListener('resize', onHeroScroll, { passive: true });
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => {
+      pageHeight = root.scrollHeight;
+      onHeroScroll();
+    }).observe(root);
+  }
   heroFrame();
 
   const css =(name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -310,7 +324,7 @@ export async function initBoard(): Promise<void> {
   const popEl = document.getElementById('pop');
   const updateCounters = (gen: number) => {
     if (genEl) genEl.textContent = String(gen).padStart(4, '0');
-    if (popEl) popEl.textContent = String(world.cells.reduce((sum, v) => sum + v, 0) + structurePopulation(structures));
+    if (popEl) popEl.textContent = String(countLive(world.cells) + structurePopulation(structures));
   };
 
   // ---- drawing ----

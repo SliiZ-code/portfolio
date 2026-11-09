@@ -39,8 +39,9 @@ export function stepWorld(world: World): number {
     const mid = y * w;
     const down = ((y + 1) % h) * w;
     for (let x = 0; x < w; x++) {
-      const left = (x - 1 + w) % w;
-      const right = (x + 1) % w;
+      // wrap by comparison: a modulo per cell is the slowest part of this loop on a phone
+      const left = x === 0 ? w - 1 : x - 1;
+      const right = x === w - 1 ? 0 : x + 1;
       const i = mid + x;
       const n =
         cells[up + left] + cells[up + x] + cells[up + right] +
@@ -61,6 +62,13 @@ export function stepWorld(world: World): number {
   world.age = ageNext;
   world.ageNext = age;
   return population;
+}
+
+/** How many cells live: a plain loop, because the HUD asks every generation and `reduce` on a big typed array is slow on a phone. */
+export function countLive(cells: Uint8Array): number {
+  let live = 0;
+  for (let i = 0; i < cells.length; i++) live += cells[i]!;
+  return live;
 }
 
 /** The board starts busy: `density` of every cell that `isProtected` doesn't claim. */

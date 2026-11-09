@@ -24,6 +24,10 @@ export const BAYER8: Float32Array = (() => {
 export const HORIZON_ROWS = 40;
 /** Frames per second while the band is on screen. */
 export const HORIZON_FPS = 30;
+/** A touch screen redraws the band at half the rate: the dither reads the same and the phone's CPU has less to do. */
+export const HORIZON_FPS_TOUCH = 15;
+
+export const horizonFps = (coarse: boolean): number => (coarse ? HORIZON_FPS_TOUCH : HORIZON_FPS);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
@@ -44,14 +48,34 @@ export function density(y: number, rows: number, lo: number): number {
 }
 
 /**
+ * The Bayer thresholds taken back through the density curve: `density(...) > BAYER8[i]` is the same test as
+ * `linear > BAYER_LINEAR[i]`, so a frame needs no power function per cell.
+ */
+const BAYER_LINEAR: Float32Array = BAYER8.map((v) => v ** (1 / 1.4));
+
+/**
  * Fills `out` (cols × rows, one byte per cell, row-major) with 1 where the cell is paper. Row 0 faces the board.
  */
 export function fillHorizon(out: Uint8Array, cols: number, rows: number, t: number, swell: number, phase = 0): void {
   for (let x = 0; x < cols; x++) {
     const lo = shoreline(x, t, swell, phase);
+    const span = 1 / (1 - lo);
     for (let y = 0; y < rows; y++) {
-      out[y * cols + x] = density(y, rows, lo) > BAYER8[((y & 7) << 3) | (x & 7)] ? 1 : 0;
+      // the same share of the way from the shoreline to the paper as `density`, before its curve
+      out[y * cols + x] = ((y + 1) / rows - lo) * span > BAYER_LINEAR[((y & 7) << 3) | (x & 7)]! ? 1 : 0;
     }
+  }
+}
+
+/**
+ * Writes the mask into the alpha bytes of an RGBA buffer (cols × rows), flipped when `flip`. The colour bytes are
+ * left alone: they only change with the theme, and the caller sets them then.
+ */
+export function paintMask(data: Uint8ClampedArray, mask: Uint8Array, cols: number, rows: number, flip: boolean): void {
+  for (let y = 0; y < rows; y++) {
+    const row = flip ? rows - 1 - y : y;
+    let o = row * cols * 4 + 3;
+    for (let x = y * cols, end = x + cols; x < end; x++, o += 4) data[o] = mask[x] ? 255 : 0;
   }
 }
 
@@ -74,6 +98,7 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
   let last = 0;
   let swell = 0;
   let lastY = window.scrollY;
+  const frameMs = 1000 / horizonFps(matchMedia('(pointer: coarse)').matches);
 
   const readPaper = () => {
     const probe = document.createElement('canvas').getContext('2d');
@@ -82,6 +107,19 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
     probe.fillRect(0, 0, 1, 1);
     const [r, g, b] = probe.getImageData(0, 0, 1, 1).data;
     paper = [r, g, b];
+    colorize();
+  };
+
+  // the paper colour only changes with the theme or the size, so each frame writes alpha alone
+  const colorize = () => {
+    if (!image) return;
+    const data = image.data;
+    const [r, g, b] = paper;
+    for (let o = 0; o < data.length; o += 4) {
+      data[o] = r;
+      data[o + 1] = g;
+      data[o + 2] = b;
+    }
   };
 
   const size = () => {
@@ -94,23 +132,13 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
     canvas.style.height = `${HORIZON_ROWS * cell}px`;
     mask = new Uint8Array(cols * HORIZON_ROWS);
     image = ctx.createImageData(cols, HORIZON_ROWS);
+    colorize();
   };
 
   const draw = (t: number) => {
     if (!image) return;
     fillHorizon(mask, cols, HORIZON_ROWS, t, swell, phase);
-    const data = image.data;
-    const [r, g, b] = paper;
-    for (let y = 0; y < HORIZON_ROWS; y++) {
-      const row = flip ? HORIZON_ROWS - 1 - y : y;
-      for (let x = 0; x < cols; x++) {
-        const o = (row * cols + x) * 4;
-        data[o] = r;
-        data[o + 1] = g;
-        data[o + 2] = b;
-        data[o + 3] = mask[y * cols + x] ? 255 : 0;
-      }
-    }
+    paintMask(image.data, mask, cols, HORIZON_ROWS, flip);
     ctx.putImageData(image, 0, 0);
   };
 
@@ -118,7 +146,7 @@ export function initHorizon(canvas: HTMLCanvasElement, flip: boolean, phase: num
     frame = 0;
     if (!visible || still.matches) return;
     frame = requestAnimationFrame(tick);
-    if (now - last < 1000 / HORIZON_FPS) return;
+    if (now - last < frameMs) return;
     last = now;
     // the board sets --c inline on <html>; a cheap read catches a change that came without a resize
     if ((parseFloat(root.style.getPropertyValue('--c')) || cell) !== cell) size();

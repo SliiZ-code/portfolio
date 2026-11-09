@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addFeedGlider, clearBoxes, createWorld, feedGlider, seedWorld, spawn, stepWorld } from '../src/scripts/board/life';
+import { addFeedGlider, clearBoxes, countLive, createWorld, feedGlider, seedWorld, spawn, stepWorld } from '../src/scripts/board/life';
 import { isProtected } from '../src/scripts/board/layout';
 import { GLIDERS } from '../src/scripts/board/patterns';
 import { AGE_STEPS, BUCKETS, ageBucket } from '../src/scripts/board/render';
@@ -181,5 +181,16 @@ describe('age buckets', () => {
       expect(bucket).toBeGreaterThanOrEqual(previous);
       previous = bucket;
     }
+  });
+});
+
+describe('countLive', () => {
+  it('counts the live cells of a board', () => {
+    const world = createWorld(6, 4);
+    expect(countLive(world.cells)).toBe(0);
+    set(world, 0, 0);
+    set(world, 5, 3);
+    set(world, 2, 2);
+    expect(countLive(world.cells)).toBe(3);
   });
 });
