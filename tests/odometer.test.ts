@@ -1,116 +1,76 @@
 import { describe, expect, it } from 'vitest';
-import { diffDigits } from '../src/scripts/board/odometer';
+import { diffDigits, rollPlan, type DiffResult } from '../src/scripts/board/odometer';
 
-describe('odometer diffDigits helper', () => {
-  describe('padding', () => {
-    it('handles increment on padded 4-digit numbers', () => {
-      const result = diffDigits('0000', '0001');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([3]);
-      expect(result.digits[3]).toEqual({
-        index: 3,
-        from: '0',
-        to: '1',
-        changed: true,
-      });
-      expect(result.digits[0].changed).toBe(false);
-      expect(result.digits[1].changed).toBe(false);
-      expect(result.digits[2].changed).toBe(false);
-    });
+/** The positions of the digits that change, in order. */
+const changedAt = (result: DiffResult): number[] => result.digits.flatMap((d, i) => (d.changed ? [i] : []));
 
-    it('handles carry across multiple padded digits', () => {
-      const result = diffDigits('0009', '0010');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([2, 3]);
-      expect(result.digits[2]).toEqual({ index: 2, from: '0', to: '1', changed: true });
-      expect(result.digits[3]).toEqual({ index: 3, from: '9', to: '0', changed: true });
-    });
-
-    it('handles decrement with borrow across padded digits', () => {
-      const result = diffDigits('0010', '0009');
-      expect(result.direction).toBe('down');
-      expect(result.changed).toEqual([2, 3]);
-      expect(result.digits[2]).toEqual({ index: 2, from: '1', to: '0', changed: true });
-      expect(result.digits[3]).toEqual({ index: 3, from: '0', to: '9', changed: true });
-    });
+describe('diffDigits', () => {
+  it('changes only the digit that moved on a plain increment', () => {
+    const result = diffDigits('0000', '0001');
+    expect(result.direction).toBe('up');
+    expect(changedAt(result)).toEqual([3]);
+    expect(result.digits[3]).toEqual({ from: '0', to: '1', changed: true });
   });
 
-  describe('growing digit count', () => {
-    it('handles transition from 1 to 2 digits', () => {
-      const result = diffDigits('9', '10');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([0, 1]);
-      expect(result.digits).toEqual([
-        { index: 0, from: '', to: '1', changed: true },
-        { index: 1, from: '9', to: '0', changed: true },
-      ]);
-    });
-
-    it('handles transition from 2 to 3 digits (e.g. 99 to 100)', () => {
-      const result = diffDigits('99', '100');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([0, 1, 2]);
-      expect(result.digits).toEqual([
-        { index: 0, from: '', to: '1', changed: true },
-        { index: 1, from: '9', to: '0', changed: true },
-        { index: 2, from: '9', to: '0', changed: true },
-      ]);
-    });
-
-    it('handles adding higher order digit with unchanged lower digits', () => {
-      const result = diffDigits('45', '145');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([0]);
-      expect(result.digits[0]).toEqual({ index: 0, from: '', to: '1', changed: true });
-      expect(result.digits[1]).toEqual({ index: 1, from: '4', to: '4', changed: false });
-      expect(result.digits[2]).toEqual({ index: 2, from: '5', to: '5', changed: false });
-    });
-
-    it('handles shrinking digit count (e.g. 100 to 95)', () => {
-      const result = diffDigits('100', '95');
-      expect(result.direction).toBe('down');
-      expect(result.changed).toEqual([0, 1]);
-      expect(result.digits).toEqual([
-        { index: 0, from: '0', to: '9', changed: true },
-        { index: 1, from: '0', to: '5', changed: true },
-      ]);
-    });
+  it('carries across padded digits on an increment', () => {
+    const result = diffDigits('0009', '0010');
+    expect(result.direction).toBe('up');
+    expect(changedAt(result)).toEqual([2, 3]);
+    expect(result.digits[2]).toEqual({ from: '0', to: '1', changed: true });
+    expect(result.digits[3]).toEqual({ from: '9', to: '0', changed: true });
   });
 
-  describe('direction up/down', () => {
-    it('detects single digit increase as up', () => {
-      const result = diffDigits('120', '125');
-      expect(result.direction).toBe('up');
-      expect(result.changed).toEqual([2]);
-      expect(result.digits[2]).toEqual({ index: 2, from: '0', to: '5', changed: true });
-    });
-
-    it('detects single digit decrease as down', () => {
-      const result = diffDigits('125', '120');
-      expect(result.direction).toBe('down');
-      expect(result.changed).toEqual([2]);
-      expect(result.digits[2]).toEqual({ index: 2, from: '5', to: '0', changed: true });
-    });
-
-    it('detects multi-digit decrease as down', () => {
-      const result = diffDigits('500', '499');
-      expect(result.direction).toBe('down');
-      expect(result.changed).toEqual([0, 1, 2]);
-    });
+  it('borrows across padded digits on a decrement', () => {
+    const result = diffDigits('0010', '0009');
+    expect(result.direction).toBe('down');
+    expect(changedAt(result)).toEqual([2, 3]);
+    expect(result.digits[2]).toEqual({ from: '1', to: '0', changed: true });
+    expect(result.digits[3]).toEqual({ from: '0', to: '9', changed: true });
   });
 
-  describe('no change', () => {
-    it('returns empty changed array and direction none when identical', () => {
-      const result = diffDigits('0000', '0000');
-      expect(result.direction).toBe('none');
-      expect(result.changed).toEqual([]);
-      expect(result.digits.every((d) => !d.changed)).toBe(true);
-    });
+  it('adds columns on the left when the number grows, keeping the unchanged digits still', () => {
+    expect(diffDigits('9', '10').digits).toEqual([
+      { from: '', to: '1', changed: true },
+      { from: '9', to: '0', changed: true },
+    ]);
+    const result = diffDigits('45', '145');
+    expect(result.direction).toBe('up');
+    expect(changedAt(result)).toEqual([0]);
+    expect(result.digits[1]).toEqual({ from: '4', to: '4', changed: false });
+  });
 
-    it('returns empty changed array for multi-digit identical values', () => {
-      const result = diffDigits('142', '142');
-      expect(result.direction).toBe('none');
-      expect(result.changed).toEqual([]);
-    });
+  it('drops the leftmost columns when the number shrinks', () => {
+    const result = diffDigits('100', '95');
+    expect(result.direction).toBe('down');
+    expect(result.digits).toEqual([
+      { from: '0', to: '9', changed: true },
+      { from: '0', to: '5', changed: true },
+    ]);
+  });
+
+  it('reports no direction and no change for the same value', () => {
+    const result = diffDigits('0142', '0142');
+    expect(result.direction).toBe('none');
+    expect(changedAt(result)).toEqual([]);
+  });
+});
+
+describe('rollPlan', () => {
+  it('rolls up on an increase: the old digit leaves at the top, the new one rises from below', () => {
+    expect(rollPlan('4', '5', 'up')).toEqual({ top: '4', bottom: '5', start: 0, end: -50 });
+  });
+
+  it('rolls down on a decrease: the new digit drops in from above', () => {
+    expect(rollPlan('5', '4', 'down')).toEqual({ top: '4', bottom: '5', start: -50, end: 0 });
+  });
+
+  it.each([
+    ['up', '4', '5'],
+    ['down', '5', '4'],
+  ] as const)('%s starts on the old digit and rests on the new one', (direction, from, to) => {
+    const plan = rollPlan(from, to, direction);
+    const shown = (offset: number) => (offset === 0 ? plan.top : plan.bottom);
+    expect(shown(plan.start)).toBe(from);
+    expect(shown(plan.end)).toBe(to);
   });
 });

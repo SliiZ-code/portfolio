@@ -1,7 +1,11 @@
+// The HUD counters roll like a mechanical odometer: each digit is a column whose ribbon holds two stacked slots
+// behind a window. A digit that changes slides its ribbon to the next slot in 90 ms; the others stay put. A tick
+// that lands while a roll is still running snaps to the new value rather than queueing. `diffDigits` and `rollPlan`
+// are pure and tested; `createOdometer` is the one DOM driver.
+
 export type Direction = 'up' | 'down' | 'none';
 
 export interface DigitDiff {
-  index: number;
   from: string;
   to: string;
   changed: boolean;
@@ -9,207 +13,144 @@ export interface DigitDiff {
 
 export interface DiffResult {
   direction: Direction;
-  changed: number[];
+  /** One entry per column of `next`, right-aligned against `prev`: a longer `next` has columns with no `from`. */
   digits: DigitDiff[];
 }
 
 export function diffDigits(prev: string, next: string): DiffResult {
-  if (prev === next) {
-    const digits: DigitDiff[] = Array.from(next).map((ch, i) => ({
-      index: i,
-      from: ch,
-      to: ch,
-      changed: false,
-    }));
-    return { direction: 'none', changed: [], digits };
-  }
-
   const prevNum = Number(prev);
   const nextNum = Number(next);
-  let direction: Direction = 'none';
-  if (!Number.isNaN(prevNum) && !Number.isNaN(nextNum)) {
-    if (nextNum > prevNum) direction = 'up';
-    else if (nextNum < prevNum) direction = 'down';
-  }
+  const direction: Direction = nextNum > prevNum ? 'up' : nextNum < prevNum ? 'down' : 'none';
+  const shift = next.length - prev.length;
+  const digits = Array.from(next, (to, i) => {
+    const from = prev[i - shift] ?? '';
+    return { from, to, changed: from !== to };
+  });
+  return { direction, digits };
+}
 
-  const changed: number[] = [];
-  const digits: DigitDiff[] = [];
-  const diffLen = next.length - prev.length;
+export interface RollPlan {
+  /** The slot at the top of the ribbon. */
+  top: string;
+  /** The slot below it. */
+  bottom: string;
+  /** Ribbon offset (% of the ribbon, which is two slots tall) at the start and at the end of the roll. */
+  start: number;
+  end: number;
+}
 
-  for (let i = 0; i < next.length; i++) {
-    const prevIdx = i - diffLen;
-    const from = prevIdx >= 0 && prevIdx < prev.length ? prev[prevIdx] : '';
-    const to = next[i];
-    const isChanged = from !== to;
-    if (isChanged) {
-      changed.push(i);
-    }
-    digits.push({ index: i, from, to, changed: isChanged });
-  }
-
-  return { direction, changed, digits };
+/** Slot texts and offsets for one digit rolling from `from` to `to`. Up: the old digit leaves at the top and the new one rises from below. Down: the reverse. */
+export function rollPlan(from: string, to: string, direction: 'up' | 'down'): RollPlan {
+  return direction === 'up'
+    ? { top: from, bottom: to, start: 0, end: -50 }
+    : { top: to, bottom: from, start: -50, end: 0 };
 }
 
 export interface Odometer {
   set(value: number | string): void;
 }
 
+/** Keep in step with the tick interval (120 ms): a roll must finish before the next tick. */
+const ROLL_MS = 90;
+const EASE_OUT = 'cubic-bezier(0, 0, 0.2, 1)';
+/** A new column starts with no digit above it; an empty top slot has no line box, so the counter would lose its baseline. */
+const BLANK = ' ';
+
 interface Column {
   el: HTMLElement;
-  ribbon: HTMLElement;
-  slotA: HTMLElement;
-  slotB: HTMLElement;
-  currentDigit: string;
-  snap(): void;
-  roll(from: string, to: string, dir: Direction): void;
+  rolling(): boolean;
+  show(digit: string): void;
+  roll(from: string, to: string, direction: 'up' | 'down'): void;
 }
 
-const TRANSITION_MS = 90;
+function createColumn(digit: string): Column {
+  const el = document.createElement('span');
+  el.className = 'odometer-digit';
+  const ribbon = document.createElement('span');
+  ribbon.className = 'odometer-ribbon';
+  const top = document.createElement('span');
+  top.className = 'odometer-num';
+  top.textContent = digit || BLANK;
+  const bottom = document.createElement('span');
+  bottom.className = 'odometer-num';
+  ribbon.append(top, bottom);
+  el.append(ribbon);
+
+  let anim: Animation | null = null;
+
+  const show = (digit: string) => {
+    anim?.cancel();
+    anim = null;
+    el.classList.remove('is-rolling');
+    top.textContent = digit || BLANK;
+    bottom.textContent = '';
+  };
+
+  const roll = (from: string, to: string, direction: 'up' | 'down') => {
+    anim?.cancel();
+    const plan = rollPlan(from, to, direction);
+    top.textContent = plan.top || BLANK;
+    bottom.textContent = plan.bottom;
+    // the window clips the slots only while a digit is travelling: at rest the paper halo must reach the glyphs
+    el.classList.add('is-rolling');
+    anim = ribbon.animate(
+      [{ transform: `translateY(${plan.start}%)` }, { transform: `translateY(${plan.end}%)` }],
+      { duration: ROLL_MS, easing: EASE_OUT },
+    );
+    // the finished roll is written as the resting state, in the same frame the animation lets go
+    anim.onfinish = () => show(to);
+  };
+
+  show(digit);
+  return { el, rolling: () => anim !== null, show, roll };
+}
 
 export function createOdometer(el: HTMLElement): Odometer {
-  const initialText = el.textContent?.trim() || '0';
+  const initial = el.textContent?.trim() || '0';
   el.textContent = '';
 
-  const sr = document.createElement('span');
-  sr.className = 'sr-only';
-  sr.textContent = initialText;
-  el.appendChild(sr);
-
-  const container = document.createElement('span');
-  container.className = 'odometer';
-  container.setAttribute('aria-hidden', 'true');
-  el.appendChild(container);
-
-  function createColumn(digit: string): Column {
-    const colEl = document.createElement('span');
-    colEl.className = 'odometer-digit';
-
-    const ribbon = document.createElement('span');
-    ribbon.className = 'odometer-ribbon';
-
-    const slotA = document.createElement('span');
-    slotA.className = 'odometer-num';
-    slotA.textContent = digit;
-
-    const slotB = document.createElement('span');
-    slotB.className = 'odometer-num';
-    slotB.textContent = '';
-
-    ribbon.appendChild(slotA);
-    ribbon.appendChild(slotB);
-    colEl.appendChild(ribbon);
-
-    let currentDigit = digit;
-    let timerId: ReturnType<typeof setTimeout> | null = null;
-
-    const snap = () => {
-      if (timerId !== null) {
-        clearTimeout(timerId);
-        timerId = null;
-      }
-      ribbon.style.transition = 'none';
-      ribbon.style.transform = 'none';
-      slotA.textContent = currentDigit;
-      slotB.textContent = '';
-    };
-
-    const roll = (from: string, to: string, dir: Direction) => {
-      snap();
-      currentDigit = to;
-      if (dir === 'up') {
-        slotA.textContent = from;
-        slotB.textContent = to;
-        ribbon.style.transition = 'none';
-        ribbon.style.transform = 'translateY(0)';
-        void ribbon.offsetHeight; // force reflow
-        ribbon.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0, 0, 0.2, 1)`;
-        ribbon.style.transform = 'translateY(-50%)';
-      } else if (dir === 'down') {
-        slotA.textContent = to;
-        slotB.textContent = from;
-        ribbon.style.transition = 'none';
-        ribbon.style.transform = 'translateY(-50%)';
-        void ribbon.offsetHeight; // force reflow
-        ribbon.style.transition = `transform ${TRANSITION_MS}ms cubic-bezier(0, 0, 0.2, 1)`;
-        ribbon.style.transform = 'translateY(0)';
-      } else {
-        slotA.textContent = to;
-        slotB.textContent = '';
-        return;
-      }
-      timerId = setTimeout(() => {
-        snap();
-      }, TRANSITION_MS);
-    };
-
-    return {
-      el: colEl,
-      ribbon,
-      slotA,
-      slotB,
-      get currentDigit() {
-        return currentDigit;
-      },
-      set currentDigit(val: string) {
-        currentDigit = val;
-      },
-      snap,
-      roll,
-    };
-  }
+  // the whole number for assistive tech: updated each tick but not a live region, so it is not announced
+  const plain = document.createElement('span');
+  plain.className = 'sr-only';
+  plain.textContent = initial;
+  const digits = document.createElement('span');
+  digits.className = 'odometer';
+  digits.setAttribute('aria-hidden', 'true');
+  el.append(plain, digits);
 
   const columns: Column[] = [];
-  for (const ch of initialText) {
-    const col = createColumn(ch);
-    container.appendChild(col.el);
-    columns.push(col);
+  for (const ch of initial) {
+    const column = createColumn(ch);
+    digits.append(column.el);
+    columns.push(column);
   }
 
-  let currentValue = initialText;
-
-  const motionQuery = typeof window !== 'undefined' && window.matchMedia
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : null;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let value = initial;
 
   return {
-    set(value: number | string) {
-      const nextStr = String(value);
-      if (nextStr === currentValue) return;
+    set(next: number | string) {
+      const text = String(next);
+      if (text === value) return;
+      const diff = diffDigits(value, text);
+      plain.textContent = text;
 
-      sr.textContent = nextStr;
-      const reduced = motionQuery ? motionQuery.matches : false;
-      const diff = diffDigits(currentValue, nextStr);
-
-      // Adjust column count
-      while (columns.length < nextStr.length) {
-        const col = createColumn('');
-        container.insertBefore(col.el, container.firstChild);
-        columns.unshift(col);
+      // a longer number adds columns on the left, a shorter one drops the leftmost
+      while (columns.length < text.length) {
+        const column = createColumn('');
+        digits.prepend(column.el);
+        columns.unshift(column);
       }
-      while (columns.length > nextStr.length) {
-        const col = columns.shift();
-        if (col) {
-          col.snap();
-          col.el.remove();
-        }
-      }
+      while (columns.length > text.length) columns.shift()?.el.remove();
 
-      for (let i = 0; i < nextStr.length; i++) {
-        if (!diff.changed.includes(i)) continue;
-        const col = columns[i];
-        const from = diff.digits[i].from;
-        const to = diff.digits[i].to;
-
-        if (reduced) {
-          col.snap();
-          col.currentDigit = to;
-          col.slotA.textContent = to;
-        } else {
-          col.roll(from, to, diff.direction);
-        }
-      }
-
-      currentValue = nextStr;
+      diff.digits.forEach((d, i) => {
+        if (!d.changed) return;
+        const column = columns[i];
+        // reduced motion, or a tick that lands mid-roll: show the new digit now, nothing queues
+        if (reduced.matches || column.rolling() || diff.direction === 'none') column.show(d.to);
+        else column.roll(d.from, d.to, diff.direction);
+      });
+      value = text;
     },
   };
 }
