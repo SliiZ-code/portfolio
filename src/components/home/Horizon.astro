@@ -6,6 +6,8 @@
 
 <div class="hz hz-top" aria-hidden="true"><canvas hidden></canvas></div>
 <div class="hz hz-bottom" aria-hidden="true"><canvas hidden></canvas></div>
+<div class="hz-grid hz-grid-top" aria-hidden="true"></div>
+<div class="hz-grid hz-grid-bottom" aria-hidden="true"></div>
 
 <style>
   .hz {
@@ -35,7 +37,36 @@
     bottom: 0;
   }
 
+  /* the board's grid does not stop where the paper starts: it runs on under the dither and fades out over the first
+     screen of text, so the tide lands on fading lines, not on a flat block. It fades in across the band as the paper
+     takes over (the holes already show the board's grid). Fixed, so the lines sit on the board's own */
+  .hz-grid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: calc(var(--dissolve) + min(55vh, 480px));
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: var(--c, 3px) var(--c, 3px);
+    background-attachment: fixed;
+  }
+
+  .hz-grid-top {
+    top: 0;
+    -webkit-mask-image: linear-gradient(transparent, #000 var(--dissolve), rgb(0 0 0 / .55) calc(var(--dissolve) + 40px), transparent);
+    mask-image: linear-gradient(transparent, #000 var(--dissolve), rgb(0 0 0 / .55) calc(var(--dissolve) + 40px), transparent);
+  }
+
+  .hz-grid-bottom {
+    bottom: 0;
+    -webkit-mask-image: linear-gradient(to top, transparent, #000 var(--dissolve), rgb(0 0 0 / .55) calc(var(--dissolve) + 40px), transparent);
+    mask-image: linear-gradient(to top, transparent, #000 var(--dissolve), rgb(0 0 0 / .55) calc(var(--dissolve) + 40px), transparent);
+  }
+
   @media print {
+    .hz-grid,
     .hz {
       display: none;
     }
