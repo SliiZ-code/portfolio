@@ -8,7 +8,7 @@ import { getBoardProjects } from '../data/board';
 import { strings } from '../i18n';
 import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
-import { getResume, htmlToText, type Lang } from '../lib/resume';
+import { getResume, type Lang } from '../lib/resume';
 
 interface Props {
   lang: Lang;
@@ -33,7 +33,7 @@ const boardData = {
 
 const json = JSON.stringify(boardData).replace(/</g, '\\u003c');
 const title = t.board.title(resume.name);
-const description = htmlToText(resume.summary) || resume.headline;
+const description = t.board.description;
 ---
 
 <Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }} zoomable>

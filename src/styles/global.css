@@ -395,6 +395,16 @@ a.flag:hover {
   border-color: var(--accent);
 }
 
+.theme-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .theme-toggle svg {
   display: block;
   width: 22px;
@@ -439,6 +449,54 @@ a.flag:hover {
   display: none;
 }
 
+@media (pointer: coarse) {
+  .flag {
+    padding: 5px 3px 3px;
+    min-height: 28px;
+    min-width: 28px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .flag::before {
+    content: '';
+    position: absolute;
+    inset: -8px -6px;
+  }
+
+  .theme-toggle {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 3px;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .theme-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -8px -8px;
+  }
+
+  .cmdk-open {
+    min-height: 28px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .cmdk-open::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
+}
+
 @media (hover: none) {
   .cmdk-key {
     display: none;
@@ -466,6 +524,28 @@ a.flag:hover {
 
 .br a:hover {
   color: var(--accent);
+}
+
+@media (pointer: coarse) {
+  .br a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 2px;
+    position: relative;
+  }
+
+  .br a::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
+
+  .br .cta {
+    min-height: 28px;
+    padding: 3px 8px;
+    box-sizing: border-box;
+  }
 }
 
 /* ---- list view: the board without JavaScript ---- */
@@ -741,6 +821,25 @@ a.flag:hover {
 .doc-actions a:hover,
 .doc-actions button:hover {
   color: var(--accent);
+}
+
+@media (pointer: coarse) {
+  .doc-bar .back,
+  .doc-actions a,
+  .doc-actions button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    position: relative;
+  }
+
+  .doc-bar .back::before,
+  .doc-actions a::before,
+  .doc-actions button::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
 }
 
 .cv-inner {

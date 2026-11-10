@@ -290,6 +290,31 @@
   gap: 4px 20px;
 }
 
+.hc-reach a,
+.hc-links a,
+.hc-foot nav a {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (pointer: coarse) {
+  .hc-reach a,
+  .hc-links a,
+  .hc-foot nav a {
+    position: relative;
+    min-height: 28px;
+    padding: 4px 0;
+  }
+
+  .hc-reach a::before,
+  .hc-links a::before,
+  .hc-foot nav a::before {
+    content: '';
+    position: absolute;
+    inset: -8px -8px;
+  }
+}
+
 @media (min-width: 560px) {
   .hc-project {
     grid-template-columns: 176px minmax(0, 1fr);

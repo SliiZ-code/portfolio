@@ -27,8 +27,13 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
 ---
 
 <figure class:list={['pmedia', { 'pmedia--poster': !kind }]} aria-label={label} data-seed={kind ? undefined : seed}>
-  {kind === 'video' && <video src={media?.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
-  {kind === 'image' && <img src={media?.image} alt={label} loading="lazy" decoding="async" />}
+  {kind === 'video' && <video data-src={media?.video} muted loop playsinline preload="none" aria-label={label}></video>}
+  {kind === 'image' && (
+    <picture>
+      <source srcset={media?.image?.replace(/\.jpe?g$/, '.webp')} type="image/webp" />
+      <img src={media?.image} alt={label} loading="lazy" decoding="async" />
+    </picture>
+  )}
   {kind && <canvas class="pmedia-dither" aria-hidden="true"></canvas>}
   {
     !kind && (
@@ -65,7 +70,9 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
   }
 
   .pmedia > video,
-  .pmedia > img {
+  .pmedia > img,
+  .pmedia > picture,
+  .pmedia > picture > img {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -426,15 +433,27 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
       return true;
     };
 
+    const ensureSourceLoaded = (): void => {
+      if (video && !video.src && video.dataset.src) {
+        video.src = video.dataset.src;
+        video.load();
+      }
+    };
+
     const syncVideo = (): void => {
       if (!video) return;
       // play while on screen; under reduced motion, only while hovered or focused
       const wantsPlay = inView && (!reducedMotion.matches || hovered || focused);
-      if (wantsPlay) void video.play().catch(() => {});
-      else video.pause();
+      if (wantsPlay) {
+        ensureSourceLoaded();
+        void video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
     };
 
     const enter = (): void => {
+      ensureSourceLoaded();
       // under reduced motion there is no burst: the colour simply shows, as it always did
       if (reducedMotion.matches || !startBurst()) setRevealed(true);
     };
@@ -481,6 +500,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     trackPointer(figure, (h, f) => {
       hovered = h;
       focused = f;
+      if (h || f) ensureSourceLoaded();
       syncVideo();
       const next = !touchOnly.matches && (h || f);
       if (next === active) return;
@@ -494,6 +514,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
       ([entry]) => {
         if (!entry) return;
         inView = entry.isIntersecting;
+        if (inView) ensureSourceLoaded();
         const visible = entry.intersectionRatio >= TOUCH_VIEW;
         // a burst that could not start (image not loaded yet) is retried on the next sighting
         if (!visible) seen = false;
@@ -506,6 +527,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     // on touch a tap toggles the colour reveal (a figure is not a link, so the tap does nothing else)
     figure.addEventListener('click', () => {
       if (!touchOnly.matches) return;
+      ensureSourceLoaded();
       life = null;
       if (revealed) {
         setRevealed(false);
