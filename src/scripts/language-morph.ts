@@ -17,6 +17,33 @@ export const EXIT_MS = 150;
 /** New characters wait this long before they roll in, so the removed ones have mostly faded by then. */
 export const ENTER_AFTER_MS = 120;
 
+/** Threshold in characters (inclusive) for short, single-line texts to morph letter-by-letter. Longer blocks crossfade. */
+export const SHORT_TEXT_THRESHOLD = 60;
+/** Crossfade timing for blocks that are too long or multi-line to letter-morph cleanly. */
+export const FADE_OUT_MS = 180;
+export const FADE_IN_AFTER_MS = 120;
+export const FADE_IN_MS = 280;
+
+/** When the fade-out and fade-in of a crossfading block start and how long they run, in ms. */
+export function fadeTiming(): { out: { delay: number; duration: number }; in: { delay: number; duration: number } } {
+  return {
+    out: { delay: 0, duration: FADE_OUT_MS },
+    in: { delay: FADE_IN_AFTER_MS, duration: FADE_IN_MS },
+  };
+}
+
+/**
+ * Chooses the morph style: short single-line texts (titles, labels, nav, the name note, dates) morph letter by letter,
+ * while longer visible blocks crossfade cleanly instead of crossing letters across multiple lines.
+ */
+export function morphStyle(oldText: string, newText: string): 'letters' | 'fade' {
+  const oldClean = oldText.trim();
+  const newClean = newText.trim();
+  const isSingleLine = !oldClean.includes('\n') && !newClean.includes('\n');
+  const isShort = Array.from(oldClean).length <= SHORT_TEXT_THRESHOLD && Array.from(newClean).length <= SHORT_TEXT_THRESHOLD;
+  return isSingleLine && isShort ? 'letters' : 'fade';
+}
+
 /**
  * One step of the alignment, in display order. `keep` is a character shared by both texts (it slides from `from` to
  * `to`), `exit` a character of the old text that leaves, `enter` a character of the new text that arrives.

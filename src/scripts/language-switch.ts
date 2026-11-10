@@ -3,7 +3,17 @@
 // page is not rebuilt: canvases and the hero board's counters keep their identity, and the scripts that bind to changed
 // parts are run again. Anything unexpected returns false and the caller navigates as usual.
 
-import { alignChars, glyphTiming, isMorphable, langOfPath, morphTarget } from './language-morph';
+import {
+  alignChars,
+  FADE_IN_AFTER_MS,
+  FADE_IN_MS,
+  FADE_OUT_MS,
+  glyphTiming,
+  isMorphable,
+  langOfPath,
+  morphStyle,
+  morphTarget,
+} from './language-morph';
 import { initCommandPalette } from './command-palette';
 import { initMagnetType } from './magnet-type';
 import { refreshPixelTitles } from './pixel-title';
@@ -48,13 +58,27 @@ interface Glyph {
   top: number;
 }
 
-/** A block whose text changes and is morphed: its characters where they were, and how it is styled. */
-interface Job {
+interface LetterJob {
+  style: 'letters';
   host: HTMLElement;
   before: Glyph[];
   typography: Record<string, string>;
   colour: string;
 }
+
+interface FadeJob {
+  style: 'fade';
+  host: HTMLElement;
+  snapshot: HTMLElement;
+  beforeRect: DOMRect;
+  colour: string;
+  opacity: string;
+  height: string;
+  overflow: string;
+}
+
+/** A block whose text changes and is morphed: either letter-by-letter (short text) or crossfaded (long/multiline). */
+type Job = LetterJob | FadeJob;
 
 let initialised = false;
 let busy = false;
@@ -155,12 +179,61 @@ const typographyOf = (host: HTMLElement): Record<string, string> => {
   };
 };
 
-/** A text block that changes and is in view: its old characters are measured before the swap. */
+function styleSnapshot(snapshot: HTMLElement, host: HTMLElement, rect: DOMRect): void {
+  const cs = getComputedStyle(host);
+  snapshot.removeAttribute('id');
+  snapshot.setAttribute('aria-hidden', 'true');
+  Object.assign(snapshot.style, {
+    position: 'absolute',
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+    margin: '0',
+    padding: cs.padding,
+    border: cs.border,
+    boxSizing: 'border-box',
+    fontFamily: cs.fontFamily,
+    fontSize: cs.fontSize,
+    fontWeight: cs.fontWeight,
+    fontStyle: cs.fontStyle,
+    fontVariationSettings: cs.fontVariationSettings,
+    letterSpacing: cs.letterSpacing,
+    lineHeight: cs.lineHeight,
+    textAlign: cs.textAlign,
+    textTransform: cs.textTransform,
+    color: cs.color,
+    background: 'transparent',
+    pointerEvents: 'none',
+  });
+  const textWrap = cs.getPropertyValue('text-wrap');
+  if (textWrap) snapshot.style.setProperty('text-wrap', textWrap);
+}
+
+/** A text block that changes and is in view: its old characters or snapshot are measured before the swap. */
 function blockJob(host: Element, nextText: string): Job | null {
   if (!(host instanceof HTMLElement) || host.closest('[data-pixel-title], .sr-only') || !inView(host)) return null;
-  const before = glyphsOf(host);
-  if (!isMorphable(before.map((g) => g.ch).join(''), nextText)) return null;
-  return { host, before, typography: typographyOf(host), colour: host.style.color };
+  const oldText = host.textContent ?? '';
+  if (!isMorphable(oldText, nextText)) return null;
+  const style = morphStyle(oldText, nextText);
+  if (style === 'letters') {
+    const before = glyphsOf(host);
+    if (before.length === 0) return null;
+    return { style: 'letters', host, before, typography: typographyOf(host), colour: host.style.color };
+  }
+  const beforeRect = host.getBoundingClientRect();
+  const snapshot = host.cloneNode(true) as HTMLElement;
+  styleSnapshot(snapshot, host, beforeRect);
+  return {
+    style: 'fade',
+    host,
+    snapshot,
+    beforeRect,
+    colour: host.style.color,
+    opacity: host.style.opacity,
+    height: host.style.height,
+    overflow: host.style.overflow,
+  };
 }
 
 /** The blocks to morph: the leaves (text only in the next page) in view whose text changes. Read only. */
@@ -181,16 +254,30 @@ function collect(live: Element, next: Element, jobs: Job[]): void {
 
 /* ---- the morph: the characters slide, fade or roll over the new text ---- */
 
-/** Puts back the colour the morph hid, and leaves no empty style attribute behind (the page had none there). */
-const restoreColour = (job: Job): void => {
-  if (job.colour) job.host.style.color = job.colour;
-  else job.host.style.removeProperty('color');
-  if (job.host.getAttribute('style') === '') job.host.removeAttribute('style');
+/** Puts back styles the morph modified, leaving no empty style attribute behind (the page had none there). */
+const restoreHost = (job: Job): void => {
+  if (job.style === 'letters') {
+    if (job.colour) job.host.style.color = job.colour;
+    else job.host.style.removeProperty('color');
+  } else {
+    if (job.colour) job.host.style.color = job.colour;
+    else job.host.style.removeProperty('color');
+    if (job.opacity) job.host.style.opacity = job.opacity;
+    else job.host.style.removeProperty('opacity');
+    if (job.height) job.host.style.height = job.height;
+    else job.host.style.removeProperty('height');
+    if (job.overflow) job.host.style.overflow = job.overflow;
+    else job.host.style.removeProperty('overflow');
+  }
+  if (job.host.style.length === 0 || job.host.getAttribute('style') === '') {
+    job.host.removeAttribute('style');
+  }
 };
 
 /**
- * Runs the moves of the given blocks. The real text is already the new one; it is hidden while the characters move,
- * and restored when they land, even if the morph fails part way (the layer is then removed too).
+ * Runs the moves of the given blocks. The real text is already the new one; short blocks morph letter by letter,
+ * while longer visible blocks crossfade cleanly (old text fades out over ~180 ms, new text fades in over ~280 ms
+ * starting ~120 ms, height animating smoothly if it changes).
  */
 async function animate(jobs: Job[]): Promise<void> {
   const layer = document.createElement('div');
@@ -200,65 +287,114 @@ async function animate(jobs: Job[]): Promise<void> {
   const shown: Job[] = [];
   let end = 0;
 
-  // read first, then write: the new glyphs of every block are measured in one layout
+  // read first, then write: measure the new state of every block in one layout
   const measured = jobs
     // a block the page swapped out (its parent's children were replaced) has no place to morph
     .filter((job) => job.host.isConnected)
-    .map((job) => ({ job, after: glyphsOf(job.host) }));
-
-  for (const { job, after } of measured) {
-    const steps = alignChars(
-      job.before.map((g) => g.ch),
-      after.map((g) => g.ch),
-    );
-    if (!steps) continue;
-    shown.push(job);
-    const size = parseFloat(job.typography.fontSize) || 16;
-    const drop = `translateY(${0.4 * size}px)`;
-
-    const glyphSpan = (g: Glyph): HTMLSpanElement => {
-      const span = document.createElement('span');
-      span.textContent = g.ch;
-      Object.assign(span.style, job.typography, {
-        position: 'absolute',
-        left: `${g.left}px`,
-        top: `${g.top}px`,
-        margin: '0',
-        padding: '0',
-        whiteSpace: 'pre',
-        lineHeight: 'normal',
-      });
-      layer.append(span);
-      return span;
-    };
-
-    steps.forEach((step, index) => {
-      const { delay, duration } = glyphTiming(step.kind, index);
-      end = Math.max(end, delay + duration);
-      let span: HTMLSpanElement;
-      let frames: Keyframe[];
-      let easing = EASE;
-      if (step.kind === 'keep') {
-        // a shared character slides from where it was to where it is now (FLIP)
-        const from = job.before[step.from]!;
-        const to = after[step.to]!;
-        span = glyphSpan(from);
-        frames = [{ transform: 'translate(0px, 0px)' }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }];
-      } else if (step.kind === 'exit') {
-        span = glyphSpan(job.before[step.from]!);
-        // a removed character fades out at once: it leaves rather than lingering over the new text
-        frames = [{ opacity: 1, transform: 'translateY(0px)' }, { opacity: 0, transform: drop }];
-        easing = 'ease-out';
-      } else {
-        span = glyphSpan(after[step.to]!);
-        frames = [{ opacity: 0, transform: drop }, { opacity: 1, transform: 'translateY(0px)' }];
+    .map((job) => {
+      if (job.style === 'letters') {
+        return { job, afterGlyphs: glyphsOf(job.host), afterRect: null };
       }
-      animations.push(span.animate(frames, { duration, delay, easing, fill: 'both' }));
+      return { job, afterGlyphs: null, afterRect: job.host.getBoundingClientRect() };
     });
+
+  for (const item of measured) {
+    if (item.job.style === 'letters') {
+      const { job, afterGlyphs } = item;
+      const steps = alignChars(
+        job.before.map((g) => g.ch),
+        afterGlyphs!.map((g) => g.ch),
+      );
+      if (!steps) continue;
+      shown.push(job);
+      const size = parseFloat(job.typography.fontSize) || 16;
+      const drop = `translateY(${0.4 * size}px)`;
+
+      const glyphSpan = (g: Glyph): HTMLSpanElement => {
+        const span = document.createElement('span');
+        span.textContent = g.ch;
+        Object.assign(span.style, job.typography, {
+          position: 'absolute',
+          left: `${g.left}px`,
+          top: `${g.top}px`,
+          margin: '0',
+          padding: '0',
+          whiteSpace: 'pre',
+          lineHeight: 'normal',
+        });
+        layer.append(span);
+        return span;
+      };
+
+      steps.forEach((step, index) => {
+        const { delay, duration } = glyphTiming(step.kind, index);
+        end = Math.max(end, delay + duration);
+        let span: HTMLSpanElement;
+        let frames: Keyframe[];
+        let easing = EASE;
+        if (step.kind === 'keep') {
+          // a shared character slides from where it was to where it is now (FLIP)
+          const from = job.before[step.from]!;
+          const to = afterGlyphs![step.to]!;
+          span = glyphSpan(from);
+          frames = [{ transform: 'translate(0px, 0px)' }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }];
+        } else if (step.kind === 'exit') {
+          span = glyphSpan(job.before[step.from]!);
+          // a removed character fades out at once: it leaves rather than lingering over the new text
+          frames = [{ opacity: 1, transform: 'translateY(0px)' }, { opacity: 0, transform: drop }];
+          easing = 'ease-out';
+        } else {
+          span = glyphSpan(afterGlyphs![step.to]!);
+          frames = [{ opacity: 0, transform: drop }, { opacity: 1, transform: 'translateY(0px)' }];
+        }
+        animations.push(span.animate(frames, { duration, delay, easing, fill: 'both' }));
+      });
+    } else {
+      const { job, afterRect } = item;
+      shown.push(job);
+      layer.append(job.snapshot);
+
+      // Old snapshot overlay fades out (~180 ms)
+      animations.push(
+        job.snapshot.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: FADE_OUT_MS,
+          easing: 'ease-out',
+          fill: 'both',
+        }),
+      );
+
+      // Real element fades in (~280 ms, starting ~120 ms)
+      job.host.style.opacity = '0';
+      animations.push(
+        job.host.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: FADE_IN_MS,
+          delay: FADE_IN_AFTER_MS,
+          easing: 'ease-out',
+          fill: 'both',
+        }),
+      );
+
+      // Animate height smoothly if it changes
+      const hBefore = job.beforeRect.height;
+      const hAfter = afterRect!.height;
+      if (Math.abs(hBefore - hAfter) > 0.5) {
+        job.host.style.overflow = 'hidden';
+        animations.push(
+          job.host.animate([{ height: `${hBefore}px` }, { height: `${hAfter}px` }], {
+            duration: FADE_IN_AFTER_MS + FADE_IN_MS,
+            easing: EASE,
+            fill: 'both',
+          }),
+        );
+      }
+      end = Math.max(end, FADE_IN_AFTER_MS + FADE_IN_MS);
+    }
   }
 
   if (animations.length === 0) return;
-  for (const job of shown) job.host.style.color = 'transparent';
+  for (const job of shown) {
+    if (job.style === 'letters') job.host.style.color = 'transparent';
+  }
   document.body.append(layer);
   // a safety net: the morph ends on time even if an animation never reports finished
   let timer = 0;
@@ -270,7 +406,7 @@ async function animate(jobs: Job[]): Promise<void> {
   } finally {
     clearTimeout(timer);
     layer.remove();
-    for (const job of shown) restoreColour(job);
+    for (const job of shown) restoreHost(job);
   }
 }
 

@@ -2,15 +2,21 @@ import { describe, expect, it } from 'vitest';
 import {
   ENTER_AFTER_MS,
   EXIT_MS,
+  FADE_IN_AFTER_MS,
+  FADE_IN_MS,
+  FADE_OUT_MS,
   MAX_ALIGN,
   MAX_STAGGER_MS,
   MOVE_MS,
+  SHORT_TEXT_THRESHOLD,
   STAGGER_MS,
   alignChars,
+  fadeTiming,
   glyphTiming,
   isMorphable,
   isPlainClick,
   langOfPath,
+  morphStyle,
   morphTarget,
   staggerDelay,
   switchTarget,
@@ -241,5 +247,84 @@ describe('isMorphable', () => {
     expect(isMorphable('', 'Projects')).toBe(false);
     expect(isMorphable('Projets', '')).toBe(false);
     expect(isMorphable('a'.repeat(MAX_ALIGN + 1), 'b')).toBe(false);
+  });
+});
+
+describe('morphStyle', () => {
+  it('chooses letters for short, single-line text pairs like nav items and labels', () => {
+    expect(morphStyle('Projets', 'Projects')).toBe('letters');
+    expect(morphStyle('À propos', 'About')).toBe('letters');
+    expect(morphStyle('2026 — aujourd’hui', '2026 — present')).toBe('letters');
+  });
+
+  it('keeps letter morph for the hero name note (≤ 60 chars)', () => {
+    const frNote = 'Élève ingénieur en informatique – IA, VR et robotique';
+    const enNote = 'Computer Science Engineering Student – AI, VR & Robotics';
+    expect(Array.from(frNote).length).toBeLessThanOrEqual(SHORT_TEXT_THRESHOLD);
+    expect(Array.from(enNote).length).toBeLessThanOrEqual(SHORT_TEXT_THRESHOLD);
+    expect(morphStyle(frNote, enNote)).toBe('letters');
+  });
+
+  it('chooses letters at exactly SHORT_TEXT_THRESHOLD characters on both sides', () => {
+    const textA = 'a'.repeat(SHORT_TEXT_THRESHOLD);
+    const textB = 'b'.repeat(SHORT_TEXT_THRESHOLD);
+    expect(morphStyle(textA, textB)).toBe('letters');
+  });
+
+  it('chooses fade when either side exceeds the short-text threshold', () => {
+    const normal = 'Projets';
+    const long = 'a'.repeat(SHORT_TEXT_THRESHOLD + 1);
+    expect(morphStyle(normal, long)).toBe('fade');
+    expect(morphStyle(long, normal)).toBe('fade');
+  });
+
+  it('chooses fade for long paragraphs such as the bio summary', () => {
+    const bioFr =
+      "Élève ingénieur en 4e année d'informatique (alternance) à CESI, apprenti chez CAPFI depuis janvier 2026. Développeur principal de Cerebro...";
+    const bioEn =
+      'Computer science engineering student in 4th year at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro...';
+    expect(morphStyle(bioFr, bioEn)).toBe('fade');
+  });
+
+  it('chooses fade when text contains newlines even if short', () => {
+    expect(morphStyle('Ligne 1\nLigne 2', 'Line 1\nLine 2')).toBe('fade');
+    expect(morphStyle('Court', 'Short\nbreak')).toBe('fade');
+  });
+
+  it('trims outer whitespace before checking length and newlines', () => {
+    expect(morphStyle('\n  Projets  \n', '  Projects  ')).toBe('letters');
+  });
+});
+
+describe('fadeTiming', () => {
+  it('fades out the old text over ~180 ms starting immediately', () => {
+    const timing = fadeTiming();
+    expect(timing.out.delay).toBe(0);
+    expect(timing.out.duration).toBe(FADE_OUT_MS);
+    expect(timing.out.duration).toBe(180);
+  });
+
+  it('fades in the new text over ~280 ms starting at ~120 ms', () => {
+    const timing = fadeTiming();
+    expect(timing.in.delay).toBe(FADE_IN_AFTER_MS);
+    expect(timing.in.delay).toBe(120);
+    expect(timing.in.duration).toBe(FADE_IN_MS);
+    expect(timing.in.duration).toBe(280);
+  });
+
+  it('limits the overlap between visible old and new texts to at most 100 ms', () => {
+    const { out, in: entering } = fadeTiming();
+    const outEnd = out.delay + out.duration;
+    const inStart = entering.delay;
+    const overlap = Math.max(0, outEnd - inStart);
+    expect(overlap).toBeLessThanOrEqual(100);
+    expect(overlap).toBe(60);
+  });
+
+  it('completes the crossfade well within the ~660 ms morph budget', () => {
+    const { in: entering } = fadeTiming();
+    const totalDuration = entering.delay + entering.duration;
+    expect(totalDuration).toBeLessThanOrEqual(660);
+    expect(totalDuration).toBe(400);
   });
 });
