@@ -27,10 +27,10 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
 ---
 
 <figure class:list={['pmedia', { 'pmedia--poster': !kind }]} aria-label={label} data-seed={kind ? undefined : seed}>
-  {kind === 'video' && <video data-src={media?.video} muted loop playsinline preload="none" aria-label={label}></video>}
+  {kind === 'video' && <video data-src={media?.video} muted loop playsinline preload="metadata" aria-label={label}></video>}
   {kind === 'image' && (
     <picture>
-      <source srcset={media?.image?.replace(/\.jpe?g$/, '.webp')} type="image/webp" />
+      {media?.webp && <source srcset={media.webp} type="image/webp" />}
       <img src={media?.image} alt={label} loading="lazy" decoding="async" />
     </picture>
   )}
@@ -434,10 +434,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     };
 
     const ensureSourceLoaded = (): void => {
-      if (video && !video.src && video.dataset.src) {
-        video.src = video.dataset.src;
-        video.load();
-      }
+      if (video && !video.src && video.dataset.src) video.src = video.dataset.src;
     };
 
     const syncVideo = (): void => {

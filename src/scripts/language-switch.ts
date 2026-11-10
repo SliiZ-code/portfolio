@@ -101,7 +101,10 @@ const keep = (el: Element): boolean => el.tagName === 'CANVAS' || el.hasAttribut
 const syncAttributes = (live: Element, next: Element): void => {
   // the theme toggle's title and label follow the theme (syncThemeLabels), not the page
   const toggle = live.hasAttribute('data-theme-toggle');
-  const owned = (name: string) => OWN_ATTRIBUTES.has(name) || (toggle && (name === 'title' || name === 'aria-label'));
+  // a video's source is set when the video is first needed (ProjectMedia): the fetched page has none, so it stays
+  const video = live.tagName === 'VIDEO';
+  const owned = (name: string) =>
+    OWN_ATTRIBUTES.has(name) || (toggle && (name === 'title' || name === 'aria-label')) || (video && name === 'src');
   for (const { name } of [...live.attributes]) {
     if (!owned(name) && !next.hasAttribute(name)) live.removeAttribute(name);
   }

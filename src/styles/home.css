@@ -290,28 +290,32 @@
   gap: 4px 20px;
 }
 
-.hc-reach a,
-.hc-links a,
-.hc-foot nav a {
-  display: inline-flex;
-  align-items: center;
-}
-
+/* touch: a link's hit area reaches past its text through an empty ::before (nothing is painted, no box grows). The reach
+   stops at the row gap, so two links in one wrapped row never share a tap. */
 @media (pointer: coarse) {
   .hc-reach a,
   .hc-links a,
   .hc-foot nav a {
     position: relative;
-    min-height: 28px;
-    padding: 4px 0;
   }
 
-  .hc-reach a::before,
+  /* 4 px row gap: each link reaches 2 px down and up, a 25 px target */
+  .hc-reach a::before {
+    content: '';
+    position: absolute;
+    inset: -2px -8px;
+  }
+
   .hc-links a::before,
   .hc-foot nav a::before {
     content: '';
     position: absolute;
-    inset: -8px -8px;
+    inset: -4px -8px;
+  }
+
+  /* 8 px between wrapped footer rows, so the 27 px reach of each link stops at the gap */
+  .hc-foot nav {
+    row-gap: 8px;
   }
 }
 

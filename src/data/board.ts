@@ -1,5 +1,5 @@
 import type { Project, Resume } from '../lib/resume';
-import { findMedia } from '../lib/media';
+import { findMedia, type Media } from '../lib/media';
 import { METHUSELAHS, type MethuselahName } from '../scripts/board/patterns';
 
 export interface BoardOverlay {
@@ -9,7 +9,7 @@ export interface BoardOverlay {
   aliases?: string[];
   /** The language or tool shown next to the name on the board. */
   tag: string;
-  media?: { video?: string; image?: string };
+  media?: Media;
 }
 
 /**
@@ -26,7 +26,7 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
   thrive: {
     seed: 'acorn',
     tag: 'Flutter',
-    media: { image: '/media/thrive.jpg' },
+    media: { image: '/media/thrive.jpg', webp: '/media/thrive.webp' },
   },
   'worldwide-weather-watcher': {
     seed: 'pi-heptomino',
@@ -54,7 +54,7 @@ export interface BoardProject extends Project {
   tag: string;
   /** Tag and period, for the list and the project page. */
   meta: string;
-  media?: { video?: string; image?: string };
+  media?: Media;
 }
 
 const OVERLAY_KEYS = new Map<string, string>();

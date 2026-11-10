@@ -395,16 +395,6 @@ a.flag:hover {
   border-color: var(--accent);
 }
 
-.theme-toggle {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .theme-toggle svg {
   display: block;
   width: 22px;
@@ -449,51 +439,32 @@ a.flag:hover {
   display: none;
 }
 
+/* touch: a target's hit area reaches past its box through an empty ::before (nothing is painted, no box grows), so the
+   look and the spacing stay as they are. Each area stops at the gap to its neighbour: no tap is taken from another. */
 @media (pointer: coarse) {
-  .flag {
-    padding: 5px 3px 3px;
-    min-height: 28px;
-    min-width: 28px;
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  a.flag,
+  .theme-toggle,
+  .cmdk-open {
     position: relative;
   }
 
-  .flag::before {
+  /* 10 px apart on the row: each flag reaches 5 px sideways */
+  a.flag::before {
     content: '';
     position: absolute;
-    inset: -8px -6px;
-  }
-
-  .theme-toggle {
-    min-width: 28px;
-    min-height: 28px;
-    padding: 3px;
-    box-sizing: border-box;
-    position: relative;
+    inset: -11px -5px;
   }
 
   .theme-toggle::before {
     content: '';
     position: absolute;
-    inset: -8px -8px;
-  }
-
-  .cmdk-open {
-    min-height: 28px;
-    padding: 4px 8px;
-    display: inline-flex;
-    align-items: center;
-    box-sizing: border-box;
-    position: relative;
+    inset: -11px -8px;
   }
 
   .cmdk-open::before {
     content: '';
     position: absolute;
-    inset: -8px -4px;
+    inset: -10px -5px;
   }
 }
 
@@ -526,25 +497,16 @@ a.flag:hover {
   color: var(--accent);
 }
 
+/* touch: the corner links reach 6 px sideways, into the 14 px gap between them */
 @media (pointer: coarse) {
   .br a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 4px 2px;
     position: relative;
   }
 
   .br a::before {
     content: '';
     position: absolute;
-    inset: -8px -4px;
-  }
-
-  .br .cta {
-    min-height: 28px;
-    padding: 3px 8px;
-    box-sizing: border-box;
+    inset: -8px -6px;
   }
 }
 
@@ -825,17 +787,14 @@ a.flag:hover {
 
 @media (pointer: coarse) {
   .doc-bar .back,
-  .doc-actions a,
-  .doc-actions button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
+  .doc-actions a:not(.flag),
+  .doc-actions [data-print] {
     position: relative;
   }
 
   .doc-bar .back::before,
-  .doc-actions a::before,
-  .doc-actions button::before {
+  .doc-actions a:not(.flag)::before,
+  .doc-actions [data-print]::before {
     content: '';
     position: absolute;
     inset: -8px -4px;
@@ -994,6 +953,23 @@ a.flag:hover {
 .cv-project-link:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* touch: the links reach 3 px up and down, so each target is 24 px or more and two rows meet at the gap's middle */
+@media (pointer: coarse) {
+  .cv-contact a,
+  .cv-item .where a,
+  .cv-project-link {
+    position: relative;
+  }
+
+  .cv-contact a::before,
+  .cv-item .where a::before,
+  .cv-project-link::before {
+    content: '';
+    position: absolute;
+    inset: -3px -6px;
+  }
 }
 
 @media (max-width: 760px) {
