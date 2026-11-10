@@ -22,12 +22,3 @@ const bio = htmlToText(resume.summary);
     {resume.profiles.map((profile) => <a href={profile.url}>{profile.network}</a>)}
   </p>
 </div>
-
-<script>
-  // the flowing text is for a fine pointer only: its module (pretext's tables are most of it) loads only there, so a phone
-  // never downloads it. The same query as flow-text.ts; reduced motion is left to that module, which follows it live.
-  const paragraphs = document.querySelectorAll<HTMLElement>('.hc-summary');
-  if (paragraphs.length && matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    import('../../scripts/flow-text').then(({ initFlowText }) => paragraphs.forEach(initFlowText));
-  }
-</script>

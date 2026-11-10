@@ -141,37 +141,6 @@
   text-wrap: pretty;
 }
 
-/* text flows round a cell (flow-text.ts, desktop with a fine pointer): the paragraph keeps its words and its box, made
-   transparent, while the lines are drawn beside the cell in the same type */
-.hc-summary.is-flowing {
-  position: relative;
-  color: transparent;
-  user-select: none;
-}
-
-.hf-flow {
-  position: absolute;
-  inset: 0;
-  color: var(--ink);
-  user-select: text;
-}
-
-.hf-line {
-  position: absolute;
-  white-space: pre;
-}
-
-.hf-cells {
-  position: absolute;
-  color: var(--ink);
-  cursor: grab;
-  touch-action: none;
-}
-
-.hf-cells.is-grabbing {
-  cursor: grabbing;
-}
-
 .hc-reach {
   display: flex;
   flex-wrap: wrap;
