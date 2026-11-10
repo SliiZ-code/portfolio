@@ -1,0 +1,345 @@
+{
+  "version": 1,
+  "entries": {
+    "039c0d216172af65ba5e4e8ce69369a58b18f6dcb94fdb0c88328c1e144d3704": {
+      "en": "<p>Lead developer of Cerebro, an internal tool that matches consultants' profiles to client tenders using LLMs.</p><ul><li><p>Designed an AI pipeline that extracts, categorises and scores tender × profile pairs, with reliable asynchronous batch processing; deployed to production after several hundred tenders were processed.</p></li><li><p>Calibrated the scoring prompt (temperature, required or preferred skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Launched an annotated reference set to measure false positives and false negatives.</p></li><li><p>Built the daily report sent to about ten sales staff; secured the API and web interface with authentication and SSO. <em>Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
+      "model": "claude-haiku-5-5"
+    },
+    "040228846ead4a4195145fe089343cb0894d00a9380176a41a8f6c5ee70b4824": {
+      "en": "C#",
+      "model": "claude-haiku-5-5"
+    },
+    "066a86e0c14425a8b50680748415b67f82b2af20eebea9200ad78b8a1139c6c3": {
+      "en": "<p>VR application for teleoperating robots (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured robot access with AES-256 encryption.</p></li><li><p>Designed a real-time interface for editing waypoints.</p></li></ul>",
+      "model": "claude-haiku-5-5"
+    },
+    "06d866956e307ea3754cfa0bb6cff604770a598996ba66b9fc03236b9a35ace9": {
+      "en": "OpenAI and Gemini APIs",
+      "model": "claude-haiku-5-5"
+    },
+    "0c03e3faaef073c59e48370a7abceaf35a8f9d49e9dcac105593d477b9818b39": {
+      "en": "GitLab CI",
+      "model": "claude-haiku-5-5"
+    },
+    "0d3b66639ebc4146645221cf3997296458d0c1de8f095e5c23cf445191bfd86f": {
+      "en": "Experience",
+      "model": "claude-haiku-5-5"
+    },
+    "0dad61b6318ac60d1f423636d8ba6ce9f4ce0a3a18b0816f592a2ece8d328fe1": {
+      "en": "Projects",
+      "model": "claude-haiku-5-5"
+    },
+    "0e544be0a42f8cbe4d3071ad660e19a64ed71e08efdcfcdae3dbcb5aacb4a87d": {
+      "en": "Game of Life",
+      "model": "reviewed-previous-en"
+    },
+    "0e59e83817862961aa29adbed7a0c0f7794047c223217dfdb94d8d43a3752576": {
+      "en": "Computer science, work-study/apprenticeship",
+      "model": "claude-haiku-5-5"
+    },
+    "18885f27b5af9012df19e496460f9294d5ab76128824c6f993787004f6d9a7db": {
+      "en": "Python",
+      "model": "claude-haiku-5-5"
+    },
+    "1a7c6796682b5b6a1c209c2e26b2f002854be13015ce14f1897daa965024147f": {
+      "en": "<p>Developed remote control of a BB-8 replica: web joystick (HTML, JS) and a Flask server that drives the Arduino over serial link.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "1b145b5d0e495d7829ae04b931df89dc136d42b296ff0e9fcca7f5e298dd1b8c": {
+      "en": "AI and LLMs",
+      "model": "claude-haiku-5-5"
+    },
+    "1e8e6d7512420b9623816a2e3552ff5d07dc0d416cd85eb1e17917a2dd3de713": {
+      "en": "Unity",
+      "model": "claude-haiku-5-5"
+    },
+    "1f3a3b3bf898c5a5dd3bd1605d3010bdc96e2daa6179be6f0e3f7901cffcd5c4": {
+      "en": "Oct 2025 – present",
+      "model": "claude-haiku-5-5"
+    },
+    "2246feb808d09dd616eb2d58d8fdb9f2f1428a0f42c952f40b02e9b8c7b9e987": {
+      "en": "Structured outputs",
+      "model": "claude-haiku-5-5"
+    },
+    "22eade6f55843bb7f8070d0de4605eb40ffd88543221993d9b3c558c42ed4841": {
+      "en": "<p>Managing the student association's communications: Instagram content, event posters, photo and video coverage.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "26e5b44ac115322031ede7107b2fcec2fa8bf9df40c8fa72b4700046137dd96a": {
+      "en": "Languages",
+      "model": "claude-haiku-5-5"
+    },
+    "2a3450d2f7f2a940a97cafe4d3592cced714b111b603fd7dc6cd2f08cdf25428": {
+      "en": "REST API",
+      "model": "claude-haiku-5-5"
+    },
+    "2ba33f0f63dc0953892a4665ac10b6843139f9eec9d0ac9e4205ec2a3295e650": {
+      "en": "<p>Cross-platform task manager (Android, iOS, Windows, macOS, Web) built with Flutter/Dart: Isar local database, categories, notifications.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "2d259f09bf53e3d23c21f7f62db57456ff46cbb3adc027541fb1ef8295bb0f00": {
+      "en": "Languages",
+      "model": "claude-haiku-5-5"
+    },
+    "2d2eef3e092af52b5837160fe2e3954907a4bfed1469edd2e6422749a6b16b7a": {
+      "en": "SQLite",
+      "model": "claude-haiku-5-5"
+    },
+    "2dd9eb7d9f0c11864fe058aaa0f3fbae5b1887555c9bc1f9ff84877d75f446a5": {
+      "en": "FastAPI",
+      "model": "claude-haiku-5-5"
+    },
+    "3134b7feaf19b617d5c8703265e396cb8ef5cc043d50a864b2d6701a78ba4120": {
+      "en": "DevOps and systems",
+      "model": "claude-haiku-5-5"
+    },
+    "357e7188a643a3f15aa4c5829ab5dc22a0c4d8391d399e1ec0b9f225858c2581": {
+      "en": ".NET",
+      "model": "claude-haiku-5-5"
+    },
+    "35e21df2eec4168cdabade1c51ce568cf49a4685f3ea3d80eb1116652c6b9857": {
+      "en": "Sep 2023 – Jul 2025",
+      "model": "claude-haiku-5-5"
+    },
+    "372a5dc3dcbad49df72f8d9c80fecc8efe94fcf9ae9897d4d514b4672c1b3cce": {
+      "en": "Jan 2026 – present",
+      "model": "claude-haiku-5-5"
+    },
+    "3a770a64bb47e4450dcc8d2b26e01de95e9075c398d59bd95646ebc7d98dec73": {
+      "en": "Beginner",
+      "model": "claude-haiku-5-5"
+    },
+    "413923285a15674416c3f5de88ea3d55d5fc867f0e37662e848ba733b50661d3": {
+      "en": "Skills",
+      "model": "claude-haiku-5-5"
+    },
+    "41714d2cdc780e91028e222f1a1b62b0926e0f2416e14e71065c3b08c10348b0": {
+      "en": "Whisper",
+      "model": "claude-haiku-5-5"
+    },
+    "471502f86c773c591d914c08da1b2e181e793a08bd85616b5edfd6094eb3f78b": {
+      "en": "Certifications",
+      "model": "claude-haiku-5-5"
+    },
+    "47741e26605f877a03a3ae0d2844f2fba2bd45754c98481d33060fce8c2d081c": {
+      "en": "Pydantic",
+      "model": "claude-haiku-5-5"
+    },
+    "49a63d72be2fc0e6aa6de315ca626d27816fe9d584a01484daa694221f1ef7e1": {
+      "en": "Education",
+      "model": "claude-haiku-5-5"
+    },
+    "4b9430517281bbc39664ea78a339e89276d2d1ddea5a42ef0397202a972f2f99": {
+      "en": "VMware",
+      "model": "claude-haiku-5-5"
+    },
+    "4ec5763c3b42dba28585f469d0d671db1b29475098f8f8b93eb08720b52a5f7e": {
+      "en": "<p>CESI group project in C++. We developed a Game of Life with a graphical interface: editable grid in real time, obstacles, adjustable speed, grid import and export.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "4f278a3240eb0f26cd32161445dc27888bf06419b695992a9a1c8ac7358c1513": {
+      "en": "Back-end",
+      "model": "claude-haiku-5-5"
+    },
+    "5089af3859c76a4b0763fd439ad705b95bc5583da67287f0f547890032a82857": {
+      "en": "Engineering student in computer science – AI, VR and robotics",
+      "model": "claude-haiku-5-5"
+    },
+    "547ec866b74fc8d07002d6005cd0c83d836c47624d3d0bc4b3eeb0ebae732bc3": {
+      "en": "Thrive",
+      "model": "reviewed-previous-en"
+    },
+    "553678eed3fc2efafb7539ee872a6a6e4e487ea21c1b2e2b63317c11a0ca24be": {
+      "en": "English",
+      "model": "claude-haiku-5-5"
+    },
+    "553ea337c893050b87083a1589d21388c8495d0048703738e0398ddc37d64579": {
+      "en": "Wireshark",
+      "model": "claude-haiku-5-5"
+    },
+    "598cc2513429747e0405e059042a3ad46ad210bf326de2f335edeb28dc579e7e": {
+      "en": "Rouen",
+      "model": "claude-haiku-5-5"
+    },
+    "599ab187b25c527ca604535cbaf79afcdfba86649858a3cd77d27679274fa6a2": {
+      "en": "Apr 2025 – Jul 2025",
+      "model": "claude-haiku-5-5"
+    },
+    "5a5c3f75ebced12129fcfd5391e500813b9c9b22ae6be6ff6ac7de707d8215d7": {
+      "en": "Dart",
+      "model": "claude-haiku-5-5"
+    },
+    "5bc1c6d456aa1777e5f9b9a02c54b417cb5a6be73deebbadc5e8a300dc4d5171": {
+      "en": "Integrated preparatory programme",
+      "model": "claude-haiku-5-5"
+    },
+    "5c4bcde8c3587765947af4939578b621d9418aca822537dbb61e2f1ab0bc1a3f": {
+      "en": "Linux/WSL",
+      "model": "claude-haiku-5-5"
+    },
+    "5dd272b4f316b776a7b8e3d0894b37e1e42be3d5d3b204b8a5836cc50597a6b1": {
+      "en": "Paris",
+      "model": "claude-haiku-5-5"
+    },
+    "5f42568e404b2ffa3d5f1f7c1ea848e48391f6a36e490c4fd6f24f0a078d0926": {
+      "en": "Git Flow",
+      "model": "claude-haiku-5-5"
+    },
+    "605fca3aa081edf9efbbc98b17a5ad43d1effd63374a4c4554c8f6e1480eead9": {
+      "en": "Running (half marathon, March 2027), calisthenics, graphic design, travel",
+      "model": "claude-haiku-5-5"
+    },
+    "64227cb011df37c026c297380a9827cf57bafd19c8b7c7f141c212eaf72607a8": {
+      "en": "BDE CESI Rouen – Head of Communication",
+      "model": "reviewed-previous-en"
+    },
+    "66237c9228b7d0e7ad8d67593a1ef9e555cbee0d6e8cafba1427cb27dbb3a1bf": {
+      "en": "Interests",
+      "model": "claude-haiku-5-5"
+    },
+    "669a46138d69d7c12f52f82ccde4385630ece1947fc7e3a382b371d4aed02f28": {
+      "en": "Awards",
+      "model": "claude-haiku-5-5"
+    },
+    "6879a6be32201926dbcfd1c7e5290bb6f6d43588c5489bb3e7dbc2365ed9fb9a": {
+      "en": "Worldwide Weather Watcher",
+      "model": "reviewed-previous-en"
+    },
+    "6aa4f47bafe5d669fb6a219e4d5fff775872bcef28dd7e9356415dbe1e29443d": {
+      "en": "BB8",
+      "model": "reviewed-previous-en"
+    },
+    "6b2fa7b8aa25161b57c2a5d158ff81990ba8bdafd6bb6285fadc7b38e4501789": {
+      "en": "LLM pipelines",
+      "model": "claude-haiku-5-5"
+    },
+    "6ca8251a4879c3ca023586f46dc07dfbedbf81c9e70381cd96345edf61e24140": {
+      "en": "Stable Diffusion",
+      "model": "claude-haiku-5-5"
+    },
+    "7526700fa2e9696810e8499faef3b7cb216c289afd8f522c9649ce8ad6a6f6df": {
+      "en": "Arduino",
+      "model": "claude-haiku-5-5"
+    },
+    "803e1610287cab9c730764316316cd0dbf6407738c81584c321f430ca02fba83": {
+      "en": "Prompt engineering",
+      "model": "claude-haiku-5-5"
+    },
+    "8aa2498738ae365d939705da96dab1effa829a876d14decbf6bb17b31d5e7358": {
+      "en": "Oct 2025 – Sep 2028",
+      "model": "claude-haiku-5-5"
+    },
+    "8fb8105dc43e2584b240cf42baf24654649f0c86498813368f411c895746ce9f": {
+      "en": "Activities",
+      "model": "claude-haiku-5-5"
+    },
+    "93e035b4a4bb6d946e39349494ffb5fcc16006792f80f6ae808532e4d95f18a1": {
+      "en": "Native",
+      "model": "claude-haiku-5-5"
+    },
+    "95bf98502ef61f0b319ab41b7905f22346428fd4e3be799d9da2444efc7a0824": {
+      "en": "Computer science",
+      "model": "claude-haiku-5-5"
+    },
+    "9d750fae748681ca14e2c3fe0c1ed0a2b56984cf12747e281cf815833de21c9c": {
+      "en": "Summary",
+      "model": "claude-haiku-5-5"
+    },
+    "9f1f3ba91d85edc1367868df7aeac166b67eae6c53849088901c6b3038032ee7": {
+      "en": "Professional, TOEIC planned",
+      "model": "claude-haiku-5-5"
+    },
+    "a37430e22cd01df02ad1264610c5e986270e285b15cb764b7b1ed6ac73c499d1": {
+      "en": "Blink",
+      "model": "reviewed-previous-en"
+    },
+    "b09d48f73394915b386a33b9dbd18d8522adea2b4588b610f64b974b2eeb9c43": {
+      "en": "<p>University events platform, developed as a team. Students browse a campus event map and register for events; student associations (BDE) organise them. React, Express, Prisma and PostgreSQL, containerised with Docker.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "b27ad06d123c6145fba7e9217a4cfbf2488b4743810ed8c8ff14ad01a5bbe515": {
+      "en": "JavaScript",
+      "model": "claude-haiku-5-5"
+    },
+    "be53050715769857b05ad356a34ec764043c5f623418c1d3e5af7ea15745fe41": {
+      "en": "<p>Python pipeline that generates short videos from a simple topic: GPT-3.5 writes the script, Stable Diffusion XL creates the images, OpenAI TTS records the voiceover and Whisper generates the subtitles. Asynchronous API calls, automated editing with MoviePy.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "be7f5492ce3b5452d46bd20023846eb877a37aae198d3935ce46abb44cec606c": {
+      "en": "German",
+      "model": "claude-haiku-5-5"
+    },
+    "bf42e4807a277d403ee97d8e405219ce4ff20d326b2bf26e5b93e40d6714a652": {
+      "en": "<p>4th-year computer science engineering student on a work-study/apprenticeship track at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on VR-based teleoperation of robots. Seeking a internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>",
+      "model": "claude-haiku-5-5+manual-wording-fix"
+    },
+    "c9b5472848ca301f2f5ee22c84163db92f06710a0e136c3632d25b3ebccb9fd0": {
+      "en": "Networks",
+      "model": "claude-haiku-5-5"
+    },
+    "d1ba4b588611d7b374b49928f45587acc099d4fba0d6d3383cc9c9e24866aaca": {
+      "en": "Work-study R&D engineer (R&D, AI)",
+      "model": "claude-haiku-5-5"
+    },
+    "d1f38721f24854ebc866ad14ca675af3f33cb86ae3ea4ab70e008bbba1f16a61": {
+      "en": "Engineering degree (master's level)",
+      "model": "claude-haiku-5-5"
+    },
+    "d646e54494bddfbbff4ff732fbcbe7fb662b2e5689e93b4eef1c0e28d96ff047": {
+      "en": "VR, 3D and electronics",
+      "model": "claude-haiku-5-5"
+    },
+    "d859ccb27dcf323fa744f88535e19055fe7909c2d8c0741bc1f455bf810d2ab9": {
+      "en": "Portfolio – sliiz.com",
+      "model": "claude-haiku-5-5"
+    },
+    "d872080d70c9df7d5d90f880b5add32d68c2b22bbd9d85458aa8d4e60f14c04f": {
+      "en": "Research intern",
+      "model": "claude-haiku-5-5"
+    },
+    "e495d53b967a7b049c8a2c25baa519fe124b49c1d0cf9cd8bdffa00d2f9d8ed6": {
+      "en": "French",
+      "model": "claude-haiku-5-5"
+    },
+    "e6169e958b37ce8662817b0f3e0bf450a174742fafc527800e67f430738b4b63": {
+      "en": "Docker",
+      "model": "claude-haiku-5-5"
+    },
+    "e7d9c0e6ada1046c17024c11da75a0a50a6711c23b0d514b08dbc464853017ff": {
+      "en": "CESI Robotics Club",
+      "model": "reviewed-previous-en"
+    },
+    "e9c92fe27654803b25b76b801e9efd7771f2400e6d8848fe5ddcdad1ea5b03ac": {
+      "en": "Rouen, France",
+      "model": "claude-haiku-5-5"
+    },
+    "f1deb75fa21d3c47a6e7a45967b79fad2d053947066dc95322c5bcee1e9fe21c": {
+      "en": "C++",
+      "model": "claude-haiku-5-5"
+    },
+    "f6b6923797257d7e3f59f9ff0d8729bbd83b148b6e84786c7e5ad437807b2799": {
+      "en": "UniLink",
+      "model": "reviewed-previous-en"
+    },
+    "f7cdd2d4beb086ad6d1845fbd3c1ad3655daa10f045b6a72798a5843ceef56a2": {
+      "en": "<ul><li><p>Conway's Game of Life in C++ (pair project, main contributor): MVC architecture, SFML console and graphical modes, toroidal grid, obstacle cells.</p></li></ul>",
+      "model": "claude-haiku-5-5"
+    },
+    "f911e414cf6bdfc595532ab166b5ba0f63d73c021452fcdacbda363dda6ad8fb": {
+      "en": "GitHub",
+      "model": "claude-haiku-5-5"
+    },
+    "fa610cb83847e626815a3248f587f1b5324794c76cdcc2a0586c53a387a78165": {
+      "en": "<p>CESI group project on Arduino. Four-mode weather station with temperature and pressure sensors, RTC clock, SD card logging and interrupt handling.</p>",
+      "model": "claude-haiku-5-5"
+    },
+    "fc69a16a041ee80535ff260ddbb5c0256277f87d05e0950e06afc187515c28c6": {
+      "en": "2025 – present",
+      "model": "claude-haiku-5-5"
+    },
+    "fecba91fe63640114b285873bb6577fb7bbd7bdcd339463de49ce7819f1ea31b": {
+      "en": "<p>CESI robotics club BB-8 robot: a Raspberry Pi sends commands to an Arduino that drives the motors. I developed the web control interface and its Python server.</p>",
+      "model": "claude-haiku-5-5"
+    }
+  }
+}

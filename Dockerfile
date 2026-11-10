@@ -13,19 +13,22 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# RxResume sync settings (Coolify "build variables"). They only exist in this stage:
-# the final image is built from /app/dist alone. The key is a build secret, not an ARG,
-# so it stays out of the image history and the build cache.
+# Resume sync settings (Coolify "build variables"). They only exist in this stage: the final image
+# is built from /app/dist alone. The keys are BuildKit secret mounts, not ARGs, so they stay out of
+# the image history and the build cache.
 ARG RXRESUME_URL
-ARG RXRESUME_ID_FR
-ARG RXRESUME_ID_EN
-ARG RXRESUME_PDF_ID_FR
-ARG RXRESUME_PDF_ID_EN
+ARG RXRESUME_ID
+ARG TRANSLATE_CLAUDE_MODEL
+ARG TRANSLATE_GEMINI_MODEL
+ARG TRANSLATE_OPENROUTER_MODEL
 
-# Refresh the resume data (and the CV PDFs, when their IDs are given) when a key is given.
-# If RxResume is down or the sync fails, build with the committed files instead of breaking
-# the deploy.
+# Refresh the resume data, the English translation and the CV PDFs when the RxResume key is given.
+# The first translation provider with a key wins (claude, then gemini, then openrouter). If RxResume
+# or the translation fails, build with the committed or already synced files instead of breaking the deploy.
 RUN --mount=type=secret,id=RXRESUME_API_KEY,env=RXRESUME_API_KEY \
+    --mount=type=secret,id=CLAUDE_CODE_OAUTH_TOKEN,env=CLAUDE_CODE_OAUTH_TOKEN \
+    --mount=type=secret,id=GEMINI_API_KEY,env=GEMINI_API_KEY \
+    --mount=type=secret,id=OPENROUTER_API_KEY,env=OPENROUTER_API_KEY \
     if [ -n "$RXRESUME_API_KEY" ]; then \
       npm run sync:resume || echo "WARNING: resume sync failed, building with the committed or already synced files"; \
     else \

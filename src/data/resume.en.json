@@ -1,7 +1,7 @@
 {
   "basics": {
     "name": "Julien Petit--Colboc",
-    "headline": "Computer Science Engineering Student – AI, VR & Robotics",
+    "headline": "Engineering student in computer science – AI, VR and robotics",
     "email": "julien.petitcolboc@gmail.com",
     "location": "Rouen, France",
     "website": {
@@ -12,7 +12,7 @@
   },
   "sections": {
     "profiles": {
-      "title": "Profiles",
+      "title": "Networks",
       "hidden": false,
       "items": [
         {
@@ -47,22 +47,22 @@
           "id": "ad3cbf72-4fbb-4050-b8af-63d5deb136bd",
           "hidden": false,
           "company": "CAPFI",
-          "position": "Software Engineer Apprentice (R&D, AI)",
+          "position": "Work-study R&D engineer (R&D, AI)",
           "location": "Paris",
-          "period": "Jan 2026 – Present",
+          "period": "Jan 2026 – present",
           "website": {
             "url": "",
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Main developer of Cerebro, an internal tool that matches consultant profiles to client requests for proposals (RFPs) using LLMs.</p><ul><li><p>Built an AI pipeline that extracts, categorises and scores RFP × profile pairs, with reliable asynchronous batch processing; deployed in production after processing several hundred RFPs.</p></li><li><p>Calibrated the scoring prompt (temperature, required vs. desired skills, three sub-scores) and added short match justifications so users can check each score.</p></li><li><p>Started an annotated reference set to measure false positives and false negatives.</p></li><li><p>Built the daily report sent to about 10 sales staff; secured the API and web interface with authentication and SSO. <em>Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
+          "description": "<p>Lead developer of Cerebro, an internal tool that matches consultants' profiles to client tenders using LLMs.</p><ul><li><p>Designed an AI pipeline that extracts, categorises and scores tender × profile pairs, with reliable asynchronous batch processing; deployed to production after several hundred tenders were processed.</p></li><li><p>Calibrated the scoring prompt (temperature, required or preferred skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Launched an annotated reference set to measure false positives and false negatives.</p></li><li><p>Built the daily report sent to about ten sales staff; secured the API and web interface with authentication and SSO. <em>Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
           "roles": []
         },
         {
           "id": "bub41xoydm6ih9qjf5oc14cn",
           "hidden": false,
           "company": "CESI LINEACT",
-          "position": "Research Intern",
+          "position": "Research intern",
           "location": "Rouen",
           "period": "Apr 2025 – Jul 2025",
           "website": {
@@ -70,7 +70,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Built a VR app for remote robot teleoperation (Scrum; C#, .NET, Unity, REST APIs).</p><ul><li><p>Streamed a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured robot access with AES-256 encryption.</p></li><li><p>Designed a real-time path interface to add, edit or delete waypoints.</p></li></ul>",
+          "description": "<p>VR application for teleoperating robots (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured robot access with AES-256 encryption.</p></li><li><p>Designed a real-time interface for editing waypoints.</p></li></ul>",
           "roles": []
         }
       ]
@@ -83,8 +83,8 @@
           "id": "9bbfb84b-9a52-42d9-b0ff-2e49be5b2042",
           "hidden": false,
           "school": "CESI École d'Ingénieurs",
-          "degree": "Engineering degree (Master's level)",
-          "area": "Computer Science, work-study",
+          "degree": "Engineering degree (master's level)",
+          "area": "Computer science, work-study/apprenticeship",
           "grade": "",
           "location": "Rouen",
           "period": "Oct 2025 – Sep 2028",
@@ -99,8 +99,8 @@
           "id": "gnga2opimsa3s0uiys09xsgi",
           "hidden": false,
           "school": "CESI",
-          "degree": "Integrated preparatory cycle",
-          "area": "Computer Science",
+          "degree": "Integrated preparatory programme",
+          "area": "Computer science",
           "grade": "",
           "location": "Rouen",
           "period": "Sep 2023 – Jul 2025",
@@ -109,7 +109,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<ul><li><p>Conway's Game of Life in C++ (pair project, main contributor): MVC architecture, console and SFML graphical modes, toroidal grid, obstacle cells.</p></li></ul>"
+          "description": "<ul><li><p>Conway's Game of Life in C++ (pair project, main contributor): MVC architecture, SFML console and graphical modes, toroidal grid, obstacle cells.</p></li></ul>"
         }
       ]
     },
@@ -127,7 +127,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Python pipeline that generates short videos from a single topic: GPT-3.5 writes the script, Stable Diffusion XL creates the images, OpenAI TTS records the voice-over and Whisper generates the subtitles. Asynchronous API calls, automated editing with MoviePy.</p>"
+          "description": "<p>Python pipeline that generates short videos from a simple topic: GPT-3.5 writes the script, Stable Diffusion XL creates the images, OpenAI TTS records the voiceover and Whisper generates the subtitles. Asynchronous API calls, automated editing with MoviePy.</p>"
         },
         {
           "id": "xzqf6qmt2htvrapycrr0p1qe",
@@ -139,7 +139,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Cross-platform task manager (Android, iOS, Windows, macOS, Web) built with Flutter/Dart: local Isar database, categories, notifications.</p>"
+          "description": "<p>Cross-platform task manager (Android, iOS, Windows, macOS, Web) built with Flutter/Dart: Isar local database, categories, notifications.</p>"
         },
         {
           "id": "42e49092-48a3-4fa1-8c78-4654a7877f35",
@@ -151,7 +151,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>CESI group project in C++. We built a Game of Life with a graphical interface: grid editable in real time, obstacles, adjustable speed, grid import and export.</p>"
+          "description": "<p>CESI group project in C++. We developed a Game of Life with a graphical interface: editable grid in real time, obstacles, adjustable speed, grid import and export.</p>"
         },
         {
           "id": "cd533142-b965-4ad7-90d6-bc1af4002e37",
@@ -163,7 +163,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>CESI group project on Arduino. A weather station with four modes, temperature and pressure sensors, an RTC clock, SD card logging and interrupt handling.</p>"
+          "description": "<p>CESI group project on Arduino. Four-mode weather station with temperature and pressure sensors, RTC clock, SD card logging and interrupt handling.</p>"
         },
         {
           "id": "fb8bd09b-fb02-4d2c-bf0f-33c29b55fce3",
@@ -175,19 +175,19 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>BB-8 robot of the CESI robotics club: a Raspberry Pi sends commands to an Arduino that drives the motors. I built the web control interface and its Python server.</p>"
+          "description": "<p>CESI robotics club BB-8 robot: a Raspberry Pi sends commands to an Arduino that drives the motors. I developed the web control interface and its Python server.</p>"
         },
         {
           "id": "23fd2894-8610-4f84-9497-3018d020cc6f",
           "hidden": false,
           "name": "UniLink",
-          "period": "2025 – Present",
+          "period": "2025 – present",
           "website": {
             "url": "",
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>A university events platform, built as a team. Students browse a map of campus events and sign up; student unions organise them. React, Express, Prisma and PostgreSQL, containerised with Docker.</p>"
+          "description": "<p>University events platform, developed as a team. Students browse a campus event map and register for events; student associations (BDE) organise them. React, Express, Prisma and PostgreSQL, containerised with Docker.</p>"
         }
       ]
     },
@@ -198,14 +198,14 @@
         {
           "id": "j17njc40zzcbgaa2sivcg7zi",
           "hidden": false,
-          "name": "AI & LLM",
+          "name": "AI and LLMs",
           "proficiency": "",
           "level": 0,
           "keywords": [
             "LLM pipelines",
             "Prompt engineering",
             "Structured outputs",
-            "OpenAI & Gemini APIs",
+            "OpenAI and Gemini APIs",
             "Stable Diffusion",
             "Whisper"
           ]
@@ -227,13 +227,13 @@
         {
           "id": "5ddd1066-51f9-49ae-8aac-d73c18e84899",
           "hidden": false,
-          "name": "Backend",
+          "name": "Back-end",
           "proficiency": "",
           "level": 0,
           "keywords": [
             "FastAPI",
             ".NET",
-            "REST APIs",
+            "REST API",
             "SQLite",
             "Pydantic"
           ]
@@ -241,7 +241,7 @@
         {
           "id": "80d89060-5637-4ae9-bfdf-feb5bb3dd349",
           "hidden": false,
-          "name": "VR, 3D & Hardware",
+          "name": "VR, 3D and electronics",
           "proficiency": "",
           "level": 0,
           "keywords": [
@@ -252,7 +252,7 @@
         {
           "id": "lnf1cqkir0isxkhn7c1mqdjn",
           "hidden": false,
-          "name": "DevOps & Systems",
+          "name": "DevOps and systems",
           "proficiency": "",
           "level": 0,
           "keywords": [
@@ -281,7 +281,7 @@
           "id": "mhp81i8jhxccxq7zhpn6ve2e",
           "hidden": false,
           "language": "English",
-          "fluency": "Professional, TOEIC scheduled",
+          "fluency": "Professional, TOEIC planned",
           "level": 4
         },
         {
@@ -302,13 +302,13 @@
           "hidden": false,
           "organization": "BDE CESI Rouen – Head of Communication",
           "location": "",
-          "period": "Oct 2025 – Present",
+          "period": "Oct 2025 – present",
           "website": {
             "url": "",
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Lead the student union's communication: Instagram content, event posters, photo and video coverage.</p>"
+          "description": "<p>Managing the student association's communications: Instagram content, event posters, photo and video coverage.</p>"
         },
         {
           "id": "ek6hzd2ri77vmwa3gwao7asg",
@@ -321,7 +321,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Built the remote control of a BB-8 replica: web joystick (HTML, JS) and a Flask server driving the Arduino over serial.</p>"
+          "description": "<p>Developed remote control of a BB-8 replica: web joystick (HTML, JS) and a Flask server that drives the Arduino over serial link.</p>"
         }
       ]
     },
@@ -332,7 +332,7 @@
         {
           "id": "328edb6c-a45f-4f9e-ac12-51dbd7b833b9",
           "hidden": false,
-          "name": "Running (half-marathon, March 2027), calisthenics, graphic design, travel",
+          "name": "Running (half marathon, March 2027), calisthenics, graphic design, travel",
           "keywords": []
         }
       ]
@@ -351,6 +351,6 @@
   "summary": {
     "title": "Summary",
     "hidden": false,
-    "content": "<p>4th-year Computer Science engineering student (work-study) at CESI, apprentice at CAPFI since January 2026. Main developer of Cerebro, an LLM-based matching system now in production, where I worked on making scores explainable and measurable. Previously a research intern at CESI LINEACT on VR teleoperation of robots. Seeking an internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>"
+    "content": "<p>4th-year computer science engineering student on a work-study/apprenticeship track at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on VR-based teleoperation of robots. Seeking a internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>"
   }
 }
