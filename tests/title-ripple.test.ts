@@ -113,26 +113,26 @@ describe('ripplePhase', () => {
 
 describe('rippleLift', () => {
   it('is zero outside the pulse and peaks at the amplitude in the middle of it', () => {
-    expect(rippleLift(-1, 2)).toBe(0);
-    expect(rippleLift(0.5, 2)).toBe(2);
-    expect(rippleLift(0.05, 2)).toBe(0);
+    expect(rippleLift(-1, 1)).toBe(0);
+    expect(rippleLift(0.5, 1)).toBe(1);
+    expect(rippleLift(0.05, 1)).toBe(0);
   });
 
-  it('is a whole number of pixels, never above the amplitude', () => {
+  it('is a whole number of pixels, never above one pixel, so the letters stay whole at 2.5 px cells', () => {
     for (let p = 0; p < 1; p += 0.02) {
-      const lift = rippleLift(p, 2);
+      const lift = rippleLift(p, 1);
       expect(Number.isInteger(lift)).toBe(true);
-      expect(lift).toBeLessThanOrEqual(2);
+      expect(lift).toBeLessThanOrEqual(1);
     }
   });
 });
 
 describe('rippleAmplitude', () => {
-  it('lifts a glancing touch by a pixel and a full front by two, never more', () => {
-    expect(rippleAmplitude(0)).toBe(1);
-    expect(rippleAmplitude(1 / 3)).toBeCloseTo(1.33, 2);
-    expect(rippleAmplitude(1)).toBe(2);
-    expect(rippleAmplitude(5)).toBe(2);
+  it('lifts a glancing touch not at all and a full front by one pixel, never more', () => {
+    expect(rippleAmplitude(0)).toBe(0);
+    expect(rippleAmplitude(1 / 3)).toBeCloseTo(1 / 3, 10);
+    expect(rippleAmplitude(1)).toBe(1);
+    expect(rippleAmplitude(5)).toBe(1);
   });
 });
 

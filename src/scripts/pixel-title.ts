@@ -141,7 +141,8 @@ export function coverage(rgba: Uint8ClampedArray, cols: number, rows: number, fa
 const FONT_STACK = '"Geist Pixel", monospace';
 /** The title is drawn at this many samples per cell side, then averaged, so cells get their coverage. */
 const SUPERSAMPLE = 4;
-const THRESHOLD = 128;
+/** A cell is drawn once a quarter of it is covered: at half, the thin strokes of the font lost their cells. */
+const THRESHOLD = 64;
 const MAX_CANVAS_PIXELS = 4_000_000;
 const REDUCED = '(prefers-reduced-motion: reduce)';
 
@@ -328,8 +329,8 @@ async function assemble(root: HTMLElement): Promise<void> {
 }
 
 /**
- * Life touched the title at `touch` (its own px): a wave runs through the glyph cells from there. Each cell lifts by a
- * pixel or two and lights in the life colours as the front passes, then falls back to ink. The heading's text hides
+ * Life touched the title at `touch` (its own px): a wave runs through the glyph cells from there. Each cell lights in the
+ * life colours as the front passes and lifts by a pixel at most, then falls back to ink. The heading's text hides
  * while the canvas draws (the same switch as the assembly), and comes back on the same plain text when the wave is done.
  */
 function ripple(root: HTMLElement, touch: LifeTouch): void {

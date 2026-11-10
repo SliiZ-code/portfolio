@@ -55,8 +55,10 @@ export function ringContact(grid: LiveGrid, box: CellBox): Contact {
   return count ? { count, x: sx / count, y: sy / count } : NO_CONTACT;
 }
 
-/** How hard the life hit, from 1 cell (a glancing touch) to three or more (a full front): 0 to 1. */
+/** Live cells on the ring that make a full-strength contact. */
 export const RING_FULL = 3;
+
+/** How hard the life hit, from 1 cell (a glancing touch) to three or more (a full front): 0 to 1. */
 export function contactStrength(count: number): number {
   return Math.min(1, count / RING_FULL);
 }
@@ -113,9 +115,12 @@ export function rippleBucket(phase: number): number {
   return Math.min(3, Math.floor(phase * 4));
 }
 
-/** The lift a contact of this strength gives: a pixel for a glancing touch, two for a full front. */
+/**
+ * The most a cell lifts at the peak of its pulse, in px: one pixel at most, a glancing touch none. A title cell is only
+ * 2.5 px, so a bigger lift lifts the cell most of the way to the next row and tears the letters apart.
+ */
 export function rippleAmplitude(strength: number): number {
-  return 1 + Math.min(1, Math.max(0, strength));
+  return Math.min(1, Math.max(0, strength));
 }
 
 /** What a title sends from a contact: the life's strength, and the contact point in its own px. */
