@@ -5,7 +5,11 @@ import {
   BLINKER_PHASES,
   BLOCK,
   BOAT,
+  DIVIDER_CELL,
   LOAF,
+  MAX_GAP_CELLS,
+  MAX_PATTERNS,
+  MIN_GAP_CELLS,
   ROW_HEIGHT_CELLS,
   STILL_LIFES,
   TUB,
@@ -16,6 +20,12 @@ import {
 
 const countLive = (cells: number[][]): number =>
   cells.reduce((sum, row) => sum + row.reduce((rSum, c) => rSum + (c ? 1 : 0), 0), 0);
+
+const CELL = DIVIDER_CELL;
+const DESKTOP = 680;
+const PHONE = 351;
+const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
+const mean = (values: number[]): number => values.reduce((a, b) => a + b, 0) / values.length;
 
 describe('pattern definitions and still life properties', () => {
   it('has correct live cell counts for all still lifes', () => {
@@ -141,15 +151,33 @@ describe('layoutRow', () => {
     }
   });
 
-  it('guarantees no overlaps and at least 1 empty cell between consecutive patterns', () => {
-    const rnd = createRnd(9999);
-    const placed = layoutRow(680, 6, rnd);
-    expect(placed.length).toBeGreaterThan(0);
+  it('leaves wide, irregular gaps between consecutive patterns', () => {
+    const gaps = new Set<number>();
+    for (const seed of SEEDS) {
+      const placed = layoutRow(DESKTOP, CELL, createRnd(seed));
+      for (let i = 0; i < placed.length - 1; i++) {
+        const gap = placed[i + 1]!.x - (placed[i]!.x + placed[i]!.width);
+        expect(gap).toBeGreaterThanOrEqual(MIN_GAP_CELLS);
+        expect(gap).toBeLessThanOrEqual(MAX_GAP_CELLS);
+        gaps.add(gap);
+      }
+    }
+    expect(gaps.size).toBeGreaterThan(5);
+  });
 
-    for (let i = 0; i < placed.length - 1; i++) {
-      const current = placed[i]!;
-      const next = placed[i + 1]!;
-      expect(next.x).toBeGreaterThanOrEqual(current.x + current.width + 1);
+  it('keeps the row sparse: a handful of patterns on a wide screen, fewer on a phone', () => {
+    const desktop = SEEDS.map((seed) => layoutRow(DESKTOP, CELL, createRnd(seed)).length);
+    const phone = SEEDS.map((seed) => layoutRow(PHONE, CELL, createRnd(seed)).length);
+    // 680 px is 113 cells (7 patterns at most); 351 px is 58 cells (4 at most)
+    expect(Math.min(...desktop)).toBeGreaterThanOrEqual(4);
+    expect(Math.max(...desktop)).toBeLessThanOrEqual(MAX_PATTERNS);
+    expect(Math.max(...phone)).toBeLessThanOrEqual(4);
+    expect(mean(phone)).toBeLessThan(mean(desktop));
+  });
+
+  it('starts at the left edge of the text', () => {
+    for (const seed of SEEDS) {
+      expect(layoutRow(DESKTOP, CELL, createRnd(seed))[0]!.x).toBeLessThanOrEqual(2);
     }
   });
 
@@ -162,10 +190,13 @@ describe('layoutRow', () => {
     expect(placed1).not.toEqual(placed3);
   });
 
-  it('includes blinkers and still lifes across wide rows', () => {
-    const placed = layoutRow(800, 6, createRnd(123));
-    const names = new Set(placed.map((p) => p.name));
+  it('mixes still lifes with blinkers, with a still life in every row', () => {
+    const names = new Set<string>();
+    for (const seed of SEEDS) {
+      const placed = layoutRow(DESKTOP, CELL, createRnd(seed));
+      expect(placed.some((p) => !p.isBlinker)).toBe(true);
+      placed.forEach((p) => names.add(p.name));
+    }
     expect(names.has('blinker')).toBe(true);
-    expect(names.has('block') || names.has('beehive') || names.has('loaf') || names.has('boat') || names.has('tub')).toBe(true);
   });
 });

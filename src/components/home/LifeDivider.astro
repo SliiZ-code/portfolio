@@ -1,23 +1,22 @@
 ---
-// Decorative still-life divider between sections in Game of Life patterns.
-// Drawn as square cells in --ink on a small canvas.
+// Decorative still-life divider between sections: a sparse row of Game of Life still lifes in the muted ink, with
+// the blinkers in the accent. Drawn by src/scripts/still-life.ts on a canvas; blank without JavaScript.
 ---
 
-<div class="life-divider" aria-hidden="true" role="none">
+<div class="life-divider" aria-hidden="true">
   <canvas class="life-divider-canvas" aria-hidden="true"></canvas>
 </div>
 
 <style>
+  /* six cells of 6px (ROW_HEIGHT_CELLS × DIVIDER_CELL in still-life.ts): the height never depends on the board */
   .life-divider {
     display: block;
     width: 100%;
     max-width: 680px;
-    height: calc(max(5px, calc(var(--c, 3px) * 2)) * 6);
-    min-height: 30px;
+    height: 36px;
     overflow: hidden;
     user-select: none;
     pointer-events: none;
-    box-sizing: border-box;
   }
 
   .life-divider-canvas {

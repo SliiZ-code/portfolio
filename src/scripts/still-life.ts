@@ -1,5 +1,6 @@
 /**
- * Pure Game of Life still lifes, oscillators, and row layout helpers for decorative dividers.
+ * Game of Life still lifes and blinkers for the decorative dividers between home sections: pure patterns, blinker
+ * phase and row layout (tested), and the canvas that draws them.
  */
 
 export type Pattern = number[][];
@@ -61,15 +62,18 @@ export const STILL_LIFES = {
   tub: TUB,
 } as const;
 
-export const PATTERNS = {
-  ...STILL_LIFES,
-  blinker: BLINKER_PHASES[0],
-} as const;
-
 export const ROW_HEIGHT_CELLS = 6;
+/** One divider cell in CSS px: 2× the board's smallest cell. Fixed, so the row never changes height with the board. */
+export const DIVIDER_CELL = 6;
+/** Empty cells between two patterns: wide and irregular, so the row stays sparse. */
+export const MIN_GAP_CELLS = 6;
+export const MAX_GAP_CELLS = 20;
+/** A row holds about one pattern per this many cells, at most MAX_PATTERNS: a phone gets fewer. */
+const CELLS_PER_PATTERN = 16;
+export const MAX_PATTERNS = 7;
 export const BLINKER_PERIOD_MS = 600;
 
-/** Computes the blinker phase (0 or 1) based on timestamp or step count. */
+/** The blinker phase (0 or 1) at `timeMs`: it flips every `periodMs`. */
 export function blinkerPhase(timeMs: number, periodMs = BLINKER_PERIOD_MS): 0 | 1 {
   const step = Math.floor(timeMs / periodMs);
   return (((step % 2) + 2) % 2) as 0 | 1;
@@ -117,39 +121,36 @@ const DESCRIPTORS: readonly PatternDescriptor[] = [
 ];
 
 /**
- * Lays out still lifes and blinkers in a row across the available pixel width.
- * Guarantees no overlaps, at least 1 empty cell between patterns, no width overflow,
- * and deterministic output when given the same seeded rnd function.
+ * Lays still lifes and blinkers out in one row across `width` px. Patterns never overlap or overflow, and
+ * between two of them there are MIN_GAP_CELLS to MAX_GAP_CELLS empty cells. The row holds about one pattern per
+ * CELLS_PER_PATTERN cells, capped at MAX_PATTERNS, so a phone gets fewer. Deterministic for a seeded `rnd`.
  */
 export function layoutRow(width: number, cell: number, rnd: () => number = Math.random): PlacedPattern[] {
   if (width <= 0 || cell <= 0) return [];
   const cols = Math.floor(width / cell);
   if (cols < 2) return [];
+  const maxPatterns = Math.min(MAX_PATTERNS, Math.max(2, Math.round(cols / CELLS_PER_PATTERN)));
 
   const placed: PlacedPattern[] = [];
-  // Small initial margin (0..1 cells) if room permits
-  let x = cols >= 4 ? Math.floor(rnd() * 2) : 0;
+  let x = Math.floor(rnd() * 3);
 
-  while (x < cols) {
+  while (placed.length < maxPatterns && x < cols) {
     const remaining = cols - x;
     const candidates = DESCRIPTORS.filter((d) => d.width <= remaining);
     if (candidates.length === 0) break;
 
     const chosen = candidates[Math.floor(rnd() * candidates.length)]!;
-    const y = Math.floor((ROW_HEIGHT_CELLS - chosen.height) / 2);
-
     placed.push({
       name: chosen.name,
       x,
-      y,
+      y: Math.floor((ROW_HEIGHT_CELLS - chosen.height) / 2),
       width: chosen.width,
       height: chosen.height,
       cells: chosen.cells,
       isBlinker: chosen.isBlinker,
     });
 
-    // Irregular gap of 1..4 cells between patterns
-    const gap = 1 + Math.floor(rnd() * 4);
+    const gap = MIN_GAP_CELLS + Math.floor(rnd() * (MAX_GAP_CELLS - MIN_GAP_CELLS + 1));
     x += chosen.width + gap;
   }
 
@@ -158,157 +159,106 @@ export function layoutRow(width: number, cell: number, rnd: () => number = Math.
 
 // Random seed per page load (constant during this visit)
 const PAGE_SEED = Math.floor(Math.random() * 0x100000000);
+/** Each drawn cell stops one px short of its slot, the same as the living paper. */
+const CELL_GAP = 1;
 
 /**
- * Initializes canvas still-life dividers on the page.
- * Manages crisp DPR rendering, theme changes, responsive resizing,
- * and blinker animation loop gated by IntersectionObserver and prefers-reduced-motion.
+ * Draws the dividers. Each one lays its row out for its own width and draws it in the muted ink, with the
+ * blinkers in the accent. Only the blinkers move: one timer flips them on the shared 600 ms boundary, and it runs
+ * only while a divider is on screen, the tab is visible and motion is allowed. Redraws on resize and theme change.
  */
 export function initLifeDividers(): void {
   const dividers = document.querySelectorAll<HTMLElement>('.life-divider');
   if (!dividers.length) return;
 
   const root = document.documentElement;
-  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const height = ROW_HEIGHT_CELLS * DIVIDER_CELL;
 
   dividers.forEach((divider, index) => {
     if (divider.dataset.lifeDividerInit === 'true') return;
     divider.dataset.lifeDividerInit = 'true';
 
     const canvas = divider.querySelector<HTMLCanvasElement>('canvas.life-divider-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
-    // Per-divider deterministic seed derived from page seed and divider index
+    // a deterministic layout per divider, from the page seed
     const seed = (PAGE_SEED ^ (index * 0x9e3779b9)) >>> 0;
 
-    let placedPatterns: PlacedPattern[] = [];
-    let cell = 6;
-    let width = 0;
-    let height = 0;
-    let currentPhase: 0 | 1 = 0;
+    let placed: PlacedPattern[] = [];
+    let scale = 1;
+    let phase: 0 | 1 = 0;
     let inView = false;
-    let rafId = 0;
-
-    const readCell = (): number => {
-      const rawC = parseFloat(getComputedStyle(root).getPropertyValue('--c'));
-      const c = isNaN(rawC) || rawC <= 0 ? 3 : rawC;
-      return Math.max(5, Math.round(2 * c));
-    };
+    let timer = 0;
 
     const draw = () => {
-      if (width <= 0 || height <= 0) return;
-      const ink = getComputedStyle(root).getPropertyValue('--ink').trim() || '#000';
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = ink;
+      const style = getComputedStyle(root);
+      const mute = style.getPropertyValue('--mute').trim();
+      const accent = style.getPropertyValue('--life-0').trim();
+      // reduced motion: the blinkers rest in their first phase
+      const shown = motion.matches ? 0 : phase;
+      // each cell edge rounds to a whole device pixel, so the cells stay crisp at any density
+      const edge = (v: number) => Math.round(v * scale);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of placed) {
+        ctx.fillStyle = p.isBlinker ? accent : mute;
+        const cells = p.isBlinker ? BLINKER_PHASES[shown] : p.cells;
+        cells.forEach((row, r) =>
+          row.forEach((alive, c) => {
+            if (!alive) return;
+            const left = edge((p.x + c) * DIVIDER_CELL);
+            const top = edge((p.y + r) * DIVIDER_CELL);
+            const right = edge((p.x + c + 1) * DIVIDER_CELL - CELL_GAP);
+            const bottom = edge((p.y + r + 1) * DIVIDER_CELL - CELL_GAP);
+            ctx.fillRect(left, top, right - left, bottom - top);
+          }),
+        );
+      }
+    };
 
-      const gap = cell >= 4 ? 1 : 0;
-      const size = cell - gap;
+    // the next boundary of the shared clock: every divider flips together. One clock read per tick, so the phase
+    // and the delay agree (two reads could straddle a boundary and hold a phase for a whole period).
+    const tick = () => {
+      const now = performance.now();
+      timer = 0;
+      phase = blinkerPhase(now);
+      draw();
+      timer = window.setTimeout(tick, BLINKER_PERIOD_MS - (now % BLINKER_PERIOD_MS));
+    };
 
-      for (const p of placedPatterns) {
-        const patternCells = p.isBlinker ? BLINKER_PHASES[currentPhase] : p.cells;
-        for (let r = 0; r < patternCells.length; r++) {
-          const row = patternCells[r]!;
-          for (let c = 0; c < row.length; c++) {
-            if (row[c]) {
-              ctx.fillRect((p.x + c) * cell + gap, (p.y + r) * cell + gap, size, size);
-            }
-          }
-        }
+    const sync = () => {
+      const live = inView && !motion.matches && !document.hidden && placed.some((p) => p.isBlinker);
+      if (live && !timer) tick();
+      else if (!live && timer) {
+        clearTimeout(timer);
+        timer = 0;
       }
     };
 
     const build = () => {
-      const rect = divider.getBoundingClientRect();
-      const newWidth = Math.floor(rect.width || divider.clientWidth);
-      cell = readCell();
-      height = cell * ROW_HEIGHT_CELLS;
-      width = newWidth;
-
+      const width = Math.floor(divider.getBoundingClientRect().width);
       if (width <= 0) return;
-
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+      scale = window.devicePixelRatio || 1;
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // Re-layout using the divider's deterministic seed
-      const rnd = createRnd(seed);
-      placedPatterns = layoutRow(width, cell, rnd);
+      placed = layoutRow(width, DIVIDER_CELL, createRnd(seed));
       draw();
+      sync();
     };
 
-    const tick = (now: number) => {
-      if (!inView || motionQuery.matches) {
-        rafId = 0;
-        return;
-      }
-      const nextPhase = blinkerPhase(now);
-      if (nextPhase !== currentPhase) {
-        currentPhase = nextPhase;
-        draw();
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const startLoop = () => {
-      if (rafId || !inView || motionQuery.matches) return;
-      const hasBlinkers = placedPatterns.some((p) => p.isBlinker);
-      if (!hasBlinkers) return;
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const stopLoop = () => {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = 0;
-      }
-    };
-
-    // IntersectionObserver: only animate while in view
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
+    new ResizeObserver(build).observe(divider);
+    new IntersectionObserver(([entry]) => {
       inView = !!entry?.isIntersecting;
-      if (inView) {
-        startLoop();
-      } else {
-        stopLoop();
-      }
-    });
-    intersectionObserver.observe(divider);
-
-    // Responsive rebuild on resize
-    let resizeTimer = 0;
-    const onResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(build, 100);
-    };
-    const resizeObserver = new ResizeObserver(onResize);
-    resizeObserver.observe(divider);
-    window.addEventListener('resize', onResize);
-
-    // Re-draw on theme change
-    const themeObserver = new MutationObserver(() => {
+      sync();
+    }).observe(divider);
+    new MutationObserver(draw).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    motion.addEventListener('change', () => {
       draw();
+      sync();
     });
-    themeObserver.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-
-    // Handle reduced motion changes
-    motionQuery.addEventListener('change', (e) => {
-      if (e.matches) {
-        stopLoop();
-        currentPhase = 0;
-        draw();
-      } else if (inView) {
-        startLoop();
-      }
-    });
-
-    document.fonts?.ready.then(build).catch(() => {});
-
-    // Initial build
-    build();
+    document.addEventListener('visibilitychange', sync);
   });
 }
