@@ -1,7 +1,9 @@
-// Language morph: the pure part. Switching the home page's language morphs the visible text in place: each character
-// shared by the old and the new text slides to its new place, the others fade out or roll in. Here: the character
-// alignment (which characters are kept, which leave and which arrive), the stagger, and the rules for when a click
-// may morph at all. The DOM driver is language-switch.ts; these helpers have no DOM and are unit-tested.
+// Language morph: the pure part. Switching the home page's language changes the visible text in place. A short text on
+// one line (a title, a label, a date, the name note) morphs letter by letter: each character shared by the old and the
+// new text slides to its new place, the others fade out or roll in. A longer block (a paragraph, a bullet, a wrapped
+// line) crossfades instead: letters crossing several lines read as noise. Here: the choice of style, the character
+// alignment (which characters are kept, which leave and which arrive), the stagger, and the rules for when a click may
+// morph at all. The DOM driver is language-switch.ts; these helpers have no DOM and are unit-tested.
 
 import type { Lang } from '../lib/resume';
 
@@ -17,31 +19,42 @@ export const EXIT_MS = 150;
 /** New characters wait this long before they roll in, so the removed ones have mostly faded by then. */
 export const ENTER_AFTER_MS = 120;
 
-/** Threshold in characters (inclusive) for short, single-line texts to morph letter-by-letter. Longer blocks crossfade. */
+/** Longest text (in characters, on either side) that morphs letter by letter. Longer texts crossfade. */
 export const SHORT_TEXT_THRESHOLD = 60;
-/** Crossfade timing for blocks that are too long or multi-line to letter-morph cleanly. */
+/**
+ * The crossfade: the old text fades out over FADE_OUT_MS; the new text fades in over FADE_IN_MS, starting FADE_IN_AFTER_MS
+ * in. Their overlap (FADE_OUT_MS - FADE_IN_AFTER_MS) is short, so the two never read as one smeared paragraph.
+ */
 export const FADE_OUT_MS = 180;
 export const FADE_IN_AFTER_MS = 120;
 export const FADE_IN_MS = 280;
 
-/** When the fade-out and fade-in of a crossfading block start and how long they run, in ms. */
-export function fadeTiming(): { out: { delay: number; duration: number }; in: { delay: number; duration: number } } {
-  return {
-    out: { delay: 0, duration: FADE_OUT_MS },
-    in: { delay: FADE_IN_AFTER_MS, duration: FADE_IN_MS },
-  };
+/** Whether a text is short enough to morph letter by letter (outer whitespace does not count). */
+export function isShortText(text: string): boolean {
+  return Array.from(text.trim()).length <= SHORT_TEXT_THRESHOLD;
 }
 
 /**
- * Chooses the morph style: short single-line texts (titles, labels, nav, the name note, dates) morph letter by letter,
- * while longer visible blocks crossfade cleanly instead of crossing letters across multiple lines.
+ * Whether glyphs with these lefts (px, from their boxes) sit on one line. Along a line the glyphs run rightwards, even when
+ * a transform tilts it (the name note is rotated): their lefts only rise, by less than a glyph's width at a time. A wrapped
+ * line starts back at the left edge, a jump of about a line's width.
  */
-export function morphStyle(oldText: string, newText: string): 'letters' | 'fade' {
-  const oldClean = oldText.trim();
-  const newClean = newText.trim();
-  const isSingleLine = !oldClean.includes('\n') && !newClean.includes('\n');
-  const isShort = Array.from(oldClean).length <= SHORT_TEXT_THRESHOLD && Array.from(newClean).length <= SHORT_TEXT_THRESHOLD;
-  return isSingleLine && isShort ? 'letters' : 'fade';
+export function isOneLine(lefts: readonly number[], fontSize: number): boolean {
+  if (lefts.length === 0) return false;
+  for (let i = 1; i < lefts.length; i++) {
+    if (lefts[i]! < lefts[i - 1]! - fontSize / 2) return false;
+  }
+  return true;
+}
+
+/**
+ * Chooses the morph style: letter by letter only when both texts are short and each sits on one line as rendered.
+ * The line is measured where it is drawn (not from the text's newlines, which the markup rarely has), so the choice
+ * follows the width the block has on screen.
+ */
+export function morphStyle(oldText: string, newText: string, oldOneLine: boolean, newOneLine: boolean): 'letters' | 'fade' {
+  const letters = oldOneLine && newOneLine && isShortText(oldText) && isShortText(newText);
+  return letters ? 'letters' : 'fade';
 }
 
 /**
@@ -109,10 +122,11 @@ export function glyphTiming(kind: AlignStep['kind'], index: number): { delay: nu
   return { delay: stagger, duration: MOVE_MS };
 }
 
-/** A block morphs only if its text changed, it has text on both sides, and it is short enough to align. */
+/** A block morphs only if its text changed (ignoring outer whitespace) and has text on both sides. */
 export function isMorphable(oldText: string, newText: string): boolean {
-  if (oldText === newText || oldText.length === 0 || newText.length === 0) return false;
-  return Array.from(oldText).length <= MAX_ALIGN && Array.from(newText).length <= MAX_ALIGN;
+  const before = oldText.trim();
+  const after = newText.trim();
+  return before !== after && before.length > 0 && after.length > 0;
 }
 
 /** The home page of each language. The CV pages are not part of the morph. */
