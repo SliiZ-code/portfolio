@@ -159,6 +159,8 @@ export async function initBoard(): Promise<void> {
   let waveCentre = { x: 0, y: 0 };
   let waveBand = 3;
   let waveTotal = 1;
+  // keeps counting across resizes
+  let gen = 0;
 
   const renderState: RenderState = {
     ctx,
@@ -236,7 +238,7 @@ export async function initBoard(): Promise<void> {
     renderState.structures = structures;
     renderState.buffers = createRenderBuffers(world.cells.length);
     dirty = true;
-    updateCounters(0);
+    updateCounters(gen);
   }
 
   const genEl = document.getElementById('gen');
@@ -332,7 +334,6 @@ export async function initBoard(): Promise<void> {
 
   // ---- loop ----
   const t0 = performance.now();
-  let gen = 0;
   let last = 0;
   // the loop runs only while a frame is queued; it sleeps while the hero is fully covered
   let running = false;
