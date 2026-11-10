@@ -129,3 +129,54 @@ export interface LifeTouch {
   x: number;
   y: number;
 }
+
+/** The font's pixel unit: Geist Pixel's glyphs step on a grid of em/13, so the wave steps in tiles of that size. */
+export const GLYPH_GRID = 13;
+
+/**
+ * The side of one wave tile in device px: em/13 of the title's font at the canvas's scale, in whole device pixels so
+ * that a tile copies onto the canvas without a seam.
+ */
+export function rippleTile(fontPx: number, scale: number): number {
+  return Math.max(1, Math.round((fontPx / GLYPH_GRID) * scale));
+}
+
+/** A tile of the device-px grid over a canvas: its column, row, top-left and size, clipped at the canvas's edge. */
+export interface Tile {
+  col: number;
+  row: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * The tiles of a w × h RGBA image, `tile` device px square, that hold any ink (alpha above zero), in row order. A glyph
+ * is copied tile by tile, so only the tiles that hold it are visited.
+ */
+export function inkTiles(rgba: Uint8ClampedArray, w: number, h: number, tile: number): Tile[] {
+  const tiles: Tile[] = [];
+  const cols = Math.ceil(w / tile);
+  const rows = Math.ceil(h / tile);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = col * tile;
+      const y = row * tile;
+      const x1 = Math.min(w, x + tile);
+      const y1 = Math.min(h, y + tile);
+      if (blockHasInk(rgba, w, x, y, x1, y1)) tiles.push({ col, row, x, y, w: x1 - x, h: y1 - y });
+    }
+  }
+  return tiles;
+}
+
+/** Whether any pixel of the block [x0, x1) × [y0, y1) of the image has alpha. */
+function blockHasInk(rgba: Uint8ClampedArray, w: number, x0: number, y0: number, x1: number, y1: number): boolean {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      if (rgba[(y * w + x) * 4 + 3]) return true;
+    }
+  }
+  return false;
+}

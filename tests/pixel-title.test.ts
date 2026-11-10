@@ -3,6 +3,8 @@ import {
   cellSize,
   coverage,
   emergeStep,
+  HANDOFF_MS,
+  handoffMix,
   makeSoup,
   maskToCells,
   soupBucket,
@@ -95,5 +97,24 @@ describe('coverage', () => {
     const alpha = coverage(rgba, 2, 1, 2);
     expect(alpha[0]).toBe(128); // 510 / 4, rounded
     expect(alpha[1]).toBe(64); // 255 / 4, rounded
+  });
+});
+
+describe('handoffMix', () => {
+  it('starts on the cells and ends on the real glyphs', () => {
+    expect(handoffMix(0)).toEqual({ cells: 1, glyphs: 0 });
+    expect(handoffMix(HANDOFF_MS)).toEqual({ cells: 0, glyphs: 1 });
+  });
+
+  it('crossfades in between, and stays put beyond either end', () => {
+    const mid = handoffMix(HANDOFF_MS / 2);
+    expect(mid.cells).toBeCloseTo(0.5, 10);
+    expect(mid.glyphs).toBeCloseTo(0.5, 10);
+    expect(handoffMix(-5)).toEqual({ cells: 1, glyphs: 0 });
+    expect(handoffMix(HANDOFF_MS * 3)).toEqual({ cells: 0, glyphs: 1 });
+  });
+
+  it('lasts about 100 ms', () => {
+    expect(HANDOFF_MS).toBe(100);
   });
 });

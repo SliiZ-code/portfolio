@@ -2,11 +2,12 @@
  * Pixel titles: the first time a section title enters the view, a soup of Game of Life cells boils around it and the
  * title emerges from it: each generation runs B3/S23, then the glyph cells lock in one by one and the stray cells die
  * off, until only the word is left and the crisp heading returns. The helpers at the top are pure and unit-tested;
- * `initPixelTitles` drives the DOM. Life that reaches a title sends a ripple through its cells (title-ripple.ts).
+ * `initPixelTitles` drives the DOM. Life that reaches a title sends a ripple through its glyphs (title-ripple.ts).
  */
 
 import {
   farthest,
+  inkTiles,
   type LifeTouch,
   RIPPLE_MS,
   rippleAmplitude,
@@ -15,6 +16,8 @@ import {
   rippleLift,
   ripplePhase,
   rippleSpeed,
+  rippleTile,
+  type Tile,
 } from './title-ripple';
 
 /** A cell of the title's grid, in cell units from the top-left of the glyph grid. */
@@ -136,7 +139,19 @@ export function coverage(rgba: Uint8ClampedArray, cols: number, rows: number, fa
   return out;
 }
 
-/* ---- the DOM: one canvas over each title, one rAF loop while it assembles ---- */
+/** How long the cells take to hand back to the real glyphs at the end of the assembly. */
+export const HANDOFF_MS = 100;
+
+/**
+ * The end of the assembly: the cells fade out and the real glyphs fade in over HANDOFF_MS, so the last frame of the
+ * assembly is the heading's own text. `elapsed` is ms since the handoff began.
+ */
+export function handoffMix(elapsed: number, duration = HANDOFF_MS): { cells: number; glyphs: number } {
+  const t = clamp01(elapsed / duration);
+  return { cells: 1 - t, glyphs: t };
+}
+
+/* ---- the DOM: one canvas over each title, one rAF loop while it assembles or ripples ---- */
 
 const FONT_STACK = '"Geist Pixel", monospace';
 /** The title is drawn at this many samples per cell side, then averaged, so cells get their coverage. */
@@ -158,8 +173,11 @@ const assembled = new WeakSet<HTMLElement>();
 const lastRipple = new WeakMap<HTMLElement, number>();
 /** The rasterised glyphs of each title, kept while the font and the box stay the same. */
 const rasters = new WeakMap<HTMLElement, { key: string; raster: Raster }>();
-/** Room around the glyph grid for the cells that lift, in px. */
-const RIPPLE_PAD = 3;
+/**
+ * Room around the heading's text box for the glyphs' ink and the one-pixel lift, in css px. The ripple's canvas is the
+ * text box plus this margin, so the text on it sits exactly where the heading sets it.
+ */
+const RIPPLE_PAD = 6;
 /** The colours of a ripple: the four life colours by the pulse, then the resting ink. */
 const RIPPLE_TOKENS = ['--life-0', '--life-1', '--life-2', '--life-3', '--ink'] as const;
 const INK = 4;
@@ -227,9 +245,14 @@ function glyphRaster(root: HTMLElement, heading: HTMLElement): Raster | null {
   return raster;
 }
 
+/** The device px per css px of a canvas of this size on the screen: the device's ratio, at most 2, and a size cap. */
+function canvasScale(width: number, height: number): number {
+  return Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
+}
+
 /** Places the canvas over the title, in the title's own px, and sizes its buffer for the screen. Returns the scale. */
 function fitCanvas(canvas: HTMLCanvasElement, x0: number, y0: number, width: number, height: number): number {
-  const scale = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
+  const scale = canvasScale(width, height);
   canvas.style.left = `${x0}px`;
   canvas.style.top = `${y0}px`;
   canvas.style.width = `${width}px`;
@@ -246,6 +269,86 @@ function releaseSoon(root: HTMLElement, canvas: HTMLCanvasElement): void {
     canvas.width = 0;
     canvas.height = 0;
   }, 200);
+}
+
+/**
+ * The heading's own text as an alpha mask on a canvas of `width` × `height` css px, whose top-left is (`ox`, `oy`) in
+ * the title's px. It is drawn with the heading's font, size, tracking and baseline, at device resolution, so where the
+ * canvas shows it, it is the heading's own rendering: the same glyphs, not a raster of cells.
+ */
+function textMask(
+  root: HTMLElement,
+  heading: HTMLElement,
+  ox: number,
+  oy: number,
+  width: number,
+  height: number,
+  scale: number,
+): HTMLCanvasElement {
+  const mask = document.createElement('canvas');
+  mask.width = Math.round(width * scale);
+  mask.height = Math.round(height * scale);
+  const ctx = mask.getContext('2d');
+  if (!ctx) return mask;
+  const style = getComputedStyle(heading);
+  const text = heading.textContent ?? '';
+  const spacing = parseFloat(style.letterSpacing) || 0;
+  ctx.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#000';
+  // the DOM's inline box of the text starts one ascent above the baseline: that is where the glyphs sit
+  const host = root.getBoundingClientRect();
+  const range = document.createRange();
+  range.selectNodeContents(heading);
+  const box = range.getClientRects()[0] ?? heading.getBoundingClientRect();
+  const ascent = Math.round(ctx.measureText(text).fontBoundingBoxAscent ?? parseFloat(style.fontSize) * 0.8);
+  const x = box.left - host.left - ox;
+  const baseline = box.top - host.top + ascent - oy;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  drawText(ctx, text, x, baseline, spacing);
+  return mask;
+}
+
+/** Draws the text with its tracking: the canvas's own letterSpacing, else glyph by glyph where the canvas has none. */
+function drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, spacing: number): void {
+  if (typeof ctx.letterSpacing === 'string') {
+    ctx.letterSpacing = `${spacing}px`;
+    ctx.fillText(text, x, y);
+    return;
+  }
+  let pen = x;
+  for (const ch of text) {
+    ctx.fillText(ch, pen, y);
+    pen += ctx.measureText(ch).width + spacing;
+  }
+}
+
+/** The mask in one colour: the glyphs, opaque where the mask has ink. */
+function tint(mask: HTMLCanvasElement, colour: string): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = mask.width;
+  out.height = mask.height;
+  const ctx = out.getContext('2d');
+  if (!ctx) return out;
+  ctx.drawImage(mask, 0, 0);
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.fillStyle = colour;
+  ctx.fillRect(0, 0, out.width, out.height);
+  return out;
+}
+
+/**
+ * Hands the title back to the heading in one frame. The canvas and the heading show the same glyphs, so the switch must
+ * not fade: the heading's colour and the canvas's opacity change together, with no transition.
+ */
+function snapBack(root: HTMLElement, heading: HTMLElement, canvas: HTMLCanvasElement): void {
+  heading.style.transition = 'none';
+  canvas.style.transition = 'none';
+  root.classList.remove('is-assembling', 'is-rippling');
+  // reading a layout property applies the new classes now, so the instant change is not animated
+  void heading.offsetWidth;
+  heading.style.transition = '';
+  canvas.style.transition = '';
 }
 
 /** Assemble one title: the soup boils, the glyph cells lock in, then the crisp heading returns. */
@@ -283,54 +386,76 @@ async function assemble(root: HTMLElement): Promise<void> {
 
   const tokens = getComputedStyle(document.documentElement);
   const colours = COLOUR_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
+  // the real glyphs, in ink: the last frame of the assembly cross-fades into them
+  const glyphs = tint(textMask(root, heading, x0, y0, width, height, scale), colours[colours.length - 1]!);
 
   const soup = makeSoup(cols, rows, Math.random);
   const size = cell * 0.9;
   const inset = (cell - size) / 2;
 
-  const draw = () => {
+  // the soup's cells at `cells` alpha, then the real glyphs at `glyphs` alpha, both on the canvas's own px
+  const draw = (cells: number, glyphAlpha: number) => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    for (let b = 0; b < colours.length; b++) {
-      ctx.fillStyle = colours[b];
-      ctx.beginPath();
-      for (let i = 0; i < soup.alive.length; i++) {
-        if (soup.alive[i] && soupBucket(soup, i) === b) {
-          ctx.rect((i % cols) * cell + inset, Math.floor(i / cols) * cell + inset, size, size);
+    if (cells > 0) {
+      ctx.globalAlpha = cells;
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      for (let b = 0; b < colours.length; b++) {
+        ctx.fillStyle = colours[b]!;
+        ctx.beginPath();
+        for (let i = 0; i < soup.alive.length; i++) {
+          if (soup.alive[i] && soupBucket(soup, i) === b) {
+            ctx.rect((i % cols) * cell + inset, Math.floor(i / cols) * cell + inset, size, size);
+          }
         }
+        ctx.fill();
       }
-      ctx.fill();
     }
+    if (glyphAlpha > 0) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = glyphAlpha;
+      ctx.drawImage(glyphs, 0, 0);
+    }
+    ctx.globalAlpha = 1;
   };
 
   let frame = 0;
   let generation = 0;
+  let handoffAt: number | null = null;
   const finish = () => {
     cancelAnimationFrame(frame);
     running.delete(root);
     emergeStep(soup, target, 1, Math.random);
-    draw();
-    // the heading's colour returns and the canvas fades out over 150ms (see PixelTitle.astro)
-    root.classList.remove('is-assembling');
+    draw(0, 1);
+    snapBack(root, heading, canvas);
     assembled.add(root);
     releaseSoon(root, canvas);
   };
 
   // the first frame is drawn before the heading goes transparent, so nothing flashes
-  draw();
+  draw(1, 0);
   root.classList.add('is-assembling');
   let last = performance.now();
   const step = (now: number) => {
-    if (now - last >= GENERATION_MS) {
-      last = now;
-      generation++;
-      if (generation >= GENERATIONS) {
+    if (handoffAt !== null) {
+      const mix = handoffMix(now - handoffAt);
+      if (mix.glyphs >= 1) {
         finish();
         return;
       }
-      emergeStep(soup, target, generation / GENERATIONS, Math.random);
-      draw();
+      draw(mix.cells, mix.glyphs);
+    } else if (now - last >= GENERATION_MS) {
+      last = now;
+      generation++;
+      if (generation >= GENERATIONS) {
+        // the soup is the title now: it hands back to the real glyphs over HANDOFF_MS
+        emergeStep(soup, target, 1, Math.random);
+        handoffAt = now;
+        draw(1, 0);
+      } else {
+        emergeStep(soup, target, generation / GENERATIONS, Math.random);
+        draw(1, 0);
+      }
     }
     frame = requestAnimationFrame(step);
   };
@@ -339,9 +464,10 @@ async function assemble(root: HTMLElement): Promise<void> {
 }
 
 /**
- * Life touched the title at `touch` (its own px): a wave runs through the glyph cells from there. Each cell lights in the
- * life colours as the front passes and lifts by a pixel at most, then falls back to ink. The heading's text hides
- * while the canvas draws (the same switch as the assembly), and comes back on the same plain text when the wave is done.
+ * Life touched the title at `touch` (its own px): a wave runs through the heading's own glyphs from there. Each tile of
+ * the font's grid lights in the life colours as the front passes and lifts by a pixel at most, then falls back to ink.
+ * The canvas draws the heading's text, so it matches the heading at rest: the heading's text hides while the canvas
+ * draws (the same switch as the assembly), and comes back on the same plain text when the wave is done.
  */
 function ripple(root: HTMLElement, touch: LifeTouch): void {
   const heading = root.querySelector<HTMLElement>('.pt-text');
@@ -350,55 +476,61 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
   if (root.classList.contains('is-assembling') || root.classList.contains('is-rippling')) return;
   const now = performance.now();
   if (!rippleDue(now, lastRipple.get(root))) return;
-  const raster = glyphRaster(root, heading);
   const ctx = canvas.getContext('2d');
-  if (!raster || !ctx || raster.cells.length === 0) return;
+  const text = heading.textContent ?? '';
+  if (!ctx || !text) return;
+
+  // the canvas covers the heading's text box and a margin: the glyphs are the heading's own, drawn in each life colour
+  const fontPx = parseFloat(getComputedStyle(heading).fontSize);
+  const range = document.createRange();
+  range.selectNodeContents(heading);
+  const textWidth = Math.ceil(range.getBoundingClientRect().width);
+  const width = textWidth + RIPPLE_PAD * 2;
+  const height = heading.offsetHeight + RIPPLE_PAD * 2;
+  const scale = canvasScale(width, height);
+  const tokens = getComputedStyle(document.documentElement);
+  const colours = RIPPLE_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
+  const mask = textMask(root, heading, -RIPPLE_PAD, -RIPPLE_PAD, width, height, scale);
+
+  // the tiles of the font's own grid that hold ink: the wave steps through them, and each one copies from its colour layer
+  const maskCtx = mask.getContext('2d');
+  if (!maskCtx) return;
+  const pixels = maskCtx.getImageData(0, 0, mask.width, mask.height).data;
+  const tiles: Tile[] = inkTiles(pixels, mask.width, mask.height, rippleTile(fontPx, scale));
+  if (tiles.length === 0) return;
   lastRipple.set(root, now);
+  fitCanvas(canvas, -RIPPLE_PAD, -RIPPLE_PAD, width, height);
+  const layers = colours.map((colour) => tint(mask, colour));
 
-  const { cells, cols, rows, cell, top } = raster;
-  // the canvas's origin in the title's px: the glyph grid's top-left, with room for the lifted cells
-  const ox = -RIPPLE_PAD;
-  const oy = top - RIPPLE_PAD;
-  const scale = fitCanvas(canvas, ox, oy, cols * cell + RIPPLE_PAD * 2, rows * cell + RIPPLE_PAD * 2);
-
-  // the cell centres and the contact point, all in the canvas's px
-  const n = cells.length;
+  // the tile centres and the contact point, in the canvas's css px (its origin is the text box less the margin)
+  const n = tiles.length;
   const cx = new Float32Array(n);
   const cy = new Float32Array(n);
-  cells.forEach((c, i) => {
-    cx[i] = c.col * cell + RIPPLE_PAD + cell / 2;
-    cy[i] = c.row * cell + RIPPLE_PAD + cell / 2;
+  tiles.forEach((t, i) => {
+    cx[i] = (t.x + t.w / 2) / scale;
+    cy[i] = (t.y + t.h / 2) / scale;
   });
-  const px = touch.x - ox;
-  const py = touch.y - oy;
+  const px = touch.x + RIPPLE_PAD;
+  const py = touch.y + RIPPLE_PAD;
   const speed = rippleSpeed(farthest(cx, cy, px, py));
   const amplitude = rippleAmplitude(touch.strength);
 
-  const tokens = getComputedStyle(document.documentElement);
-  const colours = RIPPLE_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
-  const size = cell * 0.9;
-  const inset = (cell - size) / 2;
   const bucket = new Int8Array(n);
-  const lift = new Float32Array(n);
+  const lift = new Int32Array(n);
 
+  // each tile is copied from the layer of its colour, lifted by whole device px: at most one css px
   const draw = (elapsed: number) => {
     for (let i = 0; i < n; i++) {
       const phase = ripplePhase(Math.hypot(cx[i]! - px, cy[i]! - py), elapsed, speed);
       const b = rippleBucket(phase);
       bucket[i] = b < 0 ? INK : b;
-      lift[i] = rippleLift(phase, amplitude);
+      lift[i] = Math.floor(rippleLift(phase, amplitude) * scale);
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    for (let b = 0; b < colours.length; b++) {
-      ctx.fillStyle = colours[b]!;
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        if (bucket[i] !== b) continue;
-        ctx.rect(cx[i]! - cell / 2 + inset, cy[i]! - cell / 2 + inset - lift[i]!, size, size);
-      }
-      ctx.fill();
+    for (let i = 0; i < n; i++) {
+      const t = tiles[i]!;
+      ctx.drawImage(layers[bucket[i]!]!, t.x, t.y, t.w, t.h, t.x, t.y - lift[i]!, t.w, t.h);
     }
   };
 
@@ -407,7 +539,9 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
   const finish = () => {
     cancelAnimationFrame(frame);
     running.delete(root);
-    root.classList.remove('is-rippling');
+    // every tile back to ink and in place: the canvas is then the heading's own text, so the hand-back does not show
+    draw(RIPPLE_MS);
+    snapBack(root, heading, canvas);
     releaseSoon(root, canvas);
   };
   const step = (at: number) => {

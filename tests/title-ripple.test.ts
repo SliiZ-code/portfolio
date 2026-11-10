@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   contactStrength,
   farthest,
+  inkTiles,
   RIPPLE_COOLDOWN_MS,
   RIPPLE_LIFE_MS,
   RIPPLE_MS,
@@ -10,6 +11,7 @@ import {
   rippleBucket,
   rippleDue,
   rippleLift,
+  rippleTile,
   ripplePhase,
   rippleSpeed,
 } from '../src/scripts/title-ripple';
@@ -159,5 +161,50 @@ describe('rippleDue', () => {
   it('holds off for the cooldown after the last ripple', () => {
     expect(rippleDue(1000 + RIPPLE_COOLDOWN_MS - 1, 1000)).toBe(false);
     expect(rippleDue(1000 + RIPPLE_COOLDOWN_MS, 1000)).toBe(true);
+  });
+});
+
+describe('rippleTile', () => {
+  it('is the font\'s pixel unit, em/13, in whole device pixels', () => {
+    // 22 px font: 1.69 css px per tile; at 2x that is 3.38 device px, so 3
+    expect(rippleTile(22, 1)).toBe(2);
+    expect(rippleTile(22, 2)).toBe(3);
+    expect(rippleTile(132, 2)).toBe(20);
+  });
+
+  it('is never less than one device pixel', () => {
+    expect(rippleTile(4, 1)).toBe(1);
+  });
+});
+
+describe('inkTiles', () => {
+  /** A w × h RGBA image with the given pixels inked (alpha 255). */
+  function image(w: number, h: number, inked: [number, number][]) {
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    for (const [x, y] of inked) rgba[(y * w + x) * 4 + 3] = 255;
+    return rgba;
+  }
+
+  it('returns the tiles that hold any ink, in row order', () => {
+    const rgba = image(4, 4, [[0, 0], [3, 3]]);
+    expect(inkTiles(rgba, 4, 4, 2)).toEqual([
+      { col: 0, row: 0, x: 0, y: 0, w: 2, h: 2 },
+      { col: 1, row: 1, x: 2, y: 2, w: 2, h: 2 },
+    ]);
+  });
+
+  it('finds a whole tile from one inked pixel in it, and skips the empty ones', () => {
+    const rgba = image(4, 2, [[1, 1]]);
+    expect(inkTiles(rgba, 4, 2, 2)).toEqual([{ col: 0, row: 0, x: 0, y: 0, w: 2, h: 2 }]);
+  });
+
+  it('clips the tiles at the right and bottom edge of the image', () => {
+    // 5 × 3 image, 2 px tiles: the last column is 1 px wide and the last row 1 px high
+    const rgba = image(5, 3, [[4, 2]]);
+    expect(inkTiles(rgba, 5, 3, 2)).toEqual([{ col: 2, row: 1, x: 4, y: 2, w: 1, h: 1 }]);
+  });
+
+  it('is empty for an empty image', () => {
+    expect(inkTiles(image(3, 3, []), 3, 3, 2)).toEqual([]);
   });
 });
