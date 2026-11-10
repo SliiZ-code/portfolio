@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   contactStrength,
   farthest,
+  groupIndices,
   inkTiles,
   RIPPLE_COOLDOWN_MS,
   RIPPLE_LIFE_MS,
@@ -206,5 +207,23 @@ describe('inkTiles', () => {
 
   it('is empty for an empty image', () => {
     expect(inkTiles(image(3, 3, []), 3, 3, 2)).toEqual([]);
+  });
+});
+
+describe('groupIndices', () => {
+  it('orders the indices by key, in their own order within a key, with the start of each group', () => {
+    const order = new Int32Array(4);
+    const start = new Int32Array(4);
+    groupIndices(Int32Array.from([2, 0, 2, 1]), 3, order, start, new Int32Array(3));
+    expect([...order]).toEqual([1, 3, 0, 2]);
+    expect([...start]).toEqual([0, 1, 2, 4]);
+  });
+
+  it('leaves an empty group with equal starts', () => {
+    const order = new Int32Array(2);
+    const start = new Int32Array(4);
+    groupIndices(Int32Array.from([1, 1]), 3, order, start, new Int32Array(3));
+    expect([...order]).toEqual([0, 1]);
+    expect([...start]).toEqual([0, 0, 2, 2]);
   });
 });

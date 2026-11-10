@@ -180,3 +180,21 @@ function blockHasInk(rgba: Uint8ClampedArray, w: number, x0: number, y0: number,
   }
   return false;
 }
+
+/**
+ * Sorts the indices of `keys` (each in 0 to groups - 1) into `order`, by key and in their own order within a key: group
+ * g is order[start[g] .. start[g + 1]). A counting sort into the caller's arrays, so a frame allocates nothing.
+ */
+export function groupIndices(
+  keys: ArrayLike<number>,
+  groups: number,
+  order: Int32Array,
+  start: Int32Array,
+  cursor: Int32Array,
+): void {
+  start.fill(0, 0, groups + 1);
+  for (let i = 0; i < keys.length; i++) start[keys[i]! + 1]!++;
+  for (let g = 0; g < groups; g++) start[g + 1]! += start[g]!;
+  cursor.set(start.subarray(0, groups));
+  for (let i = 0; i < keys.length; i++) order[cursor[keys[i]!]!++] = i;
+}

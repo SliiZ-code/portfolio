@@ -7,6 +7,7 @@
 
 import {
   farthest,
+  groupIndices,
   inkTiles,
   type LifeTouch,
   RIPPLE_MS,
@@ -159,6 +160,8 @@ const SUPERSAMPLE = 4;
 /** A cell is drawn once a quarter of it is covered: at half, the thin strokes of the font lost their cells. */
 const THRESHOLD = 64;
 const MAX_CANVAS_PIXELS = 4_000_000;
+/** The most device px per css px a canvas draws at: the hand-back must match the heading's own text, so no lower cap. */
+const MAX_SCALE = 4;
 const REDUCED = '(prefers-reduced-motion: reduce)';
 
 /**
@@ -245,9 +248,9 @@ function glyphRaster(root: HTMLElement, heading: HTMLElement): Raster | null {
   return raster;
 }
 
-/** The device px per css px of a canvas of this size on the screen: the device's ratio, at most 2, and a size cap. */
+/** The device px per css px of a canvas of this size on the screen: the device's ratio, and a size cap. */
 function canvasScale(width: number, height: number): number {
-  return Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
+  return Math.min(window.devicePixelRatio || 1, MAX_SCALE, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
 }
 
 /** Places the canvas over the title, in the title's own px, and sizes its buffer for the screen. Returns the scale. */
@@ -309,17 +312,22 @@ function textMask(
   return mask;
 }
 
-/** Draws the text with its tracking: the canvas's own letterSpacing, else glyph by glyph where the canvas has none. */
+/**
+ * Draws the text with its tracking: the canvas's own letterSpacing, else glyph by glyph where the canvas has none. Each
+ * glyph then starts where the shaped text before it ends (kerning included), plus the tracking of the glyphs before it.
+ */
 function drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, spacing: number): void {
   if (typeof ctx.letterSpacing === 'string') {
     ctx.letterSpacing = `${spacing}px`;
     ctx.fillText(text, x, y);
     return;
   }
-  let pen = x;
+  let index = 0;
+  let glyphs = 0;
   for (const ch of text) {
-    ctx.fillText(ch, pen, y);
-    pen += ctx.measureText(ch).width + spacing;
+    ctx.fillText(ch, x + ctx.measureText(text.slice(0, index)).width + glyphs * spacing, y);
+    index += ch.length;
+    glyphs++;
   }
 }
 
@@ -515,22 +523,39 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
   const speed = rippleSpeed(farthest(cx, cy, px, py));
   const amplitude = rippleAmplitude(touch.strength);
 
-  const bucket = new Int8Array(n);
-  const lift = new Int32Array(n);
+  // a tile's group is its colour, unlifted groups first, then the lifted ones: a lifted tile covers the row above it
+  const groups = colours.length * 2;
+  const liftPx = Math.floor(scale); // rippleLift is 0 or one css px, so a lifted tile moves up by this many device px
+  const keys = new Int32Array(n);
+  const order = new Int32Array(n);
+  const start = new Int32Array(groups + 1);
+  const cursor = new Int32Array(groups);
 
-  // each tile is copied from the layer of its colour, lifted by whole device px: at most one css px
+  // the tiles of each group are one clip and one copy of its colour layer: a copy per tile was too slow per frame
   const draw = (elapsed: number) => {
     for (let i = 0; i < n; i++) {
       const phase = ripplePhase(Math.hypot(cx[i]! - px, cy[i]! - py), elapsed, speed);
       const b = rippleBucket(phase);
-      bucket[i] = b < 0 ? INK : b;
-      lift[i] = Math.floor(rippleLift(phase, amplitude) * scale);
+      const lifted = rippleLift(phase, amplitude) > 0 ? colours.length : 0;
+      keys[i] = lifted + (b < 0 ? INK : b);
     }
+    groupIndices(keys, groups, order, start, cursor);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < n; i++) {
-      const t = tiles[i]!;
-      ctx.drawImage(layers[bucket[i]!]!, t.x, t.y, t.w, t.h, t.x, t.y - lift[i]!, t.w, t.h);
+    for (let g = 0; g < groups; g++) {
+      const from = start[g]!;
+      const to = start[g + 1]!;
+      if (from === to) continue;
+      const shift = g >= colours.length ? liftPx : 0;
+      ctx.save();
+      ctx.beginPath();
+      for (let k = from; k < to; k++) {
+        const t = tiles[order[k]!]!;
+        ctx.rect(t.x, t.y - shift, t.w, t.h);
+      }
+      ctx.clip();
+      ctx.drawImage(layers[g % colours.length]!, 0, -shift);
+      ctx.restore();
     }
   };
 
@@ -543,6 +568,13 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
     draw(RIPPLE_MS);
     snapBack(root, heading, canvas);
     releaseSoon(root, canvas);
+    // the tinted layers and the mask are this ripple's alone: free their buffers now
+    for (const layer of layers) {
+      layer.width = 0;
+      layer.height = 0;
+    }
+    mask.width = 0;
+    mask.height = 0;
   };
   const step = (at: number) => {
     const elapsed = at - started;
