@@ -2,8 +2,20 @@
  * Pixel titles: the first time a section title enters the view, a soup of Game of Life cells boils around it and the
  * title emerges from it: each generation runs B3/S23, then the glyph cells lock in one by one and the stray cells die
  * off, until only the word is left and the crisp heading returns. The helpers at the top are pure and unit-tested;
- * `initPixelTitles` drives the DOM.
+ * `initPixelTitles` drives the DOM. Life that reaches a title sends a ripple through its cells (title-ripple.ts).
  */
+
+import {
+  farthest,
+  type LifeTouch,
+  RIPPLE_MS,
+  rippleAmplitude,
+  rippleBucket,
+  rippleDue,
+  rippleLift,
+  ripplePhase,
+  rippleSpeed,
+} from './title-ripple';
 
 /** A cell of the title's grid, in cell units from the top-left of the glyph grid. */
 export interface Cell {
@@ -133,8 +145,20 @@ const THRESHOLD = 128;
 const MAX_CANVAS_PIXELS = 4_000_000;
 const REDUCED = '(prefers-reduced-motion: reduce)';
 
-/** Stops every title that is still assembling: the resize handler calls these. */
+/** Stops every title that is still assembling or rippling: the resize handler calls these. */
 const running = new Set<() => void>();
+
+/** Titles that have assembled: only these can ripple, the assembly owns the canvas until then. */
+const assembled = new WeakSet<HTMLElement>();
+/** The last ripple of each title, for the cooldown. */
+const lastRipple = new WeakMap<HTMLElement, number>();
+/** The rasterised glyphs of each title, kept while the font and the box stay the same. */
+const rasters = new WeakMap<HTMLElement, { key: string; raster: Raster }>();
+/** Room around the glyph grid for the cells that lift, in px. */
+const RIPPLE_PAD = 3;
+/** The colours of a ripple: the four life colours by the pulse, then the resting ink. */
+const RIPPLE_TOKENS = ['--life-0', '--life-1', '--life-2', '--life-3', '--ink'] as const;
+const INK = 4;
 
 interface Raster {
   cells: Cell[];
@@ -181,6 +205,42 @@ function rasterTitle(text: string, fontPx: number, lineHeight: number, spacing: 
   return { cells: maskToCells(alpha, cols, rows, THRESHOLD), cols, rows, cell, top };
 }
 
+/** The glyph cells of a title, rasterised once and kept until its font, size or text changes. */
+function glyphRaster(root: HTMLElement, heading: HTMLElement): Raster | null {
+  const style = getComputedStyle(heading);
+  const fontPx = parseFloat(style.fontSize);
+  const lineHeight = parseFloat(style.lineHeight) || fontPx * 1.2;
+  const spacing = parseFloat(style.letterSpacing) || 0;
+  const text = heading.textContent ?? '';
+  const key = [fontPx, lineHeight, spacing, text].join('|');
+  const hit = rasters.get(root);
+  if (hit && hit.key === key) return hit.raster;
+  const raster = rasterTitle(text, fontPx, lineHeight, spacing);
+  if (raster) rasters.set(root, { key, raster });
+  return raster;
+}
+
+/** Places the canvas over the title, in the title's own px, and sizes its buffer for the screen. Returns the scale. */
+function fitCanvas(canvas: HTMLCanvasElement, x0: number, y0: number, width: number, height: number): number {
+  const scale = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
+  canvas.style.left = `${x0}px`;
+  canvas.style.top = `${y0}px`;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  return scale;
+}
+
+/** Frees the canvas's buffer once its fade is over, unless the assembly or a new ripple has taken it. */
+function releaseSoon(root: HTMLElement, canvas: HTMLCanvasElement): void {
+  window.setTimeout(() => {
+    if (root.classList.contains('is-assembling') || root.classList.contains('is-rippling')) return;
+    canvas.width = 0;
+    canvas.height = 0;
+  }, 200);
+}
+
 /** Assemble one title: the soup boils, the glyph cells lock in, then the crisp heading returns. */
 async function assemble(root: HTMLElement): Promise<void> {
   const heading = root.querySelector<HTMLElement>('.pt-text');
@@ -193,11 +253,7 @@ async function assemble(root: HTMLElement): Promise<void> {
     // without the font the fallback still assembles, so the title is not lost
   }
 
-  const style = getComputedStyle(heading);
-  const fontPx = parseFloat(style.fontSize);
-  const lineHeight = parseFloat(style.lineHeight) || fontPx * 1.2;
-  const spacing = parseFloat(style.letterSpacing) || 0;
-  const raster = rasterTitle(heading.textContent ?? '', fontPx, lineHeight, spacing);
+  const raster = glyphRaster(root, heading);
   const ctx = canvas.getContext('2d');
   if (!raster || !ctx || raster.cells.length === 0) return;
 
@@ -212,13 +268,7 @@ async function assemble(root: HTMLElement): Promise<void> {
   const y0 = top - MARGIN * cell;
   const width = cols * cell;
   const height = rows * cell;
-  const scale = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(MAX_CANVAS_PIXELS / (width * height)));
-  canvas.style.left = `${x0}px`;
-  canvas.style.top = `${y0}px`;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  canvas.width = Math.round(width * scale);
-  canvas.height = Math.round(height * scale);
+  const scale = fitCanvas(canvas, x0, y0, width, height);
 
   const tokens = getComputedStyle(document.documentElement);
   const colours = COLOUR_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
@@ -252,10 +302,8 @@ async function assemble(root: HTMLElement): Promise<void> {
     draw();
     // the heading's colour returns and the canvas fades out over 150ms (see PixelTitle.astro)
     root.classList.remove('is-assembling');
-    window.setTimeout(() => {
-      canvas.width = 0;
-      canvas.height = 0;
-    }, 200);
+    assembled.add(root);
+    releaseSoon(root, canvas);
   };
 
   // the first frame is drawn before the heading goes transparent, so nothing flashes
@@ -279,6 +327,94 @@ async function assemble(root: HTMLElement): Promise<void> {
   frame = requestAnimationFrame(step);
 }
 
+/**
+ * Life touched the title at `touch` (its own px): a wave runs through the glyph cells from there. Each cell lifts by a
+ * pixel or two and lights in the life colours as the front passes, then falls back to ink. The heading's text hides
+ * while the canvas draws (the same switch as the assembly), and comes back on the same plain text when the wave is done.
+ */
+function ripple(root: HTMLElement, touch: LifeTouch): void {
+  const heading = root.querySelector<HTMLElement>('.pt-text');
+  const canvas = root.querySelector<HTMLCanvasElement>('.pt-canvas');
+  if (!heading || !canvas || !assembled.has(root)) return;
+  if (root.classList.contains('is-assembling') || root.classList.contains('is-rippling')) return;
+  const now = performance.now();
+  if (!rippleDue(now, lastRipple.get(root))) return;
+  const raster = glyphRaster(root, heading);
+  const ctx = canvas.getContext('2d');
+  if (!raster || !ctx || raster.cells.length === 0) return;
+  lastRipple.set(root, now);
+
+  const { cells, cols, rows, cell, top } = raster;
+  // the canvas's origin in the title's px: the glyph grid's top-left, with room for the lifted cells
+  const ox = -RIPPLE_PAD;
+  const oy = top - RIPPLE_PAD;
+  const scale = fitCanvas(canvas, ox, oy, cols * cell + RIPPLE_PAD * 2, rows * cell + RIPPLE_PAD * 2);
+
+  // the cell centres and the contact point, all in the canvas's px
+  const n = cells.length;
+  const cx = new Float32Array(n);
+  const cy = new Float32Array(n);
+  cells.forEach((c, i) => {
+    cx[i] = c.col * cell + RIPPLE_PAD + cell / 2;
+    cy[i] = c.row * cell + RIPPLE_PAD + cell / 2;
+  });
+  const px = touch.x - ox;
+  const py = touch.y - oy;
+  const speed = rippleSpeed(farthest(cx, cy, px, py));
+  const amplitude = rippleAmplitude(touch.strength);
+
+  const tokens = getComputedStyle(document.documentElement);
+  const colours = RIPPLE_TOKENS.map((name) => tokens.getPropertyValue(name).trim());
+  const size = cell * 0.9;
+  const inset = (cell - size) / 2;
+  const bucket = new Int8Array(n);
+  const lift = new Float32Array(n);
+
+  const draw = (elapsed: number) => {
+    for (let i = 0; i < n; i++) {
+      const phase = ripplePhase(Math.hypot(cx[i]! - px, cy[i]! - py), elapsed, speed);
+      const b = rippleBucket(phase);
+      bucket[i] = b < 0 ? INK : b;
+      lift[i] = rippleLift(phase, amplitude);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    for (let b = 0; b < colours.length; b++) {
+      ctx.fillStyle = colours[b]!;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        if (bucket[i] !== b) continue;
+        ctx.rect(cx[i]! - cell / 2 + inset, cy[i]! - cell / 2 + inset - lift[i]!, size, size);
+      }
+      ctx.fill();
+    }
+  };
+
+  let frame = 0;
+  const started = performance.now();
+  const finish = () => {
+    cancelAnimationFrame(frame);
+    running.delete(finish);
+    root.classList.remove('is-rippling');
+    releaseSoon(root, canvas);
+  };
+  const step = (at: number) => {
+    const elapsed = at - started;
+    if (elapsed >= RIPPLE_MS) {
+      finish();
+      return;
+    }
+    draw(elapsed);
+    frame = requestAnimationFrame(step);
+  };
+  // the first frame is drawn before the heading goes transparent, so nothing flashes
+  draw(0);
+  root.classList.add('is-rippling');
+  running.add(finish);
+  frame = requestAnimationFrame(step);
+}
+
 /** Starts each pixel title when it first enters the view, unless motion is reduced. */
 export function initPixelTitles(): void {
   if (typeof IntersectionObserver === 'undefined' || typeof matchMedia !== 'function') return;
@@ -297,6 +433,11 @@ export function initPixelTitles(): void {
     { threshold: 0.3 },
   );
   titles.forEach((title) => observer.observe(title));
+
+  // life reaching the title's text bubbles a 'life-touch' from the heading (living-paper.ts): a ripple starts there
+  titles.forEach((title) =>
+    title.addEventListener('life-touch', (event) => ripple(title, (event as CustomEvent<LifeTouch>).detail)),
+  );
 
   // a resize mid-way would misplace the cells: settle the running titles on their final frame
   window.addEventListener(

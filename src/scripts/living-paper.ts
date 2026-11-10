@@ -4,6 +4,7 @@
 // One fixed canvas the size of the viewport draws the rows in view; the grid itself is the size of the page.
 import { GLIDER_HEADINGS } from './board/patterns';
 import { ageBucket, AGE_STEPS } from './board/render';
+import { type CellBox, contactStrength, type LifeTouch, NO_CONTACT, ringContact } from './title-ripple';
 
 /** A paper cell is this many board cells: big enough to read as cells at reading distance. */
 export const PAPER_SCALE = 2;
@@ -143,12 +144,19 @@ export function visibleRows(top: number, cell: number, viewHeight: number, rows:
   return [first, last];
 }
 
+/** The cells under a box (in px, relative to the grid's origin), with PAD cells around it, clamped to the grid. */
+export function cellBox(grid: Grid, cell: number, left: number, top: number, right: number, bottom: number): CellBox {
+  return {
+    x0: Math.max(0, Math.floor(left / cell) - PAD),
+    y0: Math.max(0, Math.floor(top / cell) - PAD),
+    x1: Math.min(grid.cols - 1, Math.ceil(right / cell) - 1 + PAD),
+    y1: Math.min(grid.rows - 1, Math.ceil(bottom / cell) - 1 + PAD),
+  };
+}
+
 /** Marks the cells under a box (in px, relative to the grid's origin) as rock, with PAD cells around it. */
 export function blockRect(grid: Grid, cell: number, left: number, top: number, right: number, bottom: number): void {
-  const x0 = Math.max(0, Math.floor(left / cell) - PAD);
-  const y0 = Math.max(0, Math.floor(top / cell) - PAD);
-  const x1 = Math.min(grid.cols - 1, Math.ceil(right / cell) - 1 + PAD);
-  const y1 = Math.min(grid.rows - 1, Math.ceil(bottom / cell) - 1 + PAD);
+  const { x0, y0, x1, y1 } = cellBox(grid, cell, left, top, right, bottom);
   for (let y = y0; y <= y1; y++) grid.blocked.fill(1, y * grid.cols + x0, y * grid.cols + x1 + 1);
 }
 
@@ -222,6 +230,12 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
   let scratch = new Uint8Array(1);
   let colors: string[] = [];
   let ink = '';
+  // the titles life can touch (`data-life-touch`): one rock per text line, and whether life borders it now
+  interface TouchRock {
+    box: CellBox;
+    touching: boolean;
+  }
+  let touches: { el: HTMLElement; rocks: TouchRock[] }[] = [];
 
   const readColors = () => {
     const style = getComputedStyle(root);
@@ -259,6 +273,18 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
     hc.querySelectorAll<HTMLElement>('figure, img, video, canvas, svg, .hc-media').forEach((el) => {
       const r = el.getBoundingClientRect();
       if (r.width && r.height) blockRect(grid, cell, r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top);
+    });
+    // the titles life can touch: each text line is a rock whose ring the life is checked against
+    touches = [];
+    hc.querySelectorAll<HTMLElement>('[data-life-touch]').forEach((el) => {
+      const rocks: TouchRock[] = [];
+      range.selectNodeContents(el);
+      for (const r of Array.from(range.getClientRects())) {
+        if (!r.width || !r.height) continue;
+        const rock = cellBox(grid, cell, r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top);
+        rocks.push({ box: rock, touching: false });
+      }
+      touches.push({ el, rocks });
     });
     // the rocks kill what stood on them right away
     for (let k = 0; k < grid.cells.length; k++) if (grid.blocked[k]) grid.cells[k] = 0;
@@ -316,6 +342,35 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
     draw(box.top, box.left);
   };
 
+  // ---- life reaching a title: checked only on the rows just stepped, one event per rock when life first borders it ----
+  const checkTouches = (first: number, last: number, sectionBox: DOMRect) => {
+    for (const { el, rocks } of touches) {
+      for (const rock of rocks) {
+        const ring = rock.box;
+        // out of the window a rock is not read: when it comes back, life beside it is news again
+        if (ring.y1 + 1 < first || ring.y0 - 1 > last) {
+          rock.touching = false;
+          continue;
+        }
+        // a rock outside the live band has no life beside it: no ring to read
+        const near = ring.y0 - 1 <= grid.hi && ring.y1 + 1 >= grid.lo;
+        const contact = near ? ringContact(grid, ring) : NO_CONTACT;
+        const touching = contact.count > 0;
+        if (touching && !rock.touching) {
+          // the contact point, in the title's own px (its top-left is the origin)
+          const at = el.getBoundingClientRect();
+          const detail: LifeTouch = {
+            strength: contactStrength(contact.count),
+            x: sectionBox.left + contact.x * cell - at.left,
+            y: sectionBox.top + contact.y * cell - at.top,
+          };
+          el.dispatchEvent(new CustomEvent<LifeTouch>('life-touch', { bubbles: true, detail }));
+        }
+        rock.touching = touching;
+      }
+    }
+  };
+
   // ---- the loop: steps while anything lives and the section is in view ----
   let inView = false;
   let running = false;
@@ -344,6 +399,7 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
       if (first <= last && first <= grid.hi + 1 && last >= grid.lo - 1) {
         stepGrid(grid, scratch, first, last);
         dirty = true;
+        checkTouches(first, last, box);
       }
     }
     if (dirty) draw(box.top, box.left);

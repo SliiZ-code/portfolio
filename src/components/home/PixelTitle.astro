@@ -10,7 +10,7 @@ const { id, text } = Astro.props;
 ---
 
 <div class="pt" data-pixel-title>
-  <h2 class="pt-text" id={id}>{text}</h2>
+  <h2 class="pt-text" id={id} data-life-touch>{text}</h2>
   <canvas class="pt-canvas" aria-hidden="true"></canvas>
 </div>
 
@@ -38,13 +38,16 @@ const { id, text } = Astro.props;
     transition: opacity 150ms ease;
   }
 
-  /* while the cells fly, the text is hidden (it stays in the DOM); both switch at once when the class is added */
-  .pt.is-assembling .pt-text {
+  /* while the cells fly, the text is hidden (it stays in the DOM); both switch at once when the class is added.
+     A ripple (life touching the title, pixel-title.ts) takes the same switch for its wave. */
+  .pt.is-assembling .pt-text,
+  .pt.is-rippling .pt-text {
     color: transparent;
     transition: none;
   }
 
-  .pt.is-assembling .pt-canvas {
+  .pt.is-assembling .pt-canvas,
+  .pt.is-rippling .pt-canvas {
     opacity: 1;
     transition: none;
   }
