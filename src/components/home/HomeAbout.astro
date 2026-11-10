@@ -2,6 +2,7 @@
 // The rest of the resume, each part as its own section in the same two columns: skills, education, activities,
 // languages. Plain lines, the way a CV reads.
 import HomeSection from './HomeSection.astro';
+import LifeDivider from './LifeDivider.astro';
 import { joinMeta } from './content';
 import type { Resume } from '../../lib/resume';
 
@@ -11,10 +12,15 @@ interface Props {
 
 const { resume } = Astro.props;
 const { sectionTitles: titles } = resume;
+
+const hasSkills = resume.skills.length > 0;
+const hasEducation = resume.education.length > 0;
+const hasVolunteer = resume.volunteer.length > 0;
+const hasLanguages = resume.languages.length > 0;
 ---
 
 {
-  resume.skills.length > 0 && (
+  hasSkills && (
     <HomeSection id="hc-skills" title={titles.skills}>
       <dl class="hc-rows">
         {resume.skills.map((skill) => (
@@ -28,8 +34,10 @@ const { sectionTitles: titles } = resume;
   )
 }
 
+{hasSkills && (hasEducation || hasVolunteer || hasLanguages) && <LifeDivider />}
+
 {
-  resume.education.length > 0 && (
+  hasEducation && (
     <HomeSection id="hc-education" title={titles.education}>
       <ul class="hc-plain">
         {resume.education.map((entry) => (
@@ -44,8 +52,10 @@ const { sectionTitles: titles } = resume;
   )
 }
 
+{hasEducation && (hasVolunteer || hasLanguages) && <LifeDivider />}
+
 {
-  resume.volunteer.length > 0 && (
+  hasVolunteer && (
     <HomeSection id="hc-volunteer" title={titles.volunteer}>
       <ul class="hc-plain">
         {resume.volunteer.map((entry) => (
@@ -59,8 +69,10 @@ const { sectionTitles: titles } = resume;
   )
 }
 
+{hasVolunteer && hasLanguages && <LifeDivider />}
+
 {
-  resume.languages.length > 0 && (
+  hasLanguages && (
     <HomeSection id="hc-languages" title={titles.languages}>
       <ul class="hc-plain">
         {resume.languages.map((entry) => (

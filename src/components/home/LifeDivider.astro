@@ -1,0 +1,47 @@
+---
+// Decorative still-life divider between sections in Game of Life patterns.
+// Drawn as square cells in --ink on a small canvas.
+---
+
+<div class="life-divider" aria-hidden="true" role="none">
+  <canvas class="life-divider-canvas" aria-hidden="true"></canvas>
+</div>
+
+<style>
+  .life-divider {
+    display: block;
+    width: 100%;
+    max-width: 680px;
+    height: calc(max(5px, calc(var(--c, 3px) * 2)) * 6);
+    min-height: 30px;
+    overflow: hidden;
+    user-select: none;
+    pointer-events: none;
+    box-sizing: border-box;
+  }
+
+  .life-divider-canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  @media (min-width: 900px) {
+    .life-divider {
+      margin-left: calc(var(--hc-side) + var(--hc-col));
+      width: calc(100% - var(--hc-side) - var(--hc-col));
+      max-width: 680px;
+    }
+  }
+
+  @media print {
+    .life-divider {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  import { initLifeDividers } from '../../scripts/still-life';
+
+  initLifeDividers();
+</script>

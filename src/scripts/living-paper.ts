@@ -256,7 +256,7 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
         if (r.width && r.height) blockRect(grid, cell, r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top);
       }
     }
-    hc.querySelectorAll<HTMLElement>('figure, img, video, canvas, svg, .hc-media').forEach((el) => {
+    hc.querySelectorAll<HTMLElement>('figure, img, video, canvas, svg, .hc-media, .life-divider').forEach((el) => {
       const r = el.getBoundingClientRect();
       if (r.width && r.height) blockRect(grid, cell, r.left - box.left, r.top - box.top, r.right - box.left, r.bottom - box.top);
     });

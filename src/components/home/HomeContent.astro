@@ -7,6 +7,7 @@ import HomeFooter from './HomeFooter.astro';
 import HomeIntro from './HomeIntro.astro';
 import HomeProjects from './HomeProjects.astro';
 import Horizon from './Horizon.astro';
+import LifeDivider from './LifeDivider.astro';
 import LivingPaper from './LivingPaper.astro';
 import type { BoardProject } from '../../data/board';
 import { strings } from '../../i18n';
@@ -22,6 +23,14 @@ interface Props {
 
 const { lang, resume, projects, cvHref, cvPdf } = Astro.props;
 const t = strings(lang);
+
+const hasExperience = resume.experience.length > 0;
+const hasProjects = projects.length > 0;
+const hasAbout =
+  resume.skills.length > 0 ||
+  resume.education.length > 0 ||
+  resume.volunteer.length > 0 ||
+  resume.languages.length > 0;
 ---
 
 <section id="content" class="home-content" aria-label={resume.name}>
@@ -29,12 +38,14 @@ const t = strings(lang);
   <Horizon />
   <div class="hc">
     <HomeIntro t={t} resume={resume} cvHref={cvHref} cvPdf={cvPdf} />
-    {resume.experience.length > 0 && (
+    {hasExperience && (
       <HomeExperience title={resume.sectionTitles.experience} entries={resume.experience} />
     )}
-    {projects.length > 0 && (
+    {hasExperience && (hasProjects || hasAbout) && <LifeDivider />}
+    {hasProjects && (
       <HomeProjects lang={lang} t={t} title={resume.sectionTitles.projects} projects={projects} />
     )}
+    {hasProjects && hasAbout && <LifeDivider />}
     <HomeAbout resume={resume} />
     <HomeFooter t={t} resume={resume} />
   </div>
