@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ENTER_AFTER_MS,
+  EXIT_MS,
   MAX_ALIGN,
   MAX_STAGGER_MS,
+  MOVE_MS,
   STAGGER_MS,
   alignChars,
+  glyphTiming,
   isMorphable,
   isPlainClick,
   langOfPath,
@@ -88,9 +92,24 @@ describe('alignChars', () => {
   });
 
   it('counts code points, so an accented or emoji character is one step', () => {
-    const steps = alignChars(chars('é😀'), chars('é'));
-    checkCoverage('é😀', 'é', steps);
-    expect(steps!.filter((s) => s.kind === 'keep')).toHaveLength(1);
+    const steps = alignChars(chars('éa😀'), chars('éa'));
+    checkCoverage('éa😀', 'éa', steps);
+    expect(steps!.filter((s) => s.kind === 'keep')).toHaveLength(2);
+  });
+
+  it('does not slide a lone shared character across the text: it leaves and arrives instead', () => {
+    // "1" is shared by both texts but on its own: a coincidence, not a word that moved
+    const steps = alignChars(chars('a1b'), chars('c1d'));
+    checkCoverage('a1b', 'c1d', steps);
+    expect(steps!.filter((s) => s.kind === 'keep')).toHaveLength(0);
+    expect(steps!.filter((s) => s.kind === 'exit')).toHaveLength(3);
+    expect(steps!.filter((s) => s.kind === 'enter')).toHaveLength(3);
+  });
+
+  it('keeps a run of two or more shared characters', () => {
+    const steps = alignChars(chars('ab cd'), chars('ab cX'));
+    checkCoverage('ab cd', 'ab cX', steps);
+    expect(steps!.filter((s) => s.kind === 'keep')).toHaveLength(4);
   });
 
   it('gives up (null) past MAX_ALIGN characters, so a long block is swapped instantly', () => {
@@ -152,22 +171,63 @@ describe('isPlainClick', () => {
 
 describe('morphTarget', () => {
   const plain = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };
+  const here = 'https://example.test/';
 
   it('returns the other home page for a plain click on its flag', () => {
-    expect(morphTarget('/', 'https://example.test/en/', plain, false)).toBe('/en/');
-    expect(morphTarget('/en/', 'https://example.test/', plain, false)).toBe('/');
+    expect(morphTarget(here, 'https://example.test/en/', plain, false)).toBe('/en/');
+    expect(morphTarget('https://example.test/en/', 'https://example.test/', plain, false)).toBe('/');
   });
 
   it('declines under reduced motion, for modifier or middle clicks, and off the home pages', () => {
-    expect(morphTarget('/', 'https://example.test/en/', plain, true)).toBeNull();
-    expect(morphTarget('/', 'https://example.test/en/', { ...plain, metaKey: true }, false)).toBeNull();
-    expect(morphTarget('/', 'https://example.test/en/', { ...plain, button: 1 }, false)).toBeNull();
-    expect(morphTarget('/cv/', 'https://example.test/en/cv/', plain, false)).toBeNull();
+    expect(morphTarget(here, 'https://example.test/en/', plain, true)).toBeNull();
+    expect(morphTarget(here, 'https://example.test/en/', { ...plain, metaKey: true }, false)).toBeNull();
+    expect(morphTarget(here, 'https://example.test/en/', { ...plain, button: 1 }, false)).toBeNull();
+    expect(morphTarget('https://example.test/cv/', 'https://example.test/en/cv/', plain, false)).toBeNull();
   });
 
   it('declines a link that is not the other home page', () => {
-    expect(morphTarget('/', 'https://example.test/en/cv/', plain, false)).toBeNull();
-    expect(morphTarget('/', 'https://example.test/', plain, false)).toBeNull();
+    expect(morphTarget(here, 'https://example.test/en/cv/', plain, false)).toBeNull();
+    expect(morphTarget(here, 'https://example.test/', plain, false)).toBeNull();
+  });
+
+  it('never fetches another origin, even when its path is a home page', () => {
+    // the fetched HTML is injected into this page: only same-origin pages may be read
+    expect(morphTarget(here, 'https://evil.test/en/', plain, false)).toBeNull();
+    expect(morphTarget(here, 'http://example.test/en/', plain, false)).toBeNull();
+    expect(morphTarget(here, 'https://sub.example.test/en/', plain, false)).toBeNull();
+  });
+
+  it('resolves a relative flag link against the page it is on', () => {
+    expect(morphTarget(here, '/en/', plain, false)).toBe('/en/');
+  });
+});
+
+describe('glyphTiming', () => {
+  it('slides a kept character for MOVE_MS after its stagger', () => {
+    expect(glyphTiming('keep', 3)).toEqual({ delay: 3 * STAGGER_MS, duration: MOVE_MS });
+  });
+
+  it('fades a removed character out quickly, before the new ones arrive', () => {
+    expect(glyphTiming('exit', 0)).toEqual({ delay: 0, duration: EXIT_MS });
+    expect(EXIT_MS).toBeLessThan(MOVE_MS);
+  });
+
+  it('rolls a new character in only after ENTER_AFTER_MS, so the old and new text do not pile up', () => {
+    expect(glyphTiming('enter', 0)).toEqual({ delay: ENTER_AFTER_MS, duration: MOVE_MS });
+    expect(glyphTiming('enter', 2).delay).toBe(ENTER_AFTER_MS + 2 * STAGGER_MS);
+  });
+
+  it('lands every step within the 500–700 ms the morph is meant to take, however long the text', () => {
+    const kinds = ['keep', 'exit', 'enter'] as const;
+    let latest = 0;
+    for (const kind of kinds) {
+      for (let index = 0; index < 1000; index++) {
+        const { delay, duration } = glyphTiming(kind, index);
+        latest = Math.max(latest, delay + duration);
+      }
+    }
+    expect(latest).toBeGreaterThanOrEqual(500);
+    expect(latest).toBeLessThanOrEqual(700);
   });
 });
 

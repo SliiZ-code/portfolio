@@ -10,6 +10,12 @@ export const MAX_ALIGN = 800;
 /** Delay between two neighbouring characters, and the most any character waits. */
 export const STAGGER_MS = 8;
 export const MAX_STAGGER_MS = 180;
+/** How long a kept character takes to slide, and a new one to roll in. */
+export const MOVE_MS = 360;
+/** How long a removed character takes to fade out: quicker than the move, so it is gone before the new text lands. */
+export const EXIT_MS = 150;
+/** New characters wait this long before they roll in, so the removed ones have mostly faded by then. */
+export const ENTER_AFTER_MS = 120;
 
 /**
  * One step of the alignment, in display order. `keep` is a character shared by both texts (it slides from `from` to
@@ -19,7 +25,9 @@ export type AlignStep = { kind: 'keep'; from: number; to: number } | { kind: 'ex
 
 /**
  * The longest common subsequence of the two character lists decides what is kept. Ties favour the exit, so a removed
- * character leaves before its neighbours move. Returns null when either side is too long to align.
+ * character leaves before its neighbours move. A kept character with no kept neighbour is a coincidence (a letter
+ * shared by two unrelated texts), so it leaves and arrives instead of sliding across the line. Returns null when either
+ * side is too long to align.
  */
 export function alignChars(from: readonly string[], to: readonly string[]): AlignStep[] | null {
   const n = from.length;
@@ -52,12 +60,26 @@ export function alignChars(from: readonly string[], to: readonly string[]): Alig
       j++;
     }
   }
-  return steps;
+  const out: AlignStep[] = [];
+  steps.forEach((step, index) => {
+    const lone = steps[index - 1]?.kind !== 'keep' && steps[index + 1]?.kind !== 'keep';
+    if (step.kind === 'keep' && lone) out.push({ kind: 'exit', from: step.from }, { kind: 'enter', to: step.to });
+    else out.push(step);
+  });
+  return out;
 }
 
 /** When the k-th character of a morph starts, in ms: a short stagger, capped so a long block still lands in time. */
 export function staggerDelay(index: number): number {
   return Math.min(Math.max(0, index) * STAGGER_MS, MAX_STAGGER_MS);
+}
+
+/** When a step starts and how long it runs, in ms. The whole morph lands within about 660 ms, however long the text. */
+export function glyphTiming(kind: AlignStep['kind'], index: number): { delay: number; duration: number } {
+  const stagger = staggerDelay(index);
+  if (kind === 'exit') return { delay: stagger, duration: EXIT_MS };
+  if (kind === 'enter') return { delay: ENTER_AFTER_MS + stagger, duration: MOVE_MS };
+  return { delay: stagger, duration: MOVE_MS };
 }
 
 /** A block morphs only if its text changed, it has text on both sides, and it is short enough to align. */
@@ -99,12 +121,15 @@ export function isPlainClick(click: ClickLike): boolean {
 
 /**
  * The path a click should morph to, or null when the browser should navigate as usual: the link must be the other
- * home page, the click plain, and motion not reduced. `from` is the page now shown, `href` the link's absolute URL.
+ * home page of this site, the click plain, and motion not reduced. `here` is the page now shown, `href` the link.
  */
-export function morphTarget(from: string, href: string, click: ClickLike, reduced: boolean): string | null {
+export function morphTarget(here: string, href: string, click: ClickLike, reduced: boolean): string | null {
   if (reduced || !isPlainClick(click)) return null;
-  const target = switchTarget(from);
+  const current = new URL(here);
+  const link = new URL(href, current);
+  // the fetched page is injected into this one: another origin is never read
+  if (link.origin !== current.origin) return null;
+  const target = switchTarget(current.pathname);
   if (!target) return null;
-  const to = new URL(href).pathname;
-  return to === target || (target === HOME.en && to === '/en') ? target : null;
+  return link.pathname === target || (target === HOME.en && link.pathname === '/en') ? target : null;
 }

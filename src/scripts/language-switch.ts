@@ -3,16 +3,16 @@
 // page is not rebuilt: canvases and the hero board's counters keep their identity, and the scripts that bind to changed
 // parts are run again. Anything unexpected returns false and the caller navigates as usual.
 
-import { alignChars, isMorphable, langOfPath, MAX_STAGGER_MS, morphTarget, staggerDelay } from './language-morph';
+import { alignChars, glyphTiming, isMorphable, langOfPath, morphTarget } from './language-morph';
 import { initCommandPalette } from './command-palette';
 import { initMagnetType } from './magnet-type';
 import { refreshPixelTitles } from './pixel-title';
 import { syncThemeLabels } from './ui';
 
 const REDUCED = '(prefers-reduced-motion: reduce)';
-/** How long one character takes to slide, fade or roll in; the stagger comes on top. */
-const MOVE_MS = 420;
 const EASE = 'cubic-bezier(0.2, 0.7, 0.2, 1)';
+/** The fetch of the other page gives up after this long: the flag then navigates as usual, so it never hangs. */
+const FETCH_TIMEOUT_MS = 4000;
 /** The head elements whose content depends on the language. */
 const HEAD = [
   'meta[name="description"]',
@@ -70,7 +70,7 @@ const parts = (node: Node): ChildNode[] => [...node.childNodes].filter(isPart);
 const kindOf = (node: ChildNode): string => (node.nodeType === Node.TEXT_NODE ? '#text' : (node as Element).tagName);
 /** The same parts in the same order: the two blocks pair up child by child. */
 const sameShape = (a: ChildNode[], b: ChildNode[]): boolean => a.length === b.length && a.every((node, i) => kindOf(node) === kindOf(b[i]));
-/** A canvas, or an element a script owns (the hero's counters): its attributes follow, its content stays. */
+/** A canvas, or an element a script owns (the hero's counters, the palette's key): its attributes follow, its content stays. */
 const keep = (el: Element): boolean => el.tagName === 'CANVAS' || el.hasAttribute('data-keep');
 
 const syncAttributes = (live: Element, next: Element): void => {
@@ -81,7 +81,9 @@ const syncAttributes = (live: Element, next: Element): void => {
     if (!owned(name) && !next.hasAttribute(name)) live.removeAttribute(name);
   }
   for (const { name, value } of [...next.attributes]) {
-    if (!owned(name) && live.getAttribute(name) !== value) live.setAttribute(name, value);
+    // an inline handler would run fetched markup as script: the pages carry none, so none is copied
+    if (name.startsWith('on') || owned(name)) continue;
+    if (live.getAttribute(name) !== value) live.setAttribute(name, value);
   }
 };
 
@@ -93,6 +95,10 @@ function syncChildren(live: Element, next: Element): void {
     const fresh = [...next.childNodes]
       .filter((node) => !(node.nodeType === Node.ELEMENT_NODE && NOT_CONTENT.has((node as Element).tagName)))
       .map((node) => document.importNode(node, true));
+    // the fetched page's scripts are not run: the page's own scripts are already here
+    for (const node of fresh) {
+      if (node instanceof Element) node.querySelectorAll('script').forEach((script) => script.remove());
+    }
     live.replaceChildren(...fresh);
     return;
   }
@@ -175,13 +181,24 @@ function collect(live: Element, next: Element, jobs: Job[]): void {
 
 /* ---- the morph: the characters slide, fade or roll over the new text ---- */
 
-/** Runs the moves of the given blocks. The real text is already the new one; it is hidden until the characters land. */
+/** Puts back the colour the morph hid, and leaves no empty style attribute behind (the page had none there). */
+const restoreColour = (job: Job): void => {
+  if (job.colour) job.host.style.color = job.colour;
+  else job.host.style.removeProperty('color');
+  if (job.host.getAttribute('style') === '') job.host.removeAttribute('style');
+};
+
+/**
+ * Runs the moves of the given blocks. The real text is already the new one; it is hidden while the characters move,
+ * and restored when they land, even if the morph fails part way (the layer is then removed too).
+ */
 async function animate(jobs: Job[]): Promise<void> {
   const layer = document.createElement('div');
   layer.setAttribute('aria-hidden', 'true');
   Object.assign(layer.style, { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '10', overflow: 'hidden' });
   const animations: Animation[] = [];
   const shown: Job[] = [];
+  let end = 0;
 
   // read first, then write: the new glyphs of every block are measured in one layout
   const measured = jobs
@@ -196,7 +213,6 @@ async function animate(jobs: Job[]): Promise<void> {
     );
     if (!steps) continue;
     shown.push(job);
-    job.host.style.color = 'transparent';
     const size = parseFloat(job.typography.fontSize) || 16;
     const drop = `translateY(${0.4 * size}px)`;
 
@@ -217,39 +233,45 @@ async function animate(jobs: Job[]): Promise<void> {
     };
 
     steps.forEach((step, index) => {
-      const delay = staggerDelay(index);
+      const { delay, duration } = glyphTiming(step.kind, index);
+      end = Math.max(end, delay + duration);
+      let span: HTMLSpanElement;
+      let frames: Keyframe[];
+      let easing = EASE;
       if (step.kind === 'keep') {
+        // a shared character slides from where it was to where it is now (FLIP)
         const from = job.before[step.from]!;
         const to = after[step.to]!;
-        const span = glyphSpan(from);
-        const move = `translate(${to.left - from.left}px, ${to.top - from.top}px)`;
-        animations.push(span.animate([{ transform: 'translate(0px, 0px)' }, { transform: move }], { duration: MOVE_MS, delay, easing: EASE, fill: 'both' }));
+        span = glyphSpan(from);
+        frames = [{ transform: 'translate(0px, 0px)' }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }];
       } else if (step.kind === 'exit') {
-        const span = glyphSpan(job.before[step.from]!);
-        animations.push(
-          span.animate([{ opacity: 1, transform: 'translateY(0px)' }, { opacity: 0, transform: drop }], {
-            duration: MOVE_MS * 0.7,
-            delay,
-            easing: 'ease-in',
-            fill: 'both',
-          }),
-        );
+        span = glyphSpan(job.before[step.from]!);
+        // a removed character fades out at once: it leaves rather than lingering over the new text
+        frames = [{ opacity: 1, transform: 'translateY(0px)' }, { opacity: 0, transform: drop }];
+        easing = 'ease-out';
       } else {
-        const span = glyphSpan(after[step.to]!);
-        animations.push(
-          span.animate([{ opacity: 0, transform: drop }, { opacity: 1, transform: 'translateY(0px)' }], { duration: MOVE_MS, delay, easing: EASE, fill: 'both' }),
-        );
+        span = glyphSpan(after[step.to]!);
+        frames = [{ opacity: 0, transform: drop }, { opacity: 1, transform: 'translateY(0px)' }];
       }
+      animations.push(span.animate(frames, { duration, delay, easing, fill: 'both' }));
     });
   }
 
   if (animations.length === 0) return;
+  for (const job of shown) job.host.style.color = 'transparent';
   document.body.append(layer);
   // a safety net: the morph ends on time even if an animation never reports finished
-  const timeout = new Promise((resolve) => setTimeout(resolve, MOVE_MS + MAX_STAGGER_MS + 200));
-  await Promise.race([Promise.allSettled(animations.map((a) => a.finished)), timeout]);
-  layer.remove();
-  for (const job of shown) job.host.style.color = job.colour;
+  let timer = 0;
+  const timeout = new Promise<void>((resolve) => {
+    timer = window.setTimeout(resolve, end + 200);
+  });
+  try {
+    await Promise.race([Promise.allSettled(animations.map((a) => a.finished)), timeout]);
+  } finally {
+    clearTimeout(timer);
+    layer.remove();
+    for (const job of shown) restoreColour(job);
+  }
 }
 
 /* ---- the swap: head, content, and the scripts that bind to what changed ---- */
@@ -296,7 +318,7 @@ async function apply(next: Document): Promise<void> {
 /** Fetches the other home page; null when anything is off (the caller then navigates as usual). */
 async function fetchHome(href: string): Promise<Document | null> {
   try {
-    const res = await fetch(href, { headers: { accept: 'text/html' } });
+    const res = await fetch(href, { headers: { accept: 'text/html' }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) return null;
     const next = new DOMParser().parseFromString(await res.text(), 'text/html');
     const lang = langOfPath(new URL(href).pathname);
@@ -319,6 +341,12 @@ export async function morphTo(href: string, push: boolean): Promise<boolean> {
     if (push) history.pushState(null, '', new URL(href).pathname);
     await apply(next);
     return true;
+  } catch {
+    // the page may be half swapped. Once the URL is the target's, a reload shows the target page whole; before that,
+    // the page is untouched and the caller navigates as usual
+    if (location.pathname !== new URL(href).pathname) return false;
+    location.reload();
+    return true;
   } finally {
     busy = false;
   }
@@ -329,7 +357,7 @@ const onClick = (event: MouseEvent): void => {
   const link = (event.target as Element | null)?.closest?.('a[data-lang-switch]') as HTMLAnchorElement | null | undefined;
   if (!link) return;
   const reduced = matchMedia(REDUCED).matches;
-  if (!morphTarget(location.pathname, link.href, event, reduced)) return;
+  if (!morphTarget(location.href, link.href, event, reduced)) return;
   event.preventDefault();
   void morphTo(link.href, true).then((done) => {
     if (!done) location.assign(link.href);
