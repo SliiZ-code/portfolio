@@ -73,7 +73,7 @@ export const fakeRxResume = (options: FakeOptions) => {
         if (options.pdfFails) return json({ message: 'pdf broken' }, 500);
         return new Response(fakePdf(resume.data), { status: 200, headers: { 'content-type': 'application/pdf' } });
       }
-      if (method === 'GET') return json({ id, name: resume.name, slug: resume.slug, data: resume.data, updatedAt: resume.updatedAt });
+      if (method === 'GET') return json({ id, name: resume.name, slug: resume.slug, data: resume.data, updatedAt: resume.updatedAt, isPublic: false });
       if (method === 'PATCH') {
         if (body.expectedUpdatedAt && body.expectedUpdatedAt !== resume.updatedAt) return json({ message: 'conflict' }, 409);
         for (const { op, path: opPath, value } of body.operations as { op: string; path: string; value?: unknown }[]) {

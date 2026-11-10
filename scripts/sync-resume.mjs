@@ -229,6 +229,8 @@ export const makePdf = async ({ api, mainId, lang, source, phone, stamp, log = c
   let failure = null;
   try {
     const current = await api.getResume(id);
+    // a copy is private from its creation: a public one would put the CV, phone aside, on the web
+    if (current.isPublic === true) throw new Error(`the copy ${id} is public, refusing to fill it`);
     const operations = dataOperations(current.data ?? {}, target);
     if (operations.length) await api.patchResume(id, operations, current.updatedAt);
     const readback = await api.getResume(id);
@@ -243,8 +245,9 @@ export const makePdf = async ({ api, mainId, lang, source, phone, stamp, log = c
     () => null,
     (error) => error,
   );
-  if (failure) throw failure;
-  if (removal) throw new Error(`the copy ${id} could not be removed (${removal.message}): delete it in RxResume`);
+  const leftover = removal ? `the copy ${id} could not be removed (${removal.message}): delete it in RxResume` : '';
+  if (failure) throw new Error(leftover ? `${failure.message}; ${leftover}` : failure.message);
+  if (leftover) throw new Error(leftover);
   return bytes;
 };
 
@@ -302,7 +305,7 @@ const main = async () => {
   if (!key) throw new Error('RXRESUME_API_KEY is required');
   const mainId = resumeIdFrom(env);
 
-  const api = createApi({ baseUrl, key, fetchImpl: fetch });
+  const api = createApi({ baseUrl, key, fetchImpl: fetch, protectedId: mainId });
   const translators = configuredTranslators(env, { fetchImpl: fetch, spawnImpl: spawn });
   const cache = parseCache(await readOptional(CACHE));
   const result = await runSync({ mainId, api, translators, cache, stamp: Date.now().toString(36) });

@@ -74,7 +74,7 @@ const fakeTranslator = () => {
 };
 
 const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], cache = parseCache(undefined), warnings: string[] = []) => {
-  const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
+  const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
   return runSync({
     mainId: fake.mainId,
     api,

@@ -12,7 +12,7 @@
   },
   "sections": {
     "profiles": {
-      "title": "Networks",
+      "title": "Online profiles",
       "hidden": false,
       "items": [
         {
@@ -47,7 +47,7 @@
           "id": "ad3cbf72-4fbb-4050-b8af-63d5deb136bd",
           "hidden": false,
           "company": "CAPFI",
-          "position": "Work-study R&D engineer (R&D, AI)",
+          "position": "Work-study engineer (R&D, AI)",
           "location": "Paris",
           "period": "Jan 2026 – present",
           "website": {
@@ -351,6 +351,6 @@
   "summary": {
     "title": "Summary",
     "hidden": false,
-    "content": "<p>4th-year computer science engineering student on a work-study/apprenticeship track at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on VR-based teleoperation of robots. Seeking a internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>"
+    "content": "<p>4th-year engineering student in computer science (work-study) at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on teleoperation of robots in virtual reality. I am looking for an internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>"
   }
 }

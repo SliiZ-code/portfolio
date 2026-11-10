@@ -1,7 +1,9 @@
 import { EventEmitter } from 'node:events';
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { sha } from '../scripts/lib/strings.mjs';
 import {
+  CLAUDE_CODE_PACKAGE,
   buildPrompt,
   claudeProvider,
   configuredTranslators,
@@ -96,7 +98,13 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('work-study');
     expect(prompt).toContain('same keys');
     expect(prompt).toMatch(/keep every tag/i);
-    expect(prompt).toMatch(/no added facts/i);
+    expect(prompt).toMatch(/add nothing, drop nothing/i);
+  });
+
+  it('guards the wording slips seen in review: repeated words, invented acronyms, section titles, articles', () => {
+    expect(prompt).toMatch(/do not repeat a word/i);
+    expect(prompt).toContain('"Réseaux" -> "Online profiles"');
+    expect(prompt).toContain('"un stage" -> "an internship"');
   });
 });
 
@@ -199,14 +207,14 @@ describe('translateStrings', () => {
 
 /** A fake child process: receives the prompt on stdin, answers with `stdout` and exits with `code`. */
 const fakeSpawn = (answer: { stdout?: string; code?: number; hang?: boolean }) => {
-  const calls: { cmd: string; args: string[]; env: Record<string, string>; stdin: string[] }[] = [];
-  const spawnImpl = (cmd: string, args: string[], options: { env: Record<string, string> }) => {
-    const child = new EventEmitter() as EventEmitter & { stdin: any; stdout: EventEmitter; stderr: EventEmitter; kill: () => void };
-    const record = { cmd, args, env: options.env, stdin: [] as string[] };
+  const calls: { cmd: string; args: string[]; env: Record<string, string>; cwd?: string; stdin: string[] }[] = [];
+  const spawnImpl = (cmd: string, args: string[], options: { env: Record<string, string>; cwd?: string }) => {
+    const child = new EventEmitter() as EventEmitter & { stdin: any; stdout: EventEmitter; stderr: any; kill: () => void };
+    const record = { cmd, args, env: options.env, cwd: options.cwd, stdin: [] as string[] };
     calls.push(record);
     child.stdout = new EventEmitter();
-    child.stderr = new EventEmitter();
-    child.stdin = {
+    child.stderr = Object.assign(new EventEmitter(), { resume: () => undefined });
+    child.stdin = Object.assign(new EventEmitter(), {
       write: (text: string) => record.stdin.push(text),
       end: () => {
         if (answer.hang) return;
@@ -215,7 +223,7 @@ const fakeSpawn = (answer: { stdout?: string; code?: number; hang?: boolean }) =
           child.emit('close', answer.code ?? 0);
         });
       },
-    };
+    });
     child.kill = () => child.emit('close', null);
     return child;
   };
@@ -266,6 +274,33 @@ describe('claudeProvider', () => {
   it('gives up after its timeout', async () => {
     const { spawnImpl } = fakeSpawn({ hang: true });
     await expect(claudeProvider({ command: 'claude', env, spawnImpl, timeoutMs: 20 }).translate({ s1: 'x' })).rejects.toThrow(/timed out|exit/);
+  });
+
+  it('runs in an empty directory of its own, removed afterwards, never in the repository', async () => {
+    const { calls, spawnImpl } = fakeSpawn({ stdout: JSON.stringify({ result: '{"s1":"Hi"}' }) });
+    await claudeProvider({ command: 'claude', env, spawnImpl }).translate({ s1: 'Bonjour' });
+    const cwd = calls[0].cwd!;
+    expect(cwd).toBeTruthy();
+    expect(cwd).not.toBe(process.cwd());
+    expect(existsSync(cwd)).toBe(false);
+  });
+
+  it('reports the exit when the child closes its stdin early, instead of crashing on EPIPE', async () => {
+    const spawnImpl = () => {
+      const child = new EventEmitter() as EventEmitter & { stdin: any; stdout: EventEmitter; stderr: any; kill: () => void };
+      child.stdout = new EventEmitter();
+      child.stderr = Object.assign(new EventEmitter(), { resume: () => undefined });
+      child.stdin = Object.assign(new EventEmitter(), {
+        write: () => true,
+        end: () => {
+          child.stdin.emit('error', new Error('EPIPE'));
+          setImmediate(() => child.emit('close', 1));
+        },
+      });
+      return child;
+    };
+    const error = await claudeProvider({ command: 'claude', env, spawnImpl: spawnImpl as never }).translate({ s1: 'x' }).catch((e: Error) => e);
+    expect((error as Error).message).toMatch(/exit code 1/);
   });
 });
 
@@ -334,6 +369,19 @@ describe('configuredTranslators', () => {
   it('uses the local Claude Code login only when TRANSLATE_CLAUDE_LOCAL=1, and npx when claude is not on PATH', () => {
     expect(configuredTranslators({ PATH: '/x', TRANSLATE_CLAUDE_LOCAL: '1' }, { findCommand }).map((p) => p.name)).toEqual(['claude']);
     expect(configuredTranslators({ PATH: '/x', TRANSLATE_CLAUDE_LOCAL: '1' }, { findCommand: () => null }).map((p) => p.name)).toEqual(['claude']);
+  });
+
+  it('runs npx with the pinned Claude Code version, and only when a token is given (no download without one)', async () => {
+    expect(CLAUDE_CODE_PACKAGE).toMatch(/^@anthropic-ai\/claude-code@\d+\.\d+\.\d+$/);
+    const none = fakeSpawn({ stdout: '{}' });
+    expect(configuredTranslators({ PATH: '/x', HOME: '/h' }, { findCommand: () => null, spawnImpl: none.spawnImpl }).map((p) => p.name)).toEqual([]);
+    expect(none.calls).toHaveLength(0);
+
+    const withToken = fakeSpawn({ stdout: JSON.stringify({ result: '{"s1":"Hi"}' }) });
+    const [claude] = configuredTranslators({ PATH: '/x', HOME: '/h', CLAUDE_CODE_OAUTH_TOKEN: 't' }, { findCommand: () => null, spawnImpl: withToken.spawnImpl });
+    await claude.translate({ s1: 'Bonjour' });
+    expect(withToken.calls[0]).toMatchObject({ cmd: 'npx' });
+    expect(withToken.calls[0].args.slice(0, 2)).toEqual(['-y', CLAUDE_CODE_PACKAGE]);
   });
 
   it('applies the model overrides', () => {

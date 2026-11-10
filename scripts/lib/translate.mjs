@@ -4,7 +4,8 @@
 // through to the next. Every answer is validated before it is cached, and a provider never sees
 // the phone number.
 import { spawn as nodeSpawn } from 'node:child_process';
-import { accessSync, constants } from 'node:fs';
+import { accessSync, constants, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { holdsPhone } from './guard.mjs';
 import { sameTags, sha } from './strings.mjs';
@@ -15,11 +16,17 @@ export const DEFAULT_MODELS = {
   openrouter: 'anthropic/claude-haiku-4.5',
 };
 
+/** The Claude Code CLI run with npx when `claude` is not installed. Pinned: bump it on purpose, never `latest`. */
+export const CLAUDE_CODE_PACKAGE = '@anthropic-ai/claude-code@2.1.311';
+
 const RULES = [
   'You translate a French CV into professional English for recruiters.',
   'The input is a JSON object: each key is an id, each value a French text. Answer with ONLY a JSON object with exactly the same keys, each value being its English translation.',
   'Rules:',
-  '- Concise, professional CV English. No embellishment, no added facts, nothing omitted.',
+  '- Faithful, concise CV English: keep every fact and qualifier of the French, add nothing, drop nothing.',
+  '- Do not repeat a word or an acronym the French does not repeat, and do not add an abbreviation the French does not have.',
+  '- Use the usual English CV wording for headings and job titles, e.g. "Réseaux" -> "Online profiles", "Compétences" -> "Skills", "Ingénieur d\'études en alternance" -> "Work-study engineer".',
+  '- Grammar: articles and plurals must agree with the English that follows ("un stage" -> "an internship", never "a internship").',
   '- Keep these unchanged: person and company names, school names, product and technology names, network names, URLs, email addresses, numbers.',
   "- Periods and dates: translate the month names and \"aujourd'hui\" / \"aujourd’hui\" to \"present\", e.g. \"janv. 2026 – aujourd’hui\" -> \"Jan 2026 – present\".",
   '- Render French school and engineering terms naturally, e.g. "alternance" -> "work-study/apprenticeship", "Classe préparatoire intégrée" -> "Integrated preparatory programme".',
@@ -177,13 +184,16 @@ export const claudeProvider = ({ command = 'claude', args = [], env = process.en
   translate: (input) =>
     new Promise((resolve, reject) => {
       const cliArgs = [...args, '-p', '--output-format', 'json', '--model', model, '--tools', '', '--no-session-persistence'];
-      const child = spawnImpl(command, cliArgs, { env: claudeEnv(env), stdio: ['pipe', 'pipe', 'pipe'] });
+      // An empty, fresh working directory: no CLAUDE.md, settings or hooks of the repository reach the child.
+      const workdir = mkdtempSync(join(tmpdir(), 'resume-translate-'));
+      const child = spawnImpl(command, cliArgs, { cwd: workdir, env: claudeEnv(env), stdio: ['pipe', 'pipe', 'pipe'] });
       let stdout = '';
       let settled = false;
       const finish = (error, value) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        rmSync(workdir, { recursive: true, force: true });
         if (error) reject(error);
         else resolve(value);
       };
@@ -194,6 +204,10 @@ export const claudeProvider = ({ command = 'claude', args = [], env = process.en
       child.stdout.on('data', (chunk) => {
         stdout += chunk.toString();
       });
+      // stderr is never shown (it can echo the prompt) but must be drained, or a full pipe stalls the child
+      child.stderr?.resume();
+      // a child that exits before reading its prompt reports EPIPE here: the close event tells the story
+      child.stdin.on('error', () => {});
       child.on('error', () => finish(new Error('claude: could not start')));
       child.on('close', (code) => {
         if (code !== 0) return finish(new Error(`claude: exit code ${code}`));
@@ -282,7 +296,7 @@ export const configuredTranslators = (env, { fetchImpl = fetch, spawnImpl = node
     providers.push(
       claudeProvider({
         command: found ?? 'npx',
-        args: found ? [] : ['-y', '@anthropic-ai/claude-code'],
+        args: found ? [] : ['-y', CLAUDE_CODE_PACKAGE],
         env,
         spawnImpl,
         model: env.TRANSLATE_CLAUDE_MODEL || DEFAULT_MODELS.claude,

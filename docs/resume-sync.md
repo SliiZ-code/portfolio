@@ -49,8 +49,9 @@ given to the `claude` process that runs the translation, never to the RxResume c
 Tried in this order; the first one configured is used, and a failure falls through to the next:
 
 1. **Claude** (`CLAUDE_CODE_OAUTH_TOKEN`): `claude -p --output-format json --tools ""`, prompt on stdin,
-   model `claude-haiku-5-5` (`TRANSLATE_CLAUDE_MODEL`). Uses `npx -y @anthropic-ai/claude-code` when `claude`
-   is not on the PATH (the Docker builder). Local development can use the Claude Code login of the machine
+   model `claude-haiku-5-5` (`TRANSLATE_CLAUDE_MODEL`). Uses `npx -y @anthropic-ai/claude-code@2.1.311` when `claude`
+   is not on the PATH (the Docker builder). The version is pinned in `scripts/lib/translate.mjs`: bump it on purpose.
+   The child runs in an empty temporary directory, with only PATH, HOME and the token in its environment. Local development can use the Claude Code login of the machine
    with `TRANSLATE_CLAUDE_LOCAL=1` instead of a token.
 2. **Gemini** (`GEMINI_API_KEY`): `generateContent` in JSON mode, model `gemini-3.5-flash`
    (`TRANSLATE_GEMINI_MODEL`).
@@ -102,8 +103,9 @@ For each language the sync:
    `POST /api/openapi/documents/purge` with `{"type":"resume","id":":id"}`.
 
 Step 4 runs even when a step before it failed. At the start of every run, the copies left by a crashed run
-(names or slugs starting with `tmp-portfolio-pdf-`) are removed the same way. The main resume is only ever
-read: the sync refuses to use or delete it.
+(names or slugs starting with `tmp-portfolio-pdf-`) are removed the same way. A copy that RxResume reports as
+public (`isPublic`) is refused and removed. The main resume is only ever read: the API client refuses any
+write to it or deletion of it (`protectedId`, checked below the sync, so no caller can bypass it).
 
 Hidden projects keep their flag in the copy, so RxResume leaves them off the PDF while the site still shows
 them. Hidden sections and items are off the site and, as before, off the PDF.

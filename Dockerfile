@@ -33,7 +33,8 @@ RUN --mount=type=secret,id=RXRESUME_API_KEY,env=RXRESUME_API_KEY \
       npm run sync:resume || echo "WARNING: resume sync failed, building with the committed or already synced files"; \
     else \
       echo "RXRESUME_API_KEY not set, building with the committed resume data"; \
-    fi
+    fi; \
+    rm -rf "$HOME/.claude" "$HOME/.claude.json"
 
 # Build the static site
 RUN npm run build

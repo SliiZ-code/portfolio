@@ -150,11 +150,29 @@ describe('createApi', () => {
   it('refuses a non-https base URL', () => {
     expect(() => createApi({ baseUrl: 'http://rx.example', key: 'k' })).toThrow(/https/);
   });
+
+  it('never writes to or deletes the main resume, whatever the caller asks, and makes no call for it', async () => {
+    const fake = fakeRxResume({ main });
+    const api = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
+    await expect(api.removeResume(fake.mainId)).rejects.toThrow(/main resume/);
+    await expect(api.patchResume(fake.mainId, [{ op: 'add', path: '/summary', value: {} }], 'x')).rejects.toThrow(/main resume/);
+    await expect(api.removeResume('')).rejects.toThrow(/without an id/);
+    expect(fake.calls).toEqual([]);
+    expect(fake.store.get(fake.mainId)!.trashed).toBe(false);
+  });
+
+  it('never reports the text of an answer that is not JSON, since it can be resume data', async () => {
+    const fetchImpl = (async () => new Response('{"name":"Julien","phone":"+33 7 98 76 54 32"', { status: 200 })) as unknown as typeof fetch;
+    const api = createApi({ baseUrl, key: 'secret', fetchImpl });
+    const error = (await api.getResume('x').catch((e: Error) => e)) as Error;
+    expect(error.message).toMatch(/not JSON/);
+    expect(error.message).not.toMatch(/Julien|98 76|phone/);
+  });
 });
 
 describe('makePdf', () => {
   const run = (fake: ReturnType<typeof fakeRxResume>, source: Record<string, unknown> = main, lang = 'fr') => {
-    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
     return makePdf({ api, mainId: fake.mainId, lang, source, phone: PHONE, stamp: '20260310', log: () => {} });
   };
 
@@ -239,6 +257,43 @@ describe('makePdf', () => {
       removeResume: async () => {},
     };
     await expect(makePdf({ api: api as never, mainId: 'main-fr', lang: 'fr', source: {}, phone: PHONE, stamp: '1', log: () => {} })).rejects.toThrow(/phone/);
+  });
+
+  it('refuses a copy that is public: nothing is written to it, and it is removed', async () => {
+    const removed: string[] = [];
+    const patched: string[] = [];
+    const api = {
+      createResume: async () => 'temp-5',
+      getResume: async () => ({ data: {}, updatedAt: 'x', isPublic: true }),
+      patchResume: async (id: string) => {
+        patched.push(id);
+        return {};
+      },
+      downloadPdf: async () => pdfBytes(),
+      removeResume: async (id: string) => {
+        removed.push(id);
+      },
+    };
+    await expect(makePdf({ api: api as never, mainId: 'main-fr', lang: 'fr', source: main, phone: PHONE, stamp: '1', log: () => {} })).rejects.toThrow(/public/);
+    expect(patched).toEqual([]);
+    expect(removed).toEqual(['temp-5']);
+  });
+
+  it('reports the PDF failure and the copy that could not be removed, together', async () => {
+    const api = {
+      createResume: async () => 'temp-6',
+      getResume: async () => ({ data: {}, updatedAt: 'x' }),
+      patchResume: async () => ({}),
+      downloadPdf: async () => {
+        throw new Error('RxResume temp-6 (pdf): HTTP 500');
+      },
+      removeResume: async () => {
+        throw new Error('RxResume temp-6 (trash): HTTP 503');
+      },
+    };
+    const error = (await makePdf({ api: api as never, mainId: 'main-fr', lang: 'fr', source: main, phone: PHONE, stamp: '1', log: () => {} }).catch((e: Error) => e)) as Error;
+    expect(error.message).toMatch(/HTTP 500/);
+    expect(error.message).toMatch(/copy temp-6 could not be removed/);
   });
 });
 

@@ -6,4 +6,4 @@ export interface RxApi {
   downloadPdf(id: string): Promise<Uint8Array>;
   removeResume(id: string): Promise<void>;
 }
-export function createApi(options: { baseUrl: string; key: string; fetchImpl?: typeof fetch }): RxApi;
+export function createApi(options: { baseUrl: string; key: string; fetchImpl?: typeof fetch; protectedId?: string }): RxApi;

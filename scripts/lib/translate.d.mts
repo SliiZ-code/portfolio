@@ -8,6 +8,7 @@ export interface Cache {
   entries: Record<string, { en: string; model: string }>;
 }
 export const DEFAULT_MODELS: { claude: string; gemini: string; openrouter: string };
+export const CLAUDE_CODE_PACKAGE: string;
 export function buildPrompt(input: Record<string, string>): string;
 export function emptyCache(): Cache;
 export function parseCache(text: string | undefined): Cache;

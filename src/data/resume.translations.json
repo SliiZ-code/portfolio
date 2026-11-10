@@ -270,15 +270,15 @@
       "model": "claude-haiku-5-5"
     },
     "bf42e4807a277d403ee97d8e405219ce4ff20d326b2bf26e5b93e40d6714a652": {
-      "en": "<p>4th-year computer science engineering student on a work-study/apprenticeship track at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on VR-based teleoperation of robots. Seeking a internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>",
-      "model": "claude-haiku-5-5+manual-wording-fix"
+      "en": "<p>4th-year engineering student in computer science (work-study) at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on teleoperation of robots in virtual reality. I am looking for an internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>",
+      "model": "claude-haiku-5-5"
     },
     "c9b5472848ca301f2f5ee22c84163db92f06710a0e136c3632d25b3ebccb9fd0": {
-      "en": "Networks",
+      "en": "Online profiles",
       "model": "claude-haiku-5-5"
     },
     "d1ba4b588611d7b374b49928f45587acc099d4fba0d6d3383cc9c9e24866aaca": {
-      "en": "Work-study R&D engineer (R&D, AI)",
+      "en": "Work-study engineer (R&D, AI)",
       "model": "claude-haiku-5-5"
     },
     "d1f38721f24854ebc866ad14ca675af3f33cb86ae3ea4ab70e008bbba1f16a61": {
