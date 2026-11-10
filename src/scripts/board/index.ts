@@ -316,6 +316,11 @@ export async function initBoard(): Promise<void> {
   });
 
   document.addEventListener('themechange', readColors);
+  // a language switch swaps the note's text (not the board): its keep-clear box is measured again, the soup stays off it
+  document.addEventListener('languageswap', () => {
+    if (note) keepClear = [rectToBox(note.getBoundingClientRect(), cell)];
+    dirty = true;
+  });
 
   let resizeTimer: ReturnType<typeof setTimeout>;
   addEventListener('resize', () => {

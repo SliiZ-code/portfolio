@@ -146,8 +146,11 @@ const THRESHOLD = 64;
 const MAX_CANVAS_PIXELS = 4_000_000;
 const REDUCED = '(prefers-reduced-motion: reduce)';
 
-/** Stops every title that is still assembling or rippling: the resize handler calls these. */
-const running = new Set<() => void>();
+/**
+ * The stop of each title that is still assembling or rippling: a language switch stops the title whose word changed,
+ * the resize handler stops them all. A title runs at most one animation at a time.
+ */
+const running = new Map<HTMLElement, () => void>();
 
 /** Titles that have assembled: only these can ripple, the assembly owns the canvas until then. */
 const assembled = new WeakSet<HTMLElement>();
@@ -206,7 +209,10 @@ function rasterTitle(text: string, fontPx: number, lineHeight: number, spacing: 
   return { cells: maskToCells(alpha, cols, rows, THRESHOLD), cols, rows, cell, top };
 }
 
-/** The glyph cells of a title, rasterised once and kept until its font, size or text changes. */
+/**
+ * The glyph cells of a title, rasterised once and kept until its font, size or text changes (the key holds the text, so
+ * a language switch misses and draws the new word).
+ */
 function glyphRaster(root: HTMLElement, heading: HTMLElement): Raster | null {
   const style = getComputedStyle(heading);
   const fontPx = parseFloat(style.fontSize);
@@ -253,7 +259,11 @@ async function assemble(root: HTMLElement): Promise<void> {
   } catch {
     // without the font the fallback still assembles, so the title is not lost
   }
+  // a switch during the font wait can queue a second run: the first one that resumed owns the title
+  if (root.classList.contains('is-assembling')) return;
 
+  // the text this title is drawn with: a language switch changes it, and the title then assembles again
+  root.dataset.ptText = heading.textContent ?? '';
   const raster = glyphRaster(root, heading);
   const ctx = canvas.getContext('2d');
   if (!raster || !ctx || raster.cells.length === 0) return;
@@ -298,7 +308,7 @@ async function assemble(root: HTMLElement): Promise<void> {
   let generation = 0;
   const finish = () => {
     cancelAnimationFrame(frame);
-    running.delete(finish);
+    running.delete(root);
     emergeStep(soup, target, 1, Math.random);
     draw();
     // the heading's colour returns and the canvas fades out over 150ms (see PixelTitle.astro)
@@ -324,7 +334,7 @@ async function assemble(root: HTMLElement): Promise<void> {
     }
     frame = requestAnimationFrame(step);
   };
-  running.add(finish);
+  running.set(root, finish);
   frame = requestAnimationFrame(step);
 }
 
@@ -396,7 +406,7 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
   const started = performance.now();
   const finish = () => {
     cancelAnimationFrame(frame);
-    running.delete(finish);
+    running.delete(root);
     root.classList.remove('is-rippling');
     releaseSoon(root, canvas);
   };
@@ -412,40 +422,70 @@ function ripple(root: HTMLElement, touch: LifeTouch): void {
   // the first frame is drawn before the heading goes transparent, so nothing flashes
   draw(0);
   root.classList.add('is-rippling');
-  running.add(finish);
+  running.set(root, finish);
   frame = requestAnimationFrame(step);
 }
 
-/** Starts each pixel title when it first enters the view, unless motion is reduced. */
+let observer: IntersectionObserver | null = null;
+let wired = false;
+
+/** Life reaching the title's text bubbles a 'life-touch' from the heading (living-paper.ts): a ripple starts there. */
+const onLifeTouch = (event: Event): void => {
+  ripple(event.currentTarget as HTMLElement, (event as CustomEvent<LifeTouch>).detail);
+};
+
+/**
+ * Starts each pixel title when it first enters the view, unless motion is reduced. Safe to call again: the listeners are
+ * the same function each time, so they are not added twice.
+ */
 export function initPixelTitles(): void {
   if (typeof IntersectionObserver === 'undefined' || typeof matchMedia !== 'function') return;
   if (matchMedia(REDUCED).matches) return;
   const titles = document.querySelectorAll<HTMLElement>('[data-pixel-title]');
   if (titles.length === 0) return;
 
-  const observer = new IntersectionObserver(
+  observer ??= new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        observer.unobserve(entry.target);
+        observer?.unobserve(entry.target);
         void assemble(entry.target as HTMLElement);
       }
     },
     { threshold: 0.3 },
   );
-  titles.forEach((title) => observer.observe(title));
+  titles.forEach((title) => {
+    // a title already assembled waits for refreshPixelTitles, not for the next scroll
+    if (title.dataset.ptText === undefined) observer?.observe(title);
+    title.addEventListener('life-touch', onLifeTouch);
+  });
 
-  // life reaching the title's text bubbles a 'life-touch' from the heading (living-paper.ts): a ripple starts there
-  titles.forEach((title) =>
-    title.addEventListener('life-touch', (event) => ripple(title, (event as CustomEvent<LifeTouch>).detail)),
-  );
-
+  if (wired) return;
+  wired = true;
   // a resize mid-way would misplace the cells: settle the running titles on their final frame
   window.addEventListener(
     'resize',
     () => {
-      for (const finish of [...running]) finish();
+      for (const finish of [...running.values()]) finish();
     },
     { passive: true },
   );
+}
+
+/**
+ * After a language switch the headings may hold new text. A title whose word changed stops whatever it is doing, is no
+ * longer rippled (its glyphs are the old word's) and is observed again, so it assembles from the new word once it is in
+ * view. The others keep their word and stay as they are.
+ */
+export function refreshPixelTitles(): void {
+  const io = observer;
+  if (!io) return;
+  document.querySelectorAll<HTMLElement>('[data-pixel-title]').forEach((title) => {
+    const text = title.querySelector('.pt-text')?.textContent ?? '';
+    if (title.dataset.ptText === undefined || title.dataset.ptText === text) return;
+    running.get(title)?.();
+    assembled.delete(title);
+    rasters.delete(title);
+    io.observe(title);
+  });
 }

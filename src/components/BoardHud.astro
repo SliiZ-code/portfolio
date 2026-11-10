@@ -22,7 +22,8 @@ const { t, profiles, email, cvHref, cvPdf, lang } = Astro.props;
 <div class="hud tr">
   <!-- the command palette (CommandPalette.astro); hidden until its script runs -->
   <button class="cmdk-open" type="button" data-cmdk-open hidden aria-label={t.palette.openLabel} title={t.palette.openLabel}>
-    <span class="cmdk-key">⌘K</span><span class="cmdk-word">{t.palette.open}</span>
+    <!-- the palette sets this key to "Ctrl K" off a Mac (command-palette.ts): a language switch keeps what the script wrote (data-keep) -->
+    <span class="cmdk-key" data-keep>⌘K</span><span class="cmdk-word">{t.palette.open}</span>
   </button>
   <span class="sep" data-cmdk-open hidden></span>
   <LangFlags t={t} lang={lang} frHref="/" enHref="/en/" />
@@ -31,7 +32,8 @@ const { t, profiles, email, cvHref, cvPdf, lang } = Astro.props;
 </div>
 
 <div class="hud bl">
-  <span>{t.board.generation} <b id="gen">0000</b> · <b id="pop">0</b> {t.board.cells}</span>
+  <!-- the counters are rolling odometers (odometer.ts): a language switch keeps them as they are (data-keep) -->
+  <span>{t.board.generation} <b id="gen" data-keep>0000</b> · <b id="pop" data-keep>0</b> {t.board.cells}</span>
   <span class="hint">{t.board.hint}</span>
 </div>
 

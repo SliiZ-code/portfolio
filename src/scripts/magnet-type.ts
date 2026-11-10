@@ -45,13 +45,29 @@ function splitLetters(link: HTMLElement): HTMLSpanElement[] {
   return letters;
 }
 
+/** The listeners of each list's live instance: a second init (after a language switch) replaces the first. */
+const sessions = new WeakMap<HTMLElement, AbortController>();
+
+/** A name split by an earlier init is whole again: its visually hidden copy holds the name. */
+function unsplit(link: HTMLElement): void {
+  const whole = link.querySelector<HTMLElement>('.sr-only');
+  if (whole && link.querySelector('.mt-word')) link.textContent = whole.textContent ?? '';
+}
+
 export function initMagnetType(list: HTMLElement): void {
+  sessions.get(list)?.abort();
+  sessions.delete(list);
   const fine = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 900px)');
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   if (!fine.matches || still.matches) return;
 
-  const letters = [...list.querySelectorAll<HTMLElement>('.hc-project-name > a, .hc-project-name > span')].flatMap(splitLetters);
+  const names = [...list.querySelectorAll<HTMLElement>('.hc-project-name > a, .hc-project-name > span')];
+  names.forEach(unsplit);
+  const letters = names.flatMap(splitLetters);
   if (letters.length === 0) return;
+  const session = new AbortController();
+  sessions.set(list, session);
+  const { signal } = session;
   const weights = new Float32Array(letters.length).fill(REST_WEIGHT);
 
   let px = 0;
@@ -61,7 +77,7 @@ export function initMagnetType(list: HTMLElement): void {
 
   const tick = () => {
     frame = 0;
-    if (!fine.matches || still.matches) return;
+    if (signal.aborted || !fine.matches || still.matches) return;
     // read every letter's place first (one layout), then write every weight
     const targets = letters.map((letter) => {
       if (!inside) return REST_WEIGHT;
@@ -86,17 +102,25 @@ export function initMagnetType(list: HTMLElement): void {
     if (!frame) frame = requestAnimationFrame(tick);
   };
 
-  list.addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'touch') return;
-    px = event.clientX;
-    py = event.clientY;
-    inside = true;
-    wake();
-  });
-  list.addEventListener('pointerleave', () => {
-    inside = false;
-    wake();
-  });
+  list.addEventListener(
+    'pointermove',
+    (event) => {
+      if (event.pointerType === 'touch') return;
+      px = event.clientX;
+      py = event.clientY;
+      inside = true;
+      wake();
+    },
+    { signal },
+  );
+  list.addEventListener(
+    'pointerleave',
+    () => {
+      inside = false;
+      wake();
+    },
+    { signal },
+  );
   // the page can scroll under a still pointer
-  window.addEventListener('scroll', () => inside && wake(), { passive: true });
+  window.addEventListener('scroll', () => inside && wake(), { passive: true, signal });
 }

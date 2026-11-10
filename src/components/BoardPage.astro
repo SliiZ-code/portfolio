@@ -75,4 +75,9 @@ const description = htmlToText(resume.summary) || resume.headline;
     import { initBoard } from '../scripts/board';
     initBoard();
   </script>
+  <script>
+    // the other language's flag morphs this page in place (language-switch.ts); the CV pages keep plain links
+    import { initLanguageSwitch } from '../scripts/language-switch';
+    initLanguageSwitch();
+  </script>
 </Base>

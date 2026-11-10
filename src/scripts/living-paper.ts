@@ -482,6 +482,8 @@ export function initLivingPaper(section: HTMLElement, canvas: HTMLCanvasElement)
     sizeCanvas();
     rebuildSoon();
   });
+  // a language switch swaps the text of the titles and the blocks: their widths and heights change, so the rocks move
+  document.addEventListener('languageswap', rebuildSoon);
   document.fonts?.ready.then(rebuildSoon).catch(() => {});
   addEventListener('scroll', () => {
     lastScroll = performance.now();
