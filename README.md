@@ -38,68 +38,41 @@ then validated by Zod:
 
 ```text
 RxResume API
-  -> scripts/sync-resume.mjs   (structural sanitiser)
-  -> src/data/resume.fr.json / resume.en.json
+  -> scripts/sync-resume.mjs   (structural sanitiser, AI translation with a cache)
+  -> src/data/resume.fr.json / resume.en.json / resume.translations.json
   -> src/lib/resume.ts         (Zod validation, HTML sanitiser, slugs)
   -> pages and components
 ```
 
-Create `.env` from `.env.example` and fill in the required values (the last two are
-optional, see "CV PDF" below):
+Create `.env` from `.env.example` and fill in the values. [docs/resume-sync.md](docs/resume-sync.md) explains each one, how to get the Claude token and how the translation cache works.
 
 ```bash
 RXRESUME_URL=https://rxresu.me
 RXRESUME_API_KEY=...
-RXRESUME_ID_FR=...
-RXRESUME_ID_EN=...
-RXRESUME_PDF_ID_FR=...
-RXRESUME_PDF_ID_EN=...
+RXRESUME_ID=...                # the one French resume
+CLAUDE_CODE_OAUTH_TOKEN=...    # translation: or GEMINI_API_KEY / OPENROUTER_API_KEY
 ```
 
-Then run `npm run sync:resume`. The script calls
-`GET /api/openapi/resumes/:id` for each language and keeps only the fields the
-site renders. It deliberately drops:
-
-- resume metadata and private notes;
-- hidden sections, hidden items and hidden custom fields (one exception: hiding a
-  *project* only keeps it off the PDF, the site still shows it);
-- the profile picture;
-- custom sections.
-
-Descriptions are sanitised again at load time: only `p`, `ul`, `ol`, `li`,
-`strong`, `em`, `a[href]` and `br` survive; links are restricted to `http(s)`,
-`mailto`, `tel`, root-relative paths and fragments.
-
-The checked-in JSON files are the last real sync; they are what the build uses
-when no key is available or RxResume is unreachable. Do not invent facts about
-Julien in this repository: names, descriptions, periods and links come from RxResume, the
-board only adds its own voice (margin notes, hints, UI strings).
+Then run `npm run sync:resume`. It reads the French resume once (`GET /api/openapi/resumes/:id`) and keeps only
+what the site renders: metadata, the picture, custom sections and hidden items stay private, and a hidden project
+is shown on the site but left off the PDF. The English is translated from the French by AI, and only the strings
+missing from `src/data/resume.translations.json` are sent. Without a provider the committed English is kept and a
+warning is printed. The CV PDFs come from temporary copies (see below).
 
 ### CV PDF
 
-The public PDF is not rendered from the main resumes, which carry a phone number. Create in
-RxResume a second resume per language (a "web resume"), used only for the PDF, and put their IDs
-in `RXRESUME_PDF_ID_FR` / `RXRESUME_PDF_ID_EN`. **The web resumes are overwritten from the main
-resumes at each sync: don't edit them by hand**, edit the main ones. A web ID must never be a
-main resume ID, and the two must differ: the sync refuses to run otherwise. A locked web resume
-can't be written, so its PDF stays at the previous version until it is unlocked. Before downloading, the sync
-copies the main resume's whole `data` (basics, summary, sections, custom sections, metadata,
-picture) into the web resume through `PATCH /api/openapi/resumes/:id` (JSON Patch with
-`expectedUpdatedAt`, so a concurrent edit is refused instead of lost), with `basics.phone` emptied
-and any custom field that holds the phone removed. It writes only when something differs, and
-never writes data that still holds the phone. For each language that has
-an ID the sync downloads `GET /api/openapi/resumes/:id/pdf` into
-`public/cv/julien-petit-colboc-fr.pdf` / `julien-petit-colboc-en.pdf`. These files are committed
-like the JSON, so a build without RxResume still has them.
+The public PDF is not rendered from the main resume, which carries a phone number. For each language the sync
+creates a temporary resume in RxResume named `tmp-portfolio-pdf-<lang>-<stamp>`, fills it with the resume data
+without the phone (`basics.phone` emptied, custom fields that hold the phone removed; for English, the translated
+strings put back onto the full data), downloads its PDF, then removes it: `DELETE /api/openapi/resumes/:id`
+(Trash), then `POST /api/openapi/documents/purge` with `{"type":"resume","id":...}`, so nothing stays in Trash for
+30 days. The copy is removed even when the PDF fails. A run that crashed leaves copies whose name or slug starts with
+`tmp-portfolio-pdf-`: the next run removes them, and nothing else is ever deleted. The main resume is only read.
 
-Before writing a PDF the sync reads the web resume back after that copy and refuses it (that
-language fails, the previous file is kept, the script exits with an error and the deploy builds
-with the committed files) if `basics.phone` is not empty, if the
-phone of the main resume appears anywhere in the web resume, or if the response does not start
-with `%PDF-`. The other language is not affected. The resume JSON is still updated, so until
-the problem is fixed the PDF can lag behind the CV page; it never carries the phone number.
-The phone check compares against the main resume's `basics.phone`: keep the number there, not
-in a custom field, or the sync can't recognise it (it warns when that field is empty).
+The PDFs are written to `public/cv/julien-petit-colboc-fr.pdf` and `julien-petit-colboc-en.pdf`, and committed like
+the JSON, so a build without RxResume still has them. A PDF is refused (the previous file is kept, the build log says
+why, the deploy still builds) when the response does not start with `%PDF-`, when the copy reads back with a phone
+number, or when the PDF bytes show it. The English PDF is only made once the English translation is complete.
 
 The PDF link (board HUD, no-JavaScript list, CV page) points to the file only when it exists at
 build time; without it the HUD and the list link to the HTML CV page, which offers print.
@@ -273,19 +246,19 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
   key is mounted as a build secret, so it stays out of the image history and build cache
 - Runs on port 80
 
-**Build variables** (Coolify → Configuration → Environment Variables, tick
-"Build Variable", and turn on "Use Docker Build Secrets" in the advanced settings so the
-key arrives as a secret; with plain Docker use `--build-arg` for the URL and IDs and
-`--secret id=RXRESUME_API_KEY,env=RXRESUME_API_KEY` for the key):
+**Build variables** (Coolify → Configuration → Environment Variables: tick "Build Variable" for the
+URL and IDs, and turn on "Use Docker Build Secrets" so the keys arrive as secrets; with plain Docker use
+`--build-arg` and `--secret id=NAME,env=NAME`):
 
-| Variable | Meaning |
-| --- | --- |
-| `RXRESUME_URL` | RxResume base URL, `https://` only (default `https://rxresu.me`) |
-| `RXRESUME_API_KEY` | API key, passed as a build secret; without it the sync is skipped and the committed JSON is used |
-| `RXRESUME_ID_FR` | ID of the French resume |
-| `RXRESUME_ID_EN` | ID of the English resume |
-| `RXRESUME_PDF_ID_FR` | Optional. ID of the French web resume (without phone number), whose PDF is published |
-| `RXRESUME_PDF_ID_EN` | Optional. ID of the English web resume (without phone number), whose PDF is published |
+| Variable | Kind | Meaning |
+| --- | --- | --- |
+| `RXRESUME_URL` | build variable | RxResume base URL, `https://` only (default `https://rxresu.me`) |
+| `RXRESUME_ID` | build variable | ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
+| `RXRESUME_API_KEY` | secret | RxResume API key; without it the sync is skipped and the committed files are used |
+| `CLAUDE_CODE_OAUTH_TOKEN` | secret | Token from `claude setup-token`: translates with the Claude subscription (first choice) |
+| `GEMINI_API_KEY` | secret | Translator used when there is no Claude token |
+| `OPENROUTER_API_KEY` | secret | Translator used when there is neither of the above |
+| `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | build variable | Optional model overrides |
 
 Since the resumes are only fetched at build time, redeploy after editing RxResume.
 

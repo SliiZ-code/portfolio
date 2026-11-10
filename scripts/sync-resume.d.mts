@@ -1,33 +1,29 @@
-export function sanitizeResume(input: unknown): unknown;
-export function resumeFromResponse(body: unknown): unknown;
+export function sanitizeResume(input: unknown): any;
+export function resumeFromResponse(body: unknown): any;
 export function cvPdfFile(lang: string): string;
-export function assertWebResume(main: unknown, web: unknown): void;
-export function assertPdf(bytes: Uint8Array): void;
-export function webDataFrom(mainData: unknown): Record<string, any>;
+export const TEMP_PREFIX: string;
 export function dataOperations(
   current: unknown,
   target: Record<string, unknown>,
 ): ({ op: 'add'; path: string; value: unknown } | { op: 'remove'; path: string })[];
-export function syncWebResume(options: {
-  id: string;
-  mainId?: string;
-  main: unknown;
-  baseUrl: string;
-  key: string;
-  lang?: string;
-  fetchImpl?: typeof fetch;
-}): Promise<unknown>;
-export function fetchCvPdf(options: {
-  id: string;
-  mainId?: string;
-  main: unknown;
-  baseUrl: string;
-  key: string;
-  lang?: string;
-  fetchImpl?: typeof fetch;
+export function pdfDataFrom(mainData: unknown): Record<string, any>;
+export function resumeIdFrom(env: Record<string, string | undefined>): string;
+export function cleanupLeftovers(options: { api: any; mainId: string; log?: (message: string) => void }): Promise<number>;
+export function makePdf(options: {
+  api: any;
+  mainId: string;
+  lang: string;
+  source: unknown;
+  phone: string;
+  stamp: string;
+  log?: (message: string) => void;
 }): Promise<Uint8Array>;
-export function collectPdfs(
-  jobs: { lang: string; id: string; mainId?: string; main: unknown }[],
-  options: { baseUrl: string; key: string; fetchImpl: typeof fetch },
-): Promise<{ pdfs: Map<string, Uint8Array>; errors: string[] }>;
-export function assertDistinctIds(mainIds: (string | undefined)[], webIds: (string | undefined)[]): void;
+export function runSync(options: {
+  mainId: string;
+  api: any;
+  translators?: any[];
+  cache?: any;
+  stamp?: string;
+  log?: (message: string) => void;
+  warn?: (message: string) => void;
+}): Promise<{ fr: any; en: any; cache: any; complete: boolean; pdfs: Map<string, Uint8Array>; errors: string[] }>;
