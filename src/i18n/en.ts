@@ -3,8 +3,8 @@ import type { UIStrings } from './fr';
 const en = {
   lang: 'en',
   board: {
-    title: (name: string) => `${name} — board`,
-    description: (text: string) => text,
+    title: (name: string) => `${name} — AI, VR & robotics engineer`,
+    description: 'Computer engineering student in AI, VR and robotics. Portfolio presenting software development projects, experiments and a full curriculum vitae (CV).',
     listLabel: 'List view',
     projects: 'Projects',
     elsewhere: 'Elsewhere',

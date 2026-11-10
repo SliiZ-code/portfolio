@@ -439,6 +439,35 @@ a.flag:hover {
   display: none;
 }
 
+/* touch: a target's hit area reaches past its box through an empty ::before (nothing is painted, no box grows), so the
+   look and the spacing stay as they are. Each area stops at the gap to its neighbour: no tap is taken from another. */
+@media (pointer: coarse) {
+  a.flag,
+  .theme-toggle,
+  .cmdk-open {
+    position: relative;
+  }
+
+  /* 10 px apart on the row: each flag reaches 5 px sideways */
+  a.flag::before {
+    content: '';
+    position: absolute;
+    inset: -11px -5px;
+  }
+
+  .theme-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -11px -8px;
+  }
+
+  .cmdk-open::before {
+    content: '';
+    position: absolute;
+    inset: -10px -5px;
+  }
+}
+
 @media (hover: none) {
   .cmdk-key {
     display: none;
@@ -466,6 +495,19 @@ a.flag:hover {
 
 .br a:hover {
   color: var(--accent);
+}
+
+/* touch: the corner links reach 6 px sideways, into the 14 px gap between them */
+@media (pointer: coarse) {
+  .br a {
+    position: relative;
+  }
+
+  .br a::before {
+    content: '';
+    position: absolute;
+    inset: -8px -6px;
+  }
 }
 
 /* ---- list view: the board without JavaScript ---- */
@@ -743,6 +785,22 @@ a.flag:hover {
   color: var(--accent);
 }
 
+@media (pointer: coarse) {
+  .doc-bar .back,
+  .doc-actions a:not(.flag),
+  .doc-actions [data-print] {
+    position: relative;
+  }
+
+  .doc-bar .back::before,
+  .doc-actions a:not(.flag)::before,
+  .doc-actions [data-print]::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+  }
+}
+
 .cv-inner {
   max-width: 980px;
   margin: 0 auto;
@@ -895,6 +953,23 @@ a.flag:hover {
 .cv-project-link:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* touch: the links reach 3 px up and down, so each target is 24 px or more and two rows meet at the gap's middle */
+@media (pointer: coarse) {
+  .cv-contact a,
+  .cv-item .where a,
+  .cv-project-link {
+    position: relative;
+  }
+
+  .cv-contact a::before,
+  .cv-item .where a::before,
+  .cv-project-link::before {
+    content: '';
+    position: absolute;
+    inset: -3px -6px;
+  }
 }
 
 @media (max-width: 760px) {

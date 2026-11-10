@@ -26,6 +26,12 @@ describe('findMedia', () => {
     }
   });
 
+  it('adds the WebP twin of an image when there is one', () => {
+    expect(findMedia(['a'], having('a.jpg', 'a.webp'))).toEqual({ image: '/media/a.jpg', webp: '/media/a.webp' });
+    expect(findMedia(['a'], having('a.jpg'))).toEqual({ image: '/media/a.jpg' });
+    expect(findMedia(['a'], having('a.webp'))).toEqual({ image: '/media/a.webp' });
+  });
+
   it('lets a video win over an image of the same name', () => {
     expect(findMedia(['a'], having('a.jpg', 'a.mp4'))).toEqual({ video: '/media/a.mp4' });
   });
@@ -43,7 +49,7 @@ describe('findMedia', () => {
 describe('boardMedia', () => {
   it('lets an explicit overlay media win over files', () => {
     const exists = having('thrive.mp4');
-    expect(boardMedia(project('Thrive', 'thrive'), undefined, exists)).toEqual({ image: '/media/thrive.jpg' });
+    expect(boardMedia(project('Thrive', 'thrive'), undefined, exists)).toEqual({ image: '/media/thrive.jpg', webp: '/media/thrive.webp' });
   });
 
   it('uses the own slug, then the overlay key, then the alternate project slug', () => {

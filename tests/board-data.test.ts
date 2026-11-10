@@ -59,7 +59,7 @@ describe('known project overlay', () => {
 
   it('keeps the media', () => {
     expect(bySlug['jeu-de-la-vie'].media).toEqual({ video: '/media/conway.mp4' });
-    expect(bySlug.thrive.media).toEqual({ image: '/media/thrive.jpg' });
+    expect(bySlug.thrive.media).toEqual({ image: '/media/thrive.jpg', webp: '/media/thrive.webp' });
   });
 
   it('ignores overlay entries that are not in the resume', () => {

@@ -1,8 +1,8 @@
 const fr = {
   lang: 'fr',
   board: {
-    title: (name: string) => `${name} — plateau`,
-    description: (text: string) => text,
+    title: (name: string) => `${name} — Ingénieur IA, VR & robotique`,
+    description: 'Élève ingénieur en informatique en IA, VR et robotique. Portfolio présentant des projets logiciels, des expérimentations et un curriculum vitæ (CV).',
     listLabel: 'Vue liste',
     projects: 'Projets',
     elsewhere: 'Ailleurs',
