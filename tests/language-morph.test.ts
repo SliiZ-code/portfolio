@@ -2,15 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   ENTER_AFTER_MS,
   EXIT_MS,
+  FADE_IN_AFTER_MS,
+  FADE_IN_MS,
+  FADE_OUT_MS,
+  isOneLine,
+  isShortText,
   MAX_ALIGN,
   MAX_STAGGER_MS,
   MOVE_MS,
+  SHORT_TEXT_THRESHOLD,
   STAGGER_MS,
   alignChars,
   glyphTiming,
   isMorphable,
   isPlainClick,
   langOfPath,
+  morphStyle,
   morphTarget,
   staggerDelay,
   switchTarget,
@@ -232,14 +239,101 @@ describe('glyphTiming', () => {
 });
 
 describe('isMorphable', () => {
-  it('morphs a block whose text changed and is short enough to align', () => {
+  it('morphs a block whose text changed', () => {
     expect(isMorphable('Projets', 'Projects')).toBe(true);
   });
 
-  it('leaves an unchanged, empty or very long block to an instant swap', () => {
+  it('morphs a very long block too: it crossfades rather than swapping instantly', () => {
+    expect(isMorphable('a'.repeat(MAX_ALIGN + 1), 'b')).toBe(true);
+  });
+
+  it('leaves an unchanged, empty or whitespace-only change to an instant swap', () => {
     expect(isMorphable('Projets', 'Projets')).toBe(false);
+    expect(isMorphable('Projets ', 'Projets')).toBe(false);
     expect(isMorphable('', 'Projects')).toBe(false);
     expect(isMorphable('Projets', '')).toBe(false);
-    expect(isMorphable('a'.repeat(MAX_ALIGN + 1), 'b')).toBe(false);
+  });
+});
+
+describe('isShortText', () => {
+  it('counts characters, not UTF-16 units, up to SHORT_TEXT_THRESHOLD', () => {
+    expect(isShortText('é'.repeat(SHORT_TEXT_THRESHOLD))).toBe(true);
+    expect(isShortText('a'.repeat(SHORT_TEXT_THRESHOLD + 1))).toBe(false);
+  });
+
+  it('ignores outer whitespace', () => {
+    expect(isShortText(`  ${'a'.repeat(SHORT_TEXT_THRESHOLD)}  `)).toBe(true);
+  });
+});
+
+describe('isOneLine', () => {
+  it('reads glyphs that run left to right as one line', () => {
+    expect(isOneLine([0, 9, 18, 30], 16)).toBe(true);
+  });
+
+  it('reads a line tilted by a transform (the name note is rotated) as one line: its glyphs still run rightwards', () => {
+    // a 1.5° tilt over 400 px: the tops drift by about 10 px along the line, the lefts keep rising
+    expect(isOneLine([0, 9.9, 19.8, 29.8, 40], 16)).toBe(true);
+  });
+
+  it('sees a wrapped line, whose first glyph jumps back to the left, as more than one line', () => {
+    expect(isOneLine([0, 9, 18, 30, 0, 9], 16)).toBe(false);
+  });
+
+  it('sees a centred wrap, whose second line starts left of the first line’s last glyph, as more than one line', () => {
+    expect(isOneLine([40, 50, 60, 70, 85, 95], 16)).toBe(true);
+    expect(isOneLine([40, 50, 60, 70, 85, 95, 30, 40], 16)).toBe(false);
+  });
+
+  it('is false for no glyphs at all, so an empty block never letter-morphs', () => {
+    expect(isOneLine([], 16)).toBe(false);
+  });
+});
+
+describe('morphStyle', () => {
+  it('chooses letters for short texts that sit on one line, like nav items, labels and dates', () => {
+    expect(morphStyle('Projets', 'Projects', true, true)).toBe('letters');
+    expect(morphStyle('À propos', 'About', true, true)).toBe('letters');
+    expect(morphStyle('2026 — aujourd’hui', '2026 — present', true, true)).toBe('letters');
+  });
+
+  it('keeps letter morph for the hero name note when it sits on one line (≤ 60 chars)', () => {
+    const frNote = 'Élève ingénieur en informatique – IA, VR et robotique';
+    const enNote = 'Computer Science Engineering Student – AI, VR & Robotics';
+    expect(morphStyle(frNote, enNote, true, true)).toBe('letters');
+  });
+
+  it('crossfades the name note when it wraps onto two lines (a narrow screen)', () => {
+    const frNote = 'Élève ingénieur en informatique – IA, VR et robotique';
+    const enNote = 'Computer Science Engineering Student – AI, VR & Robotics';
+    expect(morphStyle(frNote, enNote, false, false)).toBe('fade');
+    expect(morphStyle(frNote, enNote, true, false)).toBe('fade');
+    expect(morphStyle(frNote, enNote, false, true)).toBe('fade');
+  });
+
+  it('crossfades a long paragraph such as the bio, even when it sits on one line', () => {
+    const bioFr = "Élève ingénieur en 4e année d'informatique (alternance) à CESI, apprenti chez CAPFI depuis janvier 2026.";
+    const bioEn = 'Computer science engineering student in 4th year at CESI, apprentice at CAPFI since January 2026.';
+    expect(morphStyle(bioFr, bioEn, true, true)).toBe('fade');
+  });
+
+  it('crossfades when either side is longer than the short-text threshold', () => {
+    const long = 'a'.repeat(SHORT_TEXT_THRESHOLD + 1);
+    expect(morphStyle('Projets', long, true, true)).toBe('fade');
+    expect(morphStyle(long, 'Projets', true, true)).toBe('fade');
+  });
+
+  it('chooses letters at exactly SHORT_TEXT_THRESHOLD characters on both sides', () => {
+    expect(morphStyle('a'.repeat(SHORT_TEXT_THRESHOLD), 'b'.repeat(SHORT_TEXT_THRESHOLD), true, true)).toBe('letters');
+  });
+});
+
+describe('crossfade timing', () => {
+  it('overlaps the old and the new text by at most 100 ms', () => {
+    expect(FADE_OUT_MS - FADE_IN_AFTER_MS).toBeLessThanOrEqual(100);
+  });
+
+  it('lands the new text within the ~660 ms morph budget', () => {
+    expect(FADE_IN_AFTER_MS + FADE_IN_MS).toBeLessThanOrEqual(660);
   });
 });
