@@ -31,7 +31,8 @@ const { t, profiles, email, cvHref, cvPdf, lang } = Astro.props;
 </div>
 
 <div class="hud bl">
-  <span>{t.board.generation} <b id="gen">0000</b> · <b id="pop">0</b> {t.board.cells}</span>
+  <!-- the counters are rolling odometers (odometer.ts): a language switch keeps them as they are (data-keep) -->
+  <span>{t.board.generation} <b id="gen" data-keep>0000</b> · <b id="pop" data-keep>0</b> {t.board.cells}</span>
   <span class="hint">{t.board.hint}</span>
 </div>
 

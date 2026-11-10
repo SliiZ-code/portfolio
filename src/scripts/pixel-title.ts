@@ -186,6 +186,8 @@ async function assemble(root: HTMLElement): Promise<void> {
   const heading = root.querySelector<HTMLElement>('.pt-text');
   const canvas = root.querySelector<HTMLCanvasElement>('.pt-canvas');
   if (!heading || !canvas) return;
+  // the text this title was drawn with: a language switch changes it, and the title then assembles again
+  root.dataset.ptText = heading.textContent ?? '';
 
   try {
     await document.fonts.load('100px "Geist Pixel"');
@@ -279,25 +281,33 @@ async function assemble(root: HTMLElement): Promise<void> {
   frame = requestAnimationFrame(step);
 }
 
-/** Starts each pixel title when it first enters the view, unless motion is reduced. */
+let observer: IntersectionObserver | null = null;
+let settleOnResize = false;
+
+/** Starts each pixel title when it first enters the view, unless motion is reduced. Safe to call again. */
 export function initPixelTitles(): void {
   if (typeof IntersectionObserver === 'undefined' || typeof matchMedia !== 'function') return;
   if (matchMedia(REDUCED).matches) return;
   const titles = document.querySelectorAll<HTMLElement>('[data-pixel-title]');
   if (titles.length === 0) return;
 
-  const observer = new IntersectionObserver(
+  observer ??= new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        observer.unobserve(entry.target);
+        observer?.unobserve(entry.target);
         void assemble(entry.target as HTMLElement);
       }
     },
     { threshold: 0.3 },
   );
-  titles.forEach((title) => observer.observe(title));
+  titles.forEach((title) => {
+    // a title already assembled waits for refreshPixelTitles, not for the next scroll
+    if (title.dataset.ptText === undefined) observer?.observe(title);
+  });
 
+  if (settleOnResize) return;
+  settleOnResize = true;
   // a resize mid-way would misplace the cells: settle the running titles on their final frame
   window.addEventListener(
     'resize',
@@ -306,4 +316,16 @@ export function initPixelTitles(): void {
     },
     { passive: true },
   );
+}
+
+/**
+ * After a language switch the headings may hold new text: each assembled title whose text changed is observed again,
+ * so it assembles from the new word once it is in view (the others keep their word and stay as they are).
+ */
+export function refreshPixelTitles(): void {
+  if (!observer) return;
+  document.querySelectorAll<HTMLElement>('[data-pixel-title]').forEach((title) => {
+    const text = title.querySelector('.pt-text')?.textContent ?? '';
+    if (title.dataset.ptText !== undefined && title.dataset.ptText !== text) observer?.observe(title);
+  });
 }

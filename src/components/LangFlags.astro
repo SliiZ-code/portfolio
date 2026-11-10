@@ -21,8 +21,10 @@ const flags = [
   {flags.map(({ code, title, href }) => {
     const Tag = lang === code ? 'span' : 'a';
     const props = lang === code ? { role: 'img' as const, 'aria-current': 'page' as const } : { href, hreflang: code };
+    // on a page with a language, the other flag switches it in place on the home pages (language-switch.ts)
+    const switchable = lang && lang !== code ? '' : undefined;
     return (
-      <Tag class:list={['flag', { on: lang === code }]} title={title} aria-label={title} {...props}>
+      <Tag class:list={['flag', { on: lang === code }]} title={title} aria-label={title} data-lang-switch={switchable} {...props}>
         {code === 'fr' ? (
           <svg viewBox="0 0 3 2" aria-hidden="true">
             <rect width="1" height="2" fill="#2440a8" />
