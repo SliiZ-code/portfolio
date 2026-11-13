@@ -66,7 +66,7 @@
       "model": "claude-haiku-5-5"
     },
     "26e5b44ac115322031ede7107b2fcec2fa8bf9df40c8fa72b4700046137dd96a": {
-      "en": "Languages",
+      "en": "Programming languages",
       "model": "claude-haiku-5-5"
     },
     "2a3450d2f7f2a940a97cafe4d3592cced714b111b603fd7dc6cd2f08cdf25428": {
@@ -205,6 +205,10 @@
       "en": "Worldwide Weather Watcher",
       "model": "reviewed-previous-en"
     },
+    "69824d3b0e70ca6aaa0da1613b65fd914c442bf1f7ad1bb22bcdfbdfe1a05e39": {
+      "en": "References",
+      "model": "claude-haiku-5-5"
+    },
     "6aa4f47bafe5d669fb6a219e4d5fff775872bcef28dd7e9356415dbe1e29443d": {
       "en": "BB8",
       "model": "reviewed-previous-en"
@@ -223,6 +227,10 @@
     },
     "803e1610287cab9c730764316316cd0dbf6407738c81584c321f430ca02fba83": {
       "en": "Prompt engineering",
+      "model": "claude-haiku-5-5"
+    },
+    "82b2eb07aaea1da81684fdbaf171f0ef11c109a086a1040e84851d67ad01856e": {
+      "en": "Publications",
       "model": "claude-haiku-5-5"
     },
     "8aa2498738ae365d939705da96dab1effa829a876d14decbf6bb17b31d5e7358": {

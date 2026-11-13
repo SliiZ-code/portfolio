@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { mapTranslatable, needsTranslation, sha, tagsOf, translatableStrings } from '../scripts/lib/strings.mjs';
+import { mapPdfTranslatable, mapTranslatable, needsTranslation, pdfTranslatableStrings, sha, tagsOf, translatableStrings } from '../scripts/lib/strings.mjs';
 import { sanitizeResume } from '../scripts/sync-resume.mjs';
 
 const PHONE = '+33 7 98 76 54 32';
@@ -168,5 +168,111 @@ describe('sha and tagsOf', () => {
     expect(tagsOf('<p>a <a href="https://x.dev">b</a></p>')).toEqual(['<p>', '<a href="https://x.dev">', '</a>', '</p>']);
     expect(tagsOf('plain text')).toEqual([]);
     expect(tagsOf('')).toEqual([]);
+  });
+});
+
+describe('the PDF-only prose', () => {
+  const pdfRaw = {
+    basics: {
+      name: 'Julien',
+      phone: PHONE,
+      customFields: [
+        { id: 'f1', icon: 'phone', text: PHONE, link: '' },
+        { id: 'f2', icon: 'award', text: 'Permis de conduire', link: '' },
+      ],
+    },
+    customSections: [
+      {
+        id: 'c1',
+        title: 'Engagements',
+        hidden: false,
+        items: [
+          { id: 'i1', hidden: false, title: 'Bénévolat associatif', description: '<p>Aide aux devoirs</p>' },
+          { id: 'i2', hidden: true, title: 'Caché', description: '<p>Secret</p>' },
+        ],
+      },
+      { id: 'c2', title: 'Section cachée', hidden: true, items: [{ id: 'i3', hidden: false, title: 'Invisible' }] },
+    ],
+    sections: {
+      publications: {
+        title: 'Publications',
+        hidden: false,
+        items: [{ id: 'p1', hidden: false, title: 'Un article', publisher: 'Revue Machin', date: '2025', description: '<p>Résumé</p>' }],
+      },
+      references: {
+        title: 'Références',
+        hidden: false,
+        items: [{ id: 'r1', hidden: false, name: 'Marie Dupont', position: 'Responsable de stage', description: '<p>Recommande</p>' }],
+      },
+    },
+  };
+
+  it('translates the custom fields text, custom sections, publications and references, except the phone and the hidden items', () => {
+    const out = mapPdfTranslatable(pdfRaw, (text: string) => `[${text}]`, PHONE) as Record<string, any>;
+    expect(out.basics.customFields[0].text).toBe(PHONE);
+    expect(out.basics.customFields[1].text).toBe('[Permis de conduire]');
+    expect(out.customSections[0].title).toBe('[Engagements]');
+    expect(out.customSections[0].items[0].title).toBe('[Bénévolat associatif]');
+    expect(out.customSections[0].items[0].description).toBe('[<p>Aide aux devoirs</p>]');
+    expect(out.customSections[0].items[1].title).toBe('Caché');
+    expect(out.customSections[1].title).toBe('Section cachée');
+    expect(out.sections.publications.items[0]).toMatchObject({ title: '[Un article]', publisher: 'Revue Machin', date: '2025' });
+    expect(out.sections.publications.items[0].description).toBe('[<p>Résumé</p>]');
+    expect(out.sections.references.items[0].position).toBe('[Responsable de stage]');
+    expect(out.sections.references.items[0].name).toBe('Marie Dupont');
+  });
+
+  it('lists those strings for the translator, and never the phone or a hidden item', () => {
+    const list = pdfTranslatableStrings(pdfRaw, PHONE);
+    expect(list).toEqual(expect.arrayContaining(['Permis de conduire', 'Bénévolat associatif', 'Un article', 'Responsable de stage']));
+    expect(list.join('\n')).not.toContain(PHONE);
+    expect(list).not.toContain('Invisible');
+    expect(list).not.toContain('Marie Dupont');
+  });
+
+  it('keeps the site strings unchanged: publications and custom sections are not in the site list', () => {
+    const site = translatableStrings(sanitizeResume(pdfRaw)) as string[];
+    expect(site).not.toContain('Un article');
+    expect(site).not.toContain('Permis de conduire');
+  });
+});
+
+describe('hidden text never reaches the translator', () => {
+  const raw = {
+    basics: { name: 'Julien', phone: PHONE, customFields: [] },
+    summary: { title: 'Résumé', hidden: true, content: '<p>Résumé caché</p>' },
+    sections: {
+      experience: {
+        title: 'Expériences',
+        hidden: false,
+        items: [{ id: 'e1', hidden: true, company: 'X', position: 'Poste caché', description: '<p>Description cachée</p>', roles: [] }],
+      },
+      skills: { title: 'Compétences cachées', hidden: true, items: [{ id: 's1', hidden: false, name: 'Section cachée' }] },
+      projects: {
+        title: 'Projets',
+        hidden: false,
+        items: [{ id: 'p1', hidden: true, name: 'Projet hors PDF', period: '', description: '<p>Sur le site</p>' }],
+      },
+    },
+  };
+
+  it('the PDF strings hold no hidden summary, item or section', () => {
+    const list = pdfTranslatableStrings(raw, PHONE);
+    for (const hidden of ['Résumé caché', 'Poste caché', 'Description cachée', 'Compétences cachées', 'Section cachée']) {
+      expect(list).not.toContain(hidden);
+    }
+    expect(list).toContain('Expériences');
+  });
+
+  it('a hidden project stays translated as on the site: the site shows it, only the PDF hides it', () => {
+    expect(pdfTranslatableStrings(raw, PHONE)).toContain('Projet hors PDF');
+    expect(translatableStrings(sanitizeResume(raw))).toContain('Projet hors PDF');
+  });
+
+  it('the PDF copy keeps the hidden text as it is', () => {
+    const out = mapPdfTranslatable(raw, (text: string) => `[${text}]`, PHONE) as Record<string, any>;
+    expect(out.summary.content).toBe('<p>Résumé caché</p>');
+    expect(out.sections.experience.items[0].position).toBe('Poste caché');
+    expect(out.sections.skills.items[0].name).toBe('Section cachée');
   });
 });

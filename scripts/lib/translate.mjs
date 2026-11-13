@@ -26,6 +26,7 @@ const RULES = [
   '- Faithful, concise CV English: keep every fact and qualifier of the French, add nothing, drop nothing.',
   '- Do not repeat a word or an acronym the French does not repeat, and do not add an abbreviation the French does not have.',
   '- Use the usual English CV wording for headings and job titles, e.g. "Réseaux" -> "Online profiles", "Compétences" -> "Skills", "Ingénieur d\'études en alternance" -> "Work-study engineer".',
+  '- "Langages" is the skill group of programming languages (the English CV has a "Languages" section too): translate it "Programming languages". "Langues" is the spoken languages section: "Languages".',
   '- Grammar: articles and plurals must agree with the English that follows ("un stage" -> "an internship", never "a internship").',
   '- Keep these unchanged: person and company names, school names, product and technology names, network names, URLs, email addresses, numbers.',
   "- Periods and dates: translate the month names and \"aujourd'hui\" / \"aujourd’hui\" to \"present\", e.g. \"janv. 2026 – aujourd’hui\" -> \"Jan 2026 – present\".",

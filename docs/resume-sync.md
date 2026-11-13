@@ -67,6 +67,10 @@ period strings (`janv. 2026 – aujourd’hui` becomes `Jan 2026 – present`), 
 between the tags changes), skill names and keywords, language names and fluency, interests, project names
 and descriptions, volunteer organisations and certification or award titles.
 
+The English PDF also translates what only the PDF shows: publications, references (not the person's name),
+custom sections and the header's custom fields, when they are not hidden and do not hold the phone number.
+The English site data does not carry them.
+
 Never translated: person names, company and school names, emails, URLs, network names, numbers, ids.
 
 Every AI answer is checked before it is used: every key must come back as a non-empty string, and HTML
@@ -109,6 +113,19 @@ write to it or deletion of it (`protectedId`, checked below the sync, so no call
 
 Hidden projects keep their flag in the copy, so RxResume leaves them off the PDF while the site still shows
 them. Hidden sections and items are off the site and, as before, off the PDF.
+
+Each language can change the copy's metadata, and nothing else (`PDF_METADATA` in `scripts/sync-resume.mjs`):
+
+- **English**: `metadata.page.locale` is `en-US`. RxResume formats the dates and their "present" label from that
+  locale, so with the French locale the English PDF printed `janv. 2026 – Aujourd’hui`. The same locale as the
+  hand-made English resume, which fitted on one page.
+- **English**: the body line height is 1.35 (1.4 in the French resume). It keeps the English on one page,
+  where the same text with the French look ran onto a second page by three lines.
+- **French**: no override, the main resume's metadata as it is.
+
+A test walks the English copy and fails if a French string that has a translation is still there. The
+PDF-only prose above is translated with the same cache. A hidden summary, section or item is never sent to a
+provider, hidden projects excepted: the site shows those, so they were already translated.
 
 ## Running it locally
 

@@ -3,6 +3,7 @@
 // copies), so both keep exactly the same fields in English. Names, companies, schools, emails,
 // URLs, networks, numbers and ids are never listed here, so they are never translated.
 import { createHash } from 'node:crypto';
+import { holdsPhone } from './guard.mjs';
 
 /** The cache key of a French string: sha256 of its UTF-8 text. */
 export const sha = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
@@ -51,16 +52,18 @@ export const mapTranslatable = (data, fn) => {
     text(basics, 'location');
     text(basics.website, 'label');
   }
-  if (summary && typeof summary === 'object') {
+  // A hidden summary, section or item is never translated: it is off the site and the PDF, so it must not
+  // reach a provider. The one exception is a hidden project, which the site still shows (see sanitizeResume).
+  if (summary && typeof summary === 'object' && !summary.hidden) {
     text(summary, 'title');
     text(summary, 'content');
   }
   if (sections && typeof sections === 'object') {
     for (const [key, section] of Object.entries(sections)) {
-      if (!(key in ITEM_TEXT) || !section || typeof section !== 'object') continue;
+      if (!(key in ITEM_TEXT) || !section || typeof section !== 'object' || section.hidden) continue;
       text(section, 'title');
       for (const item of Array.isArray(section.items) ? section.items : []) {
-        if (!item || typeof item !== 'object') continue;
+        if (!item || typeof item !== 'object' || (item.hidden && key !== 'projects')) continue;
         for (const field of ITEM_TEXT[key]) text(item, field);
         text(item.website, 'label');
         keywords(item);
@@ -84,5 +87,62 @@ export const translatableStrings = (data) => {
     }
     return value;
   });
+  return found;
+};
+
+/**
+ * The prose the PDF shows but the site does not: publications and references (their items), custom
+ * sections and the custom fields of the header. Only the PDF copies carry them, so only they are translated
+ * from here. Hidden sections and items are off the PDF and are skipped. The phone field is never prose.
+ */
+const PDF_ONLY_ITEM_TEXT = {
+  publications: ['title', 'date', 'description'],
+  references: ['position', 'description'],
+};
+const CUSTOM_ITEM_TEXT = ['title', 'position', 'location', 'period', 'date', 'organization', 'summary', 'description'];
+
+/**
+ * The raw resume's PDF text, translated: everything `mapTranslatable` does, plus the PDF-only prose above.
+ * `phone` keeps any custom field that holds the phone number out of the translation. Returns a copy.
+ */
+export const mapPdfTranslatable = (data, fn, phone = '') => {
+  const out = mapTranslatable(data, fn);
+  const translate = (value) => (needsTranslation(value) ? fn(value) : value);
+  const text = (object, key) => {
+    if (object && typeof object === 'object' && typeof object[key] === 'string') object[key] = translate(object[key]);
+  };
+  const items = (list) => (Array.isArray(list) ? list : []).filter((item) => item && typeof item === 'object' && !item.hidden);
+
+  if (Array.isArray(out.basics?.customFields)) {
+    for (const field of out.basics.customFields) if (field && typeof field === 'object' && !holdsPhone(field, phone)) text(field, 'text');
+  }
+  for (const [key, fields] of Object.entries(PDF_ONLY_ITEM_TEXT)) {
+    const section = out.sections?.[key];
+    if (!section || typeof section !== 'object' || section.hidden) continue;
+    text(section, 'title');
+    for (const item of items(section.items)) for (const field of fields) text(item, field);
+  }
+  for (const section of items(out.customSections)) {
+    text(section, 'title');
+    for (const item of items(section.items)) for (const field of CUSTOM_ITEM_TEXT) text(item, field);
+  }
+  return out;
+};
+
+/** Every string `mapPdfTranslatable` would translate, each once. */
+export const pdfTranslatableStrings = (data, phone = '') => {
+  const seen = new Set();
+  const found = [];
+  mapPdfTranslatable(
+    data,
+    (value) => {
+      if (!seen.has(value)) {
+        seen.add(value);
+        found.push(value);
+      }
+      return value;
+    },
+    phone,
+  );
   return found;
 };

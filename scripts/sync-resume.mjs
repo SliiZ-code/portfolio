@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { assertNoPhone, assertPdf, holdsPhone, pdfHoldsPhone } from './lib/guard.mjs';
 import { createApi } from './lib/rxresume.mjs';
 import { configuredTranslators, emptyCache, parseCache, serializeCache, translateStrings } from './lib/translate.mjs';
-import { mapTranslatable, sha, translatableStrings } from './lib/strings.mjs';
+import { mapPdfTranslatable, mapTranslatable, pdfTranslatableStrings, sha, translatableStrings } from './lib/strings.mjs';
 
 // `.env` is optional: CI and shells can provide the same variables directly.
 try {
@@ -179,11 +179,27 @@ export const dataOperations = (current, target) => {
 };
 
 /**
+ * What each language's PDF copy changes on top of the main resume: the language only, the look stays the
+ * main resume's. RxResume formats the dates, and their "present" label, from `metadata.page.locale`: with the
+ * French locale the English PDF printed "janv. 2026 – Aujourd’hui" and "sept. 2028". en-US is the locale of the
+ * hand-made English resume, which fitted on one page.
+ */
+export const PDF_METADATA = { fr: {}, en: { page: { locale: 'en-US' }, typography: { body: { lineHeight: 1.35 } } } };
+
+const isPlain = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const merged = (base, overrides) =>
+  Object.entries(overrides).reduce(
+    (out, [key, value]) => ({ ...out, [key]: isPlain(value) && isPlain(out[key]) ? merged(out[key], value) : structuredClone(value) }),
+    { ...base },
+  );
+
+/**
  * What a temporary copy holds: the resume's data, whole (sections, custom sections, metadata, picture...),
  * except that `basics.phone` is empty and the custom fields that hold the phone are gone. Hidden
- * items keep their flag, so RxResume leaves them off the PDF. Pure: the input is not modified.
+ * items keep their flag, so RxResume leaves them off the PDF. `overrides` is merged into `metadata`
+ * (see PDF_METADATA). Pure: the input is not modified.
  */
-export const pdfDataFrom = (mainData) => {
+export const pdfDataFrom = (mainData, overrides = {}) => {
   const data = structuredClone(mainData && typeof mainData === 'object' ? mainData : {});
   const basics = data.basics;
   if (basics && typeof basics === 'object') {
@@ -191,6 +207,7 @@ export const pdfDataFrom = (mainData) => {
     basics.phone = '';
     if (Array.isArray(basics.customFields)) basics.customFields = basics.customFields.filter((field) => !holdsPhone(field, phone));
   }
+  if (Object.keys(overrides).length) data.metadata = merged(isPlain(data.metadata) ? data.metadata : {}, overrides);
   return data;
 };
 
@@ -218,7 +235,7 @@ export const cleanupLeftovers = async ({ api, mainId, log = console.log }) => {
  * failure is an error of its own. Refuses to touch the main resume.
  */
 export const makePdf = async ({ api, mainId, lang, source, phone, stamp, log = console.log }) => {
-  const target = pdfDataFrom(source);
+  const target = pdfDataFrom(source, PDF_METADATA[lang] ?? {});
   assertNoPhone(target, phone, 'the data for the PDF copy');
   const name = `${TEMP_PREFIX}${lang}-${stamp}`;
   const id = await api.createResume({ name, slug: name });
@@ -264,7 +281,9 @@ export const runSync = async ({ mainId, api, translators = [], cache = emptyCach
   assertNoPhone(fr, phone, 'the French site data');
 
   // the translators only see the sanitised French strings: the phone can not be in them (checked above and again before the call)
-  const translation = await translateStrings({ strings: translatableStrings(fr), cache, translators, phone, warn });
+  // the site's strings, and the PDF-only prose (publications, custom sections...) that only the English copy shows
+  const strings = [...translatableStrings(fr), ...pdfTranslatableStrings(data, phone)];
+  const translation = await translateStrings({ strings, cache, translators, phone, warn });
   const english = (text) => translation.cache.entries[sha(text)]?.en ?? text;
   const en = translation.complete ? mapTranslatable(fr, english) : null;
   if (en) assertNoPhone(en, phone, 'the English site data');
@@ -282,7 +301,7 @@ export const runSync = async ({ mainId, api, translators = [], cache = emptyCach
   }
   if (ready) {
     const jobs = [['fr', data]];
-    if (en) jobs.push(['en', mapTranslatable(data, english)]);
+    if (en) jobs.push(['en', mapPdfTranslatable(data, english, phone)]);
     for (const [lang, source] of jobs) {
       try {
         pdfs.set(lang, await makePdf({ api, mainId, lang, source, phone, stamp, log }));
