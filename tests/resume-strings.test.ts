@@ -236,3 +236,43 @@ describe('the PDF-only prose', () => {
     expect(site).not.toContain('Permis de conduire');
   });
 });
+
+describe('hidden text never reaches the translator', () => {
+  const raw = {
+    basics: { name: 'Julien', phone: PHONE, customFields: [] },
+    summary: { title: 'Résumé', hidden: true, content: '<p>Résumé caché</p>' },
+    sections: {
+      experience: {
+        title: 'Expériences',
+        hidden: false,
+        items: [{ id: 'e1', hidden: true, company: 'X', position: 'Poste caché', description: '<p>Description cachée</p>', roles: [] }],
+      },
+      skills: { title: 'Compétences cachées', hidden: true, items: [{ id: 's1', hidden: false, name: 'Section cachée' }] },
+      projects: {
+        title: 'Projets',
+        hidden: false,
+        items: [{ id: 'p1', hidden: true, name: 'Projet hors PDF', period: '', description: '<p>Sur le site</p>' }],
+      },
+    },
+  };
+
+  it('the PDF strings hold no hidden summary, item or section', () => {
+    const list = pdfTranslatableStrings(raw, PHONE);
+    for (const hidden of ['Résumé caché', 'Poste caché', 'Description cachée', 'Compétences cachées', 'Section cachée']) {
+      expect(list).not.toContain(hidden);
+    }
+    expect(list).toContain('Expériences');
+  });
+
+  it('a hidden project stays translated as on the site: the site shows it, only the PDF hides it', () => {
+    expect(pdfTranslatableStrings(raw, PHONE)).toContain('Projet hors PDF');
+    expect(translatableStrings(sanitizeResume(raw))).toContain('Projet hors PDF');
+  });
+
+  it('the PDF copy keeps the hidden text as it is', () => {
+    const out = mapPdfTranslatable(raw, (text: string) => `[${text}]`, PHONE) as Record<string, any>;
+    expect(out.summary.content).toBe('<p>Résumé caché</p>');
+    expect(out.sections.experience.items[0].position).toBe('Poste caché');
+    expect(out.sections.skills.items[0].name).toBe('Section cachée');
+  });
+});

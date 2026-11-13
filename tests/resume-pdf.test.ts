@@ -355,15 +355,19 @@ describe('per-language PDF metadata', () => {
     expect(data.metadata.page.locale).toBe('fr-FR');
   });
 
-  it('every language override is an English or French locale that the copy uses', () => {
+  it('the English locale is en-*, and the French copy has no override', () => {
     expect(PDF_METADATA.en.page.locale).toMatch(/^en-/);
     expect(PDF_METADATA.fr).toEqual({});
   });
 
-  it('adds the metadata when the main resume has none, and never modifies its input', () => {
+  it('adds the metadata when the main resume has none, and never modifies its input or the overrides', () => {
     const bare = { basics: { name: 'Julien', phone: '' } };
     const out = pdfDataFrom(bare, PDF_METADATA.en) as any;
     expect(out.metadata.page.locale).toBe('en-US');
     expect(bare).toEqual({ basics: { name: 'Julien', phone: '' } });
+    out.metadata.page.locale = 'de-DE';
+    out.metadata.typography.body.lineHeight = 2;
+    expect(PDF_METADATA.en.page.locale).toBe('en-US');
+    expect(PDF_METADATA.en.typography.body.lineHeight).toBe(1.35);
   });
 });

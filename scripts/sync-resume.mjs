@@ -189,7 +189,7 @@ export const PDF_METADATA = { fr: {}, en: { page: { locale: 'en-US' }, typograph
 const isPlain = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const merged = (base, overrides) =>
   Object.entries(overrides).reduce(
-    (out, [key, value]) => ({ ...out, [key]: isPlain(value) && isPlain(out[key]) ? merged(out[key], value) : value }),
+    (out, [key, value]) => ({ ...out, [key]: isPlain(value) && isPlain(out[key]) ? merged(out[key], value) : structuredClone(value) }),
     { ...base },
   );
 

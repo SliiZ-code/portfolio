@@ -52,16 +52,18 @@ export const mapTranslatable = (data, fn) => {
     text(basics, 'location');
     text(basics.website, 'label');
   }
-  if (summary && typeof summary === 'object') {
+  // A hidden summary, section or item is never translated: it is off the site and the PDF, so it must not
+  // reach a provider. The one exception is a hidden project, which the site still shows (see sanitizeResume).
+  if (summary && typeof summary === 'object' && !summary.hidden) {
     text(summary, 'title');
     text(summary, 'content');
   }
   if (sections && typeof sections === 'object') {
     for (const [key, section] of Object.entries(sections)) {
-      if (!(key in ITEM_TEXT) || !section || typeof section !== 'object') continue;
+      if (!(key in ITEM_TEXT) || !section || typeof section !== 'object' || section.hidden) continue;
       text(section, 'title');
       for (const item of Array.isArray(section.items) ? section.items : []) {
-        if (!item || typeof item !== 'object') continue;
+        if (!item || typeof item !== 'object' || (item.hidden && key !== 'projects')) continue;
         for (const field of ITEM_TEXT[key]) text(item, field);
         text(item.website, 'label');
         keywords(item);
@@ -121,7 +123,6 @@ export const mapPdfTranslatable = (data, fn, phone = '') => {
     for (const item of items(section.items)) for (const field of fields) text(item, field);
   }
   for (const section of items(out.customSections)) {
-    if (section.hidden) continue;
     text(section, 'title');
     for (const item of items(section.items)) for (const field of CUSTOM_ITEM_TEXT) text(item, field);
   }

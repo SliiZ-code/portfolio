@@ -123,8 +123,9 @@ Each language can change the copy's metadata, and nothing else (`PDF_METADATA` i
   where the same text with the French look ran onto a second page by three lines.
 - **French**: no override, the main resume's metadata as it is.
 
-The English copy is checked before it is sent: a test walks it and fails if a French string that has a
-translation is still there. The PDF-only prose above is translated with the same cache.
+A test walks the English copy and fails if a French string that has a translation is still there. The
+PDF-only prose above is translated with the same cache. A hidden summary, section or item is never sent to a
+provider, hidden projects excepted: the site shows those, so they were already translated.
 
 ## Running it locally
 
