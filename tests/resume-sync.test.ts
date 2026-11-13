@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createApi } from '../scripts/lib/rxresume.mjs';
 import { parseCache } from '../scripts/lib/translate.mjs';
+import { sha } from '../scripts/lib/strings.mjs';
 import { cvPdfFile, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
 import { cvPdfPath } from '../src/lib/cv-pdf';
 import { fakeRxResume } from './rxresume-fake';
@@ -246,5 +247,57 @@ describe('resume id and file names', () => {
   it('uses the same PDF file names as the site', () => {
     expect(cvPdfPath('fr', (file) => file === cvPdfFile('fr'))).toBe(`/cv/${cvPdfFile('fr')}`);
     expect(cvPdfPath('en', () => false)).toBe('');
+  });
+});
+
+/** Every string of a value, nested. */
+const allStrings = (value: unknown): string[] => {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(allStrings);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(allStrings);
+  return [];
+};
+
+/**
+ * The French source strings that a copy still holds: a string whose French text has a translation in the
+ * cache, unless the translation is the same text. An empty list means the copy is fully English.
+ */
+const frenchLeftovers = (copy: unknown, entries: Record<string, { en: string }>) =>
+  allStrings(copy).filter((text) => {
+    const hit = entries[sha(text)];
+    return Boolean(hit) && hit.en !== text;
+  });
+
+/** The data a copy holds, rebuilt from the JSON Patch that filled it. */
+const copyFromPatches = (calls: { method: string; body?: any }[]) =>
+  calls
+    .filter((call) => call.method === 'PATCH')
+    .reduce<Record<string, unknown>>((data, call) => {
+      for (const op of call.body.operations as { op: string; path: string; value?: unknown }[]) {
+        if (op.op === 'remove') delete data[op.path.slice(1)];
+        else data[op.path.slice(1)] = op.value;
+      }
+      return data;
+    }, {});
+
+describe('runSync: the English PDF copy is fully English', () => {
+  it('has no French string left that the cache translates, and is in en-US', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const { provider } = fakeTranslator();
+    const result = await runWith(fake, [provider]);
+    const enCopy = copyFromPatches(fake.calls.filter((call) => call.method === 'PATCH' && JSON.stringify(call.body).includes('"en-US"')));
+    expect(Object.keys(enCopy).length).toBeGreaterThan(0);
+    expect((enCopy.metadata as any).page.locale).toBe('en-US');
+    expect(allStrings(enCopy).some((text) => text.startsWith('[en] '))).toBe(true);
+    expect(frenchLeftovers(enCopy, result.cache.entries)).toEqual([]);
+  });
+
+  it('the walker does catch a French period that the copy kept, so the test is not vacuous', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const { provider } = fakeTranslator();
+    const result = await runWith(fake, [provider]);
+    const leaked = { sections: { experience: { items: [{ period: 'janv. 2026 – Aujourd’hui' }] } } };
+    const entries = { ...result.cache.entries, [sha('janv. 2026 – Aujourd’hui')]: { en: 'Jan 2026 – present', model: 'x' } };
+    expect(frenchLeftovers(leaked, entries)).toEqual(['janv. 2026 – Aujourd’hui']);
   });
 });

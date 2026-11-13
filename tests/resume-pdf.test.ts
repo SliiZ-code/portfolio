@@ -2,7 +2,7 @@ import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { createApi } from '../scripts/lib/rxresume.mjs';
 import { assertPdf, assertNoPhone, holdsPhone, pdfHoldsPhone } from '../scripts/lib/guard.mjs';
-import { cleanupLeftovers, dataOperations, makePdf, pdfDataFrom } from '../scripts/sync-resume.mjs';
+import { cleanupLeftovers, dataOperations, makePdf, PDF_METADATA, pdfDataFrom } from '../scripts/sync-resume.mjs';
 import { fakePdf, fakeRxResume } from './rxresume-fake';
 
 const PHONE = '+33 7 98 76 54 32';
@@ -331,5 +331,39 @@ describe('cleanupLeftovers', () => {
 describe('fake PDF sanity', () => {
   it('carries the data text, so the fake shows a leak the way RxResume would', () => {
     expect(new TextDecoder().decode(fakePdf({ phone: PHONE }))).toContain(PHONE);
+  });
+});
+
+describe('per-language PDF metadata', () => {
+  const page = { gapX: 4, gapY: 6, marginX: 18, format: 'a4', locale: 'fr-FR', dateFormat: 'short' };
+  const body = { fontFamily: 'Lato', fontWeights: ['400'], fontSize: 9, lineHeight: 1.4 };
+  const data = { basics: { name: 'Julien', phone: '' }, metadata: { template: 'gengar', page, typography: { body } } };
+
+  it('the English copy is in en-US, with the same look otherwise', () => {
+    const out = pdfDataFrom(data, PDF_METADATA.en) as any;
+    expect(out.metadata.page.locale).toBe('en-US');
+    expect(out.metadata.page.marginX).toBe(18);
+    expect(out.metadata.page.dateFormat).toBe('short');
+    expect(out.metadata.template).toBe('gengar');
+    expect(out.metadata.typography.body).toEqual({ ...body, lineHeight: 1.35 });
+    expect(out.metadata.typography.heading).toBeUndefined();
+  });
+
+  it('the French copy keeps the main resume metadata as it is, and no override is applied when none is given', () => {
+    expect(pdfDataFrom(data, PDF_METADATA.fr)).toEqual(data);
+    expect(pdfDataFrom(data)).toEqual(data);
+    expect(data.metadata.page.locale).toBe('fr-FR');
+  });
+
+  it('every language override is an English or French locale that the copy uses', () => {
+    expect(PDF_METADATA.en.page.locale).toMatch(/^en-/);
+    expect(PDF_METADATA.fr).toEqual({});
+  });
+
+  it('adds the metadata when the main resume has none, and never modifies its input', () => {
+    const bare = { basics: { name: 'Julien', phone: '' } };
+    const out = pdfDataFrom(bare, PDF_METADATA.en) as any;
+    expect(out.metadata.page.locale).toBe('en-US');
+    expect(bare).toEqual({ basics: { name: 'Julien', phone: '' } });
   });
 });

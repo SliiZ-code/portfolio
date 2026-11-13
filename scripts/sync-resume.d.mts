@@ -6,7 +6,8 @@ export function dataOperations(
   current: unknown,
   target: Record<string, unknown>,
 ): ({ op: 'add'; path: string; value: unknown } | { op: 'remove'; path: string })[];
-export function pdfDataFrom(mainData: unknown): Record<string, any>;
+export const PDF_METADATA: Record<string, Record<string, any>>;
+export function pdfDataFrom(mainData: unknown, overrides?: Record<string, unknown>): Record<string, any>;
 export function resumeIdFrom(env: Record<string, string | undefined>): string;
 export function cleanupLeftovers(options: { api: any; mainId: string; log?: (message: string) => void }): Promise<number>;
 export function makePdf(options: {
