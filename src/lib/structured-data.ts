@@ -1,16 +1,7 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { site } from '../data/site';
-import type { Lang, Resume } from './resume';
+import type { Resume } from './resume';
 
-export interface StructuredDataOptions {
-  /** Optional custom exists function for checking files in public/ (defaults to build-time filesystem check). */
-  exists?: (file: string) => boolean;
-  /** Optional base URL override (defaults to site.url). */
-  baseUrl?: string;
-}
-
-export interface PersonEntity {
+interface PersonEntity {
   '@type': 'Person';
   '@id': string;
   name: string;
@@ -23,7 +14,7 @@ export interface PersonEntity {
   sameAs?: string[];
 }
 
-export interface WebSiteEntity {
+interface WebSiteEntity {
   '@type': 'WebSite';
   '@id': string;
   url: string;
@@ -33,137 +24,58 @@ export interface WebSiteEntity {
   author: { '@id': string };
 }
 
-export interface ProfilePageEntity {
+interface ProfilePageEntity {
   '@type': 'ProfilePage';
+  '@id': string;
   url: string;
-  inLanguage: Lang;
+  name: string;
+  inLanguage: string;
   mainEntity: { '@id': string };
   isPartOf: { '@id': string };
 }
 
-export type StructuredDataEntity = PersonEntity | WebSiteEntity | ProfilePageEntity;
-
 export interface StructuredDataGraph {
   '@context': 'https://schema.org';
-  '@graph': StructuredDataEntity[];
+  '@graph': (PersonEntity | WebSiteEntity | ProfilePageEntity)[];
 }
 
-const PUBLIC_DIR = join(process.cwd(), 'public');
-const inPublicDir = (file: string): boolean => existsSync(join(PUBLIC_DIR, file));
+/** "Julien Petit--Colboc" -> "Julien Petit-Colboc" and "Julien Petit Colboc", the spellings people type. */
+const alternateNames = (name: string): string[] =>
+  [name.replace(/--/g, '-'), name.replace(/--/g, ' ')].filter((variant) => variant !== name);
 
-/** Candidates for personal photos in public/. */
-const PHOTO_CANDIDATES = [
-  'photo.jpg',
-  'photo.jpeg',
-  'photo.png',
-  'photo.webp',
-  'portrait.jpg',
-  'portrait.jpeg',
-  'portrait.png',
-  'portrait.webp',
-  'avatar.jpg',
-  'avatar.jpeg',
-  'avatar.png',
-  'avatar.webp',
-  'profile.jpg',
-  'profile.jpeg',
-  'profile.png',
-  'profile.webp',
-  'julien.jpg',
-  'julien.jpeg',
-  'julien.png',
-  'julien.webp',
-];
-
-/** Derives alternate name spellings (e.g. replacing "--" with "-" and " "). */
-export const deriveAlternateNames = (name: string): string[] => {
-  if (!name.includes('--')) return [];
-  const withSingleHyphen = name.replace(/--/g, '-');
-  const withSpace = name.replace(/--/g, ' ');
-  const variants = [withSingleHyphen, withSpace].filter((variant) => variant !== name);
-  return Array.from(new Set(variants));
-};
-
-/** Resolves the absolute URL of the photo or fallback og.png. */
-export const resolvePersonImage = (
-  baseUrl: string,
-  exists: (file: string) => boolean = inPublicDir
-): string => {
-  const photo = PHOTO_CANDIDATES.find((candidate) => exists(candidate));
-  const cleanBase = baseUrl.replace(/\/+$/, '');
-  return photo ? `${cleanBase}/${photo}` : `${cleanBase}/og.png`;
-};
-
-export type BuildStructuredDataInput =
-  | [resume: Resume, lang: Lang, pageUrl: string, options?: StructuredDataOptions]
-  | [params: { resume: Resume; lang: Lang; pageUrl: string; options?: StructuredDataOptions }];
+const isHttpUrl = (url: string): boolean => /^https?:\/\//.test(url);
 
 /**
- * Builds Schema.org JSON-LD structured data with an @graph holding Person, WebSite, and ProfilePage.
- * Never includes private data such as email, phone, or postal address.
+ * Schema.org JSON-LD for one page: the Person, the WebSite and the page as a ProfilePage.
+ * Built from the resume and the site only. Never email, phone, address or location.
  */
-export function buildStructuredData(
-  resumeOrParams: Resume | { resume: Resume; lang: Lang; pageUrl: string; options?: StructuredDataOptions },
-  maybeLang?: Lang,
-  maybePageUrl?: string,
-  maybeOptions?: StructuredDataOptions
-): StructuredDataGraph {
-  let resume: Resume;
-  let lang: Lang;
-  let pageUrl: string;
-  let options: StructuredDataOptions | undefined;
+export function buildStructuredData(resume: Resume, pageUrl: string): StructuredDataGraph {
+  const root = `${site.url}/`;
+  const personId = `${root}#person`;
+  const websiteId = `${root}#website`;
 
-  if (typeof maybeLang === 'string' && typeof maybePageUrl === 'string') {
-    resume = resumeOrParams as Resume;
-    lang = maybeLang;
-    pageUrl = maybePageUrl;
-    options = maybeOptions;
-  } else {
-    const params = resumeOrParams as {
-      resume: Resume;
-      lang: Lang;
-      pageUrl: string;
-      options?: StructuredDataOptions;
-    };
-    resume = params.resume;
-    lang = params.lang;
-    pageUrl = params.pageUrl;
-    options = params.options;
-  }
-
-  const rawBase = options?.baseUrl || site.url || 'https://sliiz.com';
-  const baseUrl = rawBase.replace(/\/+$/, '');
-  const rootUrl = `${baseUrl}/`;
-  const exists = options?.exists ?? inPublicDir;
-
-  const [givenName, ...familyParts] = (resume.name || '').split(' ');
-  const familyName = familyParts.length > 0 ? familyParts.join(' ') : undefined;
-  const alternateNames = deriveAlternateNames(resume.name || '');
-
-  const personId = `${baseUrl}/#person`;
-  const websiteId = `${baseUrl}/#website`;
-
-  const profiles = (resume.profiles || [])
-    .map((profile) => profile.url)
-    .filter((url) => typeof url === 'string' && url.length > 0);
+  const [givenName, ...familyNameParts] = resume.name.split(' ');
+  const familyName = familyNameParts.join(' ');
+  const alternates = alternateNames(resume.name);
+  const sameAs = resume.profiles.map((profile) => profile.url).filter(isHttpUrl);
 
   const person: PersonEntity = {
     '@type': 'Person',
     '@id': personId,
     name: resume.name,
-    ...(alternateNames.length > 0 ? { alternateName: alternateNames } : {}),
+    ...(alternates.length > 0 ? { alternateName: alternates } : {}),
     ...(givenName ? { givenName } : {}),
     ...(familyName ? { familyName } : {}),
     ...(resume.headline ? { jobTitle: resume.headline } : {}),
-    url: rootUrl,
-    image: resolvePersonImage(baseUrl, exists),
-    ...(profiles.length > 0 ? { sameAs: profiles } : {}),
+    url: root,
+    image: `${root}og.png`,
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
 
   const website: WebSiteEntity = {
     '@type': 'WebSite',
     '@id': websiteId,
-    url: rootUrl,
+    url: root,
     name: resume.name,
     inLanguage: ['fr', 'en'],
     publisher: { '@id': personId },
@@ -172,8 +84,10 @@ export function buildStructuredData(
 
   const profilePage: ProfilePageEntity = {
     '@type': 'ProfilePage',
+    '@id': `${pageUrl}#profilepage`,
     url: pageUrl,
-    inLanguage: lang,
+    name: resume.name,
+    inLanguage: resume.lang,
     mainEntity: { '@id': personId },
     isPartOf: { '@id': websiteId },
   };
@@ -184,9 +98,12 @@ export function buildStructuredData(
   };
 }
 
-/**
- * Serializes data to JSON and escapes `<` characters to prevent breaking out of `<script>` tags.
- */
-export const serializeJsonLd = (data: unknown): string => {
-  return JSON.stringify(data).replace(/</g, '\\u003c');
-};
+/** Characters that are valid in JSON but can end a <script> block or break a JS parser. */
+const UNSAFE_IN_SCRIPT = /[<>&\u2028\u2029]/g;
+
+/** JSON for a <script type="application/ld+json">: the unsafe characters become \uXXXX escapes, which JSON.parse reads back. */
+export const serializeJsonLd = (data: unknown): string =>
+  JSON.stringify(data).replace(
+    UNSAFE_IN_SCRIPT,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`
+  );

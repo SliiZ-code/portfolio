@@ -1,150 +1,162 @@
 import { describe, expect, it } from 'vitest';
-import { getResume } from '../src/lib/resume';
+import { site } from '../src/data/site';
+import { getResume, parseResume, type Resume } from '../src/lib/resume';
 import {
   buildStructuredData,
   serializeJsonLd,
   type StructuredDataGraph,
 } from '../src/lib/structured-data';
 
-const findEntity = <T = any>(graph: StructuredDataGraph, type: string): T => {
+const root = `${site.url}/`;
+const fr = getResume('fr');
+const en = getResume('en');
+
+const findEntity = (graph: StructuredDataGraph, type: string): Record<string, any> => {
   const item = graph['@graph'].find((entry) => entry['@type'] === type);
   if (!item) throw new Error(`Entity of type ${type} not found in @graph`);
-  return item as T;
+  return item;
 };
 
-describe('structured data (JSON-LD)', () => {
-  const resumeFr = getResume('fr');
-  const resumeEn = getResume('en');
-  const baseUrl = 'https://sliiz.com';
+/** A resume with a private email and location, so tests can prove neither reaches the output. */
+const resumeWith = (name = 'Ada Byron--Lovelace', sections: Record<string, unknown> = {}): Resume =>
+  parseResume(
+    {
+      basics: {
+        name,
+        headline: 'Engineer',
+        email: 'ada@example.com',
+        location: 'London',
+        website: { url: '', label: '' },
+      },
+      sections,
+    },
+    'fr'
+  );
 
-  it('builds a JSON-LD object with an @graph containing Person, WebSite, and ProfilePage', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
+describe('buildStructuredData', () => {
+  it('graph holds exactly a Person, a WebSite and the ProfilePage of the page', () => {
+    const data = buildStructuredData(fr, root);
+
     expect(data['@context']).toBe('https://schema.org');
-    expect(Array.isArray(data['@graph'])).toBe(true);
-
-    const types = data['@graph'].map((entry) => entry['@type']);
-    expect(types).toContain('Person');
-    expect(types).toContain('WebSite');
-    expect(types).toContain('ProfilePage');
+    expect(data['@graph'].map((entry) => entry['@type'])).toEqual(['Person', 'WebSite', 'ProfilePage']);
   });
 
-  it('Person has the exact name, alternateName variants, and given/family names', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
-    const person = findEntity(data, 'Person');
+  it('Person carries the resume name, the root url and the og image', () => {
+    const person = findEntity(buildStructuredData(fr, root), 'Person');
 
-    expect(person['@id']).toBe('https://sliiz.com/#person');
-    expect(person.name).toBe('Julien Petit--Colboc');
-    expect(person.alternateName).toEqual(['Julien Petit-Colboc', 'Julien Petit Colboc']);
+    expect(person['@id']).toBe(`${root}#person`);
+    expect(person.name).toBe(fr.name);
+    expect(person.url).toBe(root);
+    expect(person.image).toBe(`${root}og.png`);
+  });
+
+  it('Person splits the name into given and family name', () => {
+    const person = findEntity(buildStructuredData(fr, root), 'Person');
+
     expect(person.givenName).toBe('Julien');
     expect(person.familyName).toBe('Petit--Colboc');
-    expect(person.url).toBe('https://sliiz.com/');
   });
 
-  it('Person jobTitle reflects the resume headline per language', () => {
-    const frData = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
-    const enData = buildStructuredData(resumeEn, 'en', `${baseUrl}/en/`);
+  it('alternateName spells a "--" name with a single hyphen and with a space', () => {
+    const person = findEntity(buildStructuredData(resumeWith(), root), 'Person');
 
-    const personFr = findEntity(frData, 'Person');
-    const personEn = findEntity(enData, 'Person');
-
-    expect(personFr.jobTitle).toBe(resumeFr.headline);
-    expect(personEn.jobTitle).toBe(resumeEn.headline);
+    expect(person.alternateName).toEqual(['Ada Byron-Lovelace', 'Ada Byron Lovelace']);
   });
 
-  it('sameAs contains the GitHub and LinkedIn URLs from the resume', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
-    const person = findEntity(data, 'Person');
+  it('has no alternateName when the name has no "--"', () => {
+    const resume = resumeWith('Ada Lovelace');
+    const person = findEntity(buildStructuredData(resume, root), 'Person');
 
+    expect(person).not.toHaveProperty('alternateName');
+  });
+
+  it('jobTitle and inLanguage follow the resume language', () => {
+    const dataFr = buildStructuredData(fr, root);
+    const dataEn = buildStructuredData(en, `${site.url}/en/`);
+
+    expect(findEntity(dataFr, 'Person').jobTitle).toBe(fr.headline);
+    expect(findEntity(dataEn, 'Person').jobTitle).toBe(en.headline);
+    expect(findEntity(dataFr, 'ProfilePage').inLanguage).toBe('fr');
+    expect(findEntity(dataEn, 'ProfilePage').inLanguage).toBe('en');
+  });
+
+  it('sameAs is the public profile links of the resume', () => {
+    const person = findEntity(buildStructuredData(fr, root), 'Person');
+
+    expect(person.sameAs).toEqual(fr.profiles.map((profile) => profile.url));
     expect(person.sameAs).toContain('https://github.com/SliiZ-code');
-    expect(person.sameAs).toContain('https://www.linkedin.com/in/julien-petit-colboc/');
   });
 
-  it('image defaults to og.png when no photo is present in public/', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`, {
-      exists: () => false,
-    });
-    const person = findEntity(data, 'Person');
-    expect(person.image).toBe('https://sliiz.com/og.png');
-  });
-
-  it('image uses existing photo in public/ when present', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`, {
-      exists: (file: string) => file === 'portrait.jpg',
-    });
-    const person = findEntity(data, 'Person');
-    expect(person.image).toBe('https://sliiz.com/portrait.jpg');
-  });
-
-  it('WebSite has the required properties and references the Person as publisher/author', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
-    const website = findEntity(data, 'WebSite');
-
-    expect(website['@id']).toBe('https://sliiz.com/#website');
-    expect(website.url).toBe('https://sliiz.com/');
-    expect(website.name).toBe('Julien Petit--Colboc');
-    expect(website.inLanguage).toEqual(['fr', 'en']);
-    expect(website.publisher).toEqual({ '@id': 'https://sliiz.com/#person' });
-    expect(website.author).toEqual({ '@id': 'https://sliiz.com/#person' });
-  });
-
-  it('ProfilePage url and inLanguage match the arguments', () => {
-    const dataFr = buildStructuredData(resumeFr, 'fr', `${baseUrl}/cv/`);
-    const profileFr = findEntity(dataFr, 'ProfilePage');
-
-    expect(profileFr.url).toBe('https://sliiz.com/cv/');
-    expect(profileFr.inLanguage).toBe('fr');
-    expect(profileFr.mainEntity).toEqual({ '@id': 'https://sliiz.com/#person' });
-    expect(profileFr.isPartOf).toEqual({ '@id': 'https://sliiz.com/#website' });
-
-    const dataEn = buildStructuredData(resumeEn, 'en', `${baseUrl}/en/`);
-    const profileEn = findEntity(dataEn, 'ProfilePage');
-
-    expect(profileEn.url).toBe('https://sliiz.com/en/');
-    expect(profileEn.inLanguage).toBe('en');
-  });
-
-  it('contains no email, telephone, or address keys anywhere in the output', () => {
-    const data = buildStructuredData(resumeFr, 'fr', `${baseUrl}/`);
-
-    const collectKeys = (obj: unknown, keys: string[] = []): string[] => {
-      if (!obj || typeof obj !== 'object') return keys;
-      if (Array.isArray(obj)) {
-        for (const item of obj) collectKeys(item, keys);
-        return keys;
-      }
-      for (const [key, value] of Object.entries(obj)) {
-        keys.push(key);
-        collectKeys(value, keys);
-      }
-      return keys;
-    };
-
-    const forbidden = ['email', 'telephone', 'phone', 'address'];
-    const allKeys = collectKeys(data).map((k) => k.toLowerCase());
-
-    for (const term of forbidden) {
-      expect(allKeys).not.toContain(term);
-    }
-
-    const serialized = JSON.stringify(data);
-    expect(serialized).not.toContain(resumeFr.email);
-  });
-
-  it('serializer escapes < so JSON cannot break out of script tags', () => {
-    const payload = {
-      note: '</script><script>alert("xss")</script>',
-      nested: {
-        tag: '<div class="test">content</div>',
+  it('sameAs keeps only http(s) links: no mailto, tel or relative link, and no hidden profile', () => {
+    const resume = resumeWith('Ada Byron--Lovelace', {
+      profiles: {
+        title: 'Profiles',
+        hidden: false,
+        items: [
+          { id: 'a', hidden: false, network: 'GitHub', username: 'ada', website: { url: 'https://github.com/ada' } },
+          { id: 'b', hidden: true, network: 'X', username: 'ada', website: { url: 'https://x.com/ada' } },
+          { id: 'c', hidden: false, network: 'Mail', username: '', website: { url: 'mailto:ada@example.com' } },
+          { id: 'd', hidden: false, network: 'Phone', username: '', website: { url: 'tel:+33600000000' } },
+          { id: 'e', hidden: false, network: 'Local', username: '', website: { url: '/cv/' } },
+        ],
       },
+    });
+    const person = findEntity(buildStructuredData(resume, root), 'Person');
+
+    expect(person.sameAs).toEqual(['https://github.com/ada']);
+  });
+
+  it('WebSite is the site, in both languages, with the Person as publisher and author', () => {
+    const website = findEntity(buildStructuredData(fr, root), 'WebSite');
+
+    expect(website['@id']).toBe(`${root}#website`);
+    expect(website.url).toBe(root);
+    expect(website.name).toBe(fr.name);
+    expect(website.inLanguage).toEqual(['fr', 'en']);
+    expect(website.publisher).toEqual({ '@id': `${root}#person` });
+    expect(website.author).toEqual({ '@id': `${root}#person` });
+  });
+
+  it('ProfilePage has its own @id and name and points at the page it describes', () => {
+    const pageUrl = `${root}cv/`;
+    const profile = findEntity(buildStructuredData(fr, pageUrl), 'ProfilePage');
+
+    expect(profile['@id']).toBe(`${pageUrl}#profilepage`);
+    expect(profile.url).toBe(pageUrl);
+    expect(profile.name).toBe(fr.name);
+    expect(profile.mainEntity).toEqual({ '@id': `${root}#person` });
+    expect(profile.isPartOf).toEqual({ '@id': `${root}#website` });
+  });
+
+  it('never outputs an email, phone, address or location', () => {
+    const resume = resumeWith();
+    const text = JSON.stringify(buildStructuredData(resume, root));
+
+    expect(text).not.toContain('ada@example.com');
+    expect(text).not.toContain('London');
+    expect(text).not.toContain(fr.email);
+    expect(text).not.toContain(fr.location);
+    expect(text).not.toMatch(/"(email|telephone|phone|address|location)"/);
+  });
+});
+
+describe('serializeJsonLd', () => {
+  it('escapes < > & and the line separators so the block cannot be broken out of', () => {
+    const payload = {
+      note: '</script><script>alert("xss")</script> a & b > c \u2028 \u2029',
+      nested: { tag: '<!-- <div class="x">content</div> -->' },
     };
 
     const serialized = serializeJsonLd(payload);
-    expect(serialized).not.toContain('<');
-    expect(serialized).toContain('\\u003c/script');
-    expect(serialized).toContain('\\u003cscript');
 
-    // JSON.parse correctly unescapes it
-    const parsed = JSON.parse(serialized);
-    expect(parsed).toEqual(payload);
+    expect(serialized).not.toMatch(/[<>&\u2028\u2029]/);
+    expect(serialized).toContain('\\u003c/script');
+    expect(JSON.parse(serialized)).toEqual(payload);
+  });
+
+  it('keeps the real graph parseable after escaping', () => {
+    const data = buildStructuredData(fr, root);
+
+    expect(JSON.parse(serializeJsonLd(data))).toEqual(data);
   });
 });
