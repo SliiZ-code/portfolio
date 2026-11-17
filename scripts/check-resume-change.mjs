@@ -29,7 +29,7 @@
 // resume text, keys, tokens, the phone number, response bodies or URLs (the repository is public and Actions
 // logs are public).
 import { pathToFileURL } from 'node:url';
-import { createApi } from './lib/rxresume.mjs';
+import { CHECKER_PAUSES_MS, createApi } from './lib/rxresume.mjs';
 import { fingerprintResume } from './lib/fingerprint.mjs';
 
 const MINUTE = 60_000;
@@ -246,13 +246,22 @@ export const checkResume = async ({
   now = Date.now(),
   dryRun = false,
   log = console.log,
-  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep,
 } = {}) => {
   try {
     const config = readConfig(env, dryRun);
     const rxFetch = guard('RxResume', fetchImpl);
-    // the client retries a GET that failed transiently, and logs one line per retry
-    const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl: rxFetch, protectedId: config.mainId, timeoutMs: REQUEST_TIMEOUT_MS, sleep, log });
+    // the client retries a GET that failed transiently (short schedule), and logs one line per retry
+    const api = createApi({
+      baseUrl: config.rxUrl,
+      key: config.key,
+      fetchImpl: rxFetch,
+      protectedId: config.mainId,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      retryPausesMs: CHECKER_PAUSES_MS,
+      sleep,
+      log,
+    });
     const master = await api.getResume(config.mainId);
     const masterFingerprint = fingerprintResume(master, config.key);
     const live = await liveFingerprint({ siteUrl: config.siteUrl, fetchImpl, now, log });

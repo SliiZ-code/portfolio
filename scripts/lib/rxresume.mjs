@@ -75,7 +75,7 @@ export const createApi = ({
       // an injected fetch can say whether its error is worth a retry (the checker's guard does); `false` is final
       if (error?.transient === false) throw error;
       // an error with a `transient` flag is the checker's ServiceError: its `detail` is safe to log, its message repeats the label
-      const reason = typeof error?.transient === 'boolean' ? (error.detail ?? error.message) : failureName(error);
+      const reason = typeof error?.transient === 'boolean' ? error.detail : failureName(error);
       return { ok: false, error, reason };
     }
     if (!response.ok) {
