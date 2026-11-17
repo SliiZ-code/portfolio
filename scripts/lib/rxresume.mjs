@@ -8,14 +8,17 @@
 //   POST   /documents/purge              {type: "resume", id}: deletes a resume that is in Trash, for good
 // Every request sends the key in `x-api-key`, never follows a redirect and times out.
 //
-// Retries (docs/resume-sync.md, "Retries"): up to three attempts, pauses of 2 s then 5 s, or the Retry-After
-// header (capped at 30 s). A 401 or 429 means the request was refused before it was processed, so it is retried
-// for every method. A GET is also retried on 408, 5xx, a network error or a timeout. Nothing else is retried,
-// so a create, a patch or a delete that may already have run is never run twice.
+// Retries (docs/resume-sync.md, "Retries"): the pauses before each retry come from `retryPausesMs` (the build
+// waits longer than the checker), or from the Retry-After header (capped at 30 s). A 401 or 429 means the request
+// was refused before it was processed, so it is retried for every method. A GET is also retried on 408, 5xx, a
+// network error or a timeout. Nothing else is retried, so a create, a patch or a delete that may already have run
+// is never run twice.
 
 const API = '/api/openapi';
-const MAX_ATTEMPTS = 3;
-const BACKOFF_MS = [2_000, 5_000];
+/** The checker's schedule: three attempts, about 7 s in all. It runs every 15 minutes and tries again then. */
+export const CHECKER_PAUSES_MS = [2_000, 5_000];
+/** The build's schedule: five attempts, about 52 s in all, enough for a refusal that lasts about a minute. */
+export const BUILD_PAUSES_MS = [2_000, 5_000, 15_000, 30_000];
 const RETRY_AFTER_CAP_MS = 30_000;
 
 const pauseFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,6 +50,7 @@ const failureName = (error) => (error?.name === 'TimeoutError' || error?.name ==
 /**
  * `protectedId` is the main resume. This client never writes to it and never deletes it, whatever the
  * caller asks: the check sits here, below every caller, and is what keeps the main resume safe.
+ * `retryPausesMs` is the schedule of retries (attempts are one more than its length; default: the checker's).
  * `sleep` and `log` are injectable so tests run without waiting.
  */
 export const createApi = ({
@@ -55,6 +59,7 @@ export const createApi = ({
   fetchImpl = fetch,
   protectedId = '',
   timeoutMs: defaultTimeoutMs = 30_000,
+  retryPausesMs = CHECKER_PAUSES_MS,
   sleep = pauseFor,
   log = console.log,
 }) => {
@@ -93,18 +98,19 @@ export const createApi = ({
       redirect: 'error',
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     };
+    const attemptsAllowed = retryPausesMs.length + 1;
     for (let attempts = 1; ; attempts += 1) {
       const outcome = await tryOnce(label, url, init, timeoutMs, read);
       if (outcome.ok) return outcome.value;
       // a failure with no status is a network error or a timeout: only a GET is safe to repeat
       const again = outcome.status === undefined ? method === 'GET' : retriable(outcome.status, method);
-      if (!again || attempts >= MAX_ATTEMPTS) {
+      if (!again || attempts >= attemptsAllowed) {
         // the checker's own errors keep their transient flag: that classification is its contract
         if (outcome.error && typeof outcome.error.transient === 'boolean') throw outcome.error;
         throw new Error(`${label}: ${outcome.reason}`);
       }
-      const pause = retryAfterMs(outcome.retryAfter) ?? BACKOFF_MS[attempts - 1];
-      log(`${label}: ${outcome.reason}, attempt ${attempts} of ${MAX_ATTEMPTS} failed, retrying in ${pause} ms`);
+      const pause = retryAfterMs(outcome.retryAfter) ?? retryPausesMs[attempts - 1];
+      log(`${label}: ${outcome.reason}, attempt ${attempts} of ${attemptsAllowed} failed, retrying in ${pause} ms`);
       await sleep(pause);
     }
   };

@@ -9,6 +9,14 @@ export function dataOperations(
 export const PDF_METADATA: Record<string, Record<string, any>>;
 export function pdfDataFrom(mainData: unknown, overrides?: Record<string, unknown>): Record<string, any>;
 export function resumeIdFrom(env: Record<string, string | undefined>): string;
+export function buildApi(options: {
+  baseUrl: string;
+  key: string;
+  mainId: string;
+  fetchImpl?: typeof fetch;
+  sleep?: (ms: number) => Promise<void>;
+  log?: (line: string) => void;
+}): any;
 export function cleanupLeftovers(options: { api: any; mainId: string; log?: (message: string) => void }): Promise<number>;
 export function makePdf(options: {
   api: any;

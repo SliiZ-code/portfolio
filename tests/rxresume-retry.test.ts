@@ -151,4 +151,72 @@ describe('RxResume client: non-idempotent requests', () => {
     await expect(api.patchResume(RESUME_ID, [{ op: 'add', path: '/summary', value: {} }])).rejects.toThrow(/HTTP 503/);
     expect(calls).toHaveLength(1);
   });
+
+  it('retries a PATCH that answers 401, which means it was not processed, then succeeds', async () => {
+    const { fetchImpl, calls } = scripted([401, { body: `{"id":"${RESUME_ID}"}` }]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log, protectedId: 'main-fr' });
+    await expect(api.patchResume(RESUME_ID, [{ op: 'add', path: '/summary', value: {} }])).resolves.toEqual({ id: RESUME_ID });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('does not retry the trash (DELETE) on a 503, so nothing is purged after it', async () => {
+    const { fetchImpl, calls } = scripted([503]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log });
+    await expect(api.removeResume(RESUME_ID)).rejects.toThrow(/^RxResume \(trash\): HTTP 503$/);
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([`DELETE /api/openapi/resumes/${RESUME_ID}`]);
+  });
+
+  it('retries the purge that answers 429, without repeating the trash', async () => {
+    const { fetchImpl, calls } = scripted([{ body: '{}' }, 429, { body: '{}' }]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log });
+    await expect(api.removeResume(RESUME_ID)).resolves.toBeUndefined();
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `DELETE /api/openapi/resumes/${RESUME_ID}`,
+      'POST /api/openapi/documents/purge',
+      'POST /api/openapi/documents/purge',
+    ]);
+  });
+
+  it('does not retry the purge on a 503: the copy is in Trash and the error says so', async () => {
+    const { fetchImpl, calls } = scripted([{ body: '{}' }, 503]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log });
+    await expect(api.removeResume(RESUME_ID)).rejects.toThrow(/^RxResume \(purge\): HTTP 503$/);
+    expect(calls).toHaveLength(2);
+  });
+});
+
+describe('RxResume client: the build schedule (five attempts, about a minute)', () => {
+  // the sync passes this; the checker keeps the default (three attempts, about 7 s)
+  const BUILD_PAUSES = [2_000, 5_000, 15_000, 30_000];
+
+  it('makes five attempts, pausing 2, 5, 15 and 30 s, then gives up with the label and the status only', async () => {
+    const { fetchImpl, calls } = scripted([503, 503, 503, 503, 503]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log, retryPausesMs: BUILD_PAUSES });
+    await expect(api.listResumes()).rejects.toThrow(/^RxResume list: HTTP 503$/);
+    expect(calls).toHaveLength(5);
+    expect(r.delays).toEqual(BUILD_PAUSES);
+    expect(r.logs.at(-1)).toBe('RxResume list: HTTP 503, attempt 4 of 5 failed, retrying in 30000 ms');
+  });
+
+  it('succeeds on the fifth attempt after four 401 refusals of a valid key', async () => {
+    const { fetchImpl, calls } = scripted([401, 401, 401, 401, { body: '[]' }]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log, retryPausesMs: BUILD_PAUSES });
+    await expect(api.listResumes()).resolves.toEqual([]);
+    expect(calls).toHaveLength(5);
+    expect(r.delays).toEqual(BUILD_PAUSES);
+  });
+
+  it('still caps Retry-After at 30 s', async () => {
+    const { fetchImpl } = scripted([{ status: 503, retryAfter: '90' }, { body: '[]' }]);
+    const r = recorder();
+    const api = createApi({ baseUrl, key: KEY, fetchImpl, sleep: r.sleep, log: r.log, retryPausesMs: BUILD_PAUSES });
+    await api.listResumes();
+    expect(r.delays).toEqual([30_000]);
+  });
 });
