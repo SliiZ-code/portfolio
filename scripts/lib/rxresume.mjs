@@ -21,7 +21,8 @@ export const CHECKER_PAUSES_MS = [2_000, 5_000];
 export const BUILD_PAUSES_MS = [2_000, 5_000, 15_000, 30_000];
 const RETRY_AFTER_CAP_MS = 30_000;
 
-const pauseFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** A real pause; the checker and the sync inject their own so the tests do not wait. */
+export const pauseFor = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The pause a Retry-After header asks for, in ms and capped; null when there is no usable header. */
 const retryAfterMs = (value) => {

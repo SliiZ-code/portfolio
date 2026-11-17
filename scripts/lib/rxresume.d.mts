@@ -6,6 +6,7 @@ export interface RxApi {
   downloadPdf(id: string): Promise<Uint8Array>;
   removeResume(id: string): Promise<void>;
 }
+export function pauseFor(ms: number): Promise<void>;
 export const CHECKER_PAUSES_MS: readonly number[];
 export const BUILD_PAUSES_MS: readonly number[];
 export function createApi(options: {

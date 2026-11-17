@@ -29,7 +29,7 @@
 // resume text, keys, tokens, the phone number, response bodies or URLs (the repository is public and Actions
 // logs are public).
 import { pathToFileURL } from 'node:url';
-import { CHECKER_PAUSES_MS, createApi } from './lib/rxresume.mjs';
+import { CHECKER_PAUSES_MS, createApi, pauseFor } from './lib/rxresume.mjs';
 import { fingerprintResume } from './lib/fingerprint.mjs';
 
 const MINUTE = 60_000;
@@ -246,7 +246,7 @@ export const checkResume = async ({
   now = Date.now(),
   dryRun = false,
   log = console.log,
-  sleep,
+  sleep = pauseFor,
 } = {}) => {
   try {
     const config = readConfig(env, dryRun);
