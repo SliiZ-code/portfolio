@@ -127,15 +127,22 @@ const env = (overrides: Record<string, string | undefined> = {}): Record<string,
 
 const run = (fake: ReturnType<typeof scenario>, options: { env?: Record<string, string | undefined>; dryRun?: boolean } = {}) => {
   const lines: string[] = [];
+  const sleeps: number[] = [];
   const promise = checkResume({
     env: options.env ?? env(),
     fetchImpl: fake.fetchImpl,
     now: NOW,
     dryRun: options.dryRun ?? false,
     log: (line: string) => lines.push(line),
+    sleep: async (ms: number) => {
+      sleeps.push(ms);
+    },
   });
-  return { promise, lines };
+  return { promise, lines, sleeps };
 };
+
+/** The calls the checker made to RxResume's master resume. */
+const masterCalls = (fake: ReturnType<typeof scenario>) => fake.calls.filter((call) => call.url.startsWith(`${RX}/api/openapi/resumes/${MAIN}`));
 
 /** The master was edited an hour ago and the live site is behind: without a failure, the run deploys. */
 const behind = (overrides: Partial<World> = {}) =>
@@ -358,13 +365,32 @@ describe('checkResume: the logs', () => {
 });
 
 describe('checkResume: a transient failure skips the run quietly', () => {
-  it.each([429, 500, 503])('RxResume %i: exits 0, no deploy, one line naming the service and the status', async (status) => {
+  it.each([408, 429, 500, 503])('RxResume %i: exits 0, no deploy, one line naming the service and the status', async (status) => {
     const fake = behind({ rx: { status, body: { message: 'Élève ingénieur' } } });
     const { promise, lines } = run(fake);
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual([`RxResume: HTTP ${status} (transient), no deploy this run`]);
+    expect(lines.at(-1)).toBe(`RxResume: HTTP ${status} (transient), no deploy this run`);
+  });
+
+  it('retries the master read before skipping the run, one line per retry', async () => {
+    const fake = behind({ rx: { status: 503 } });
+    const { promise, lines } = run(fake);
+    await promise;
+    expect(lines).toEqual([
+      'RxResume: HTTP 503, attempt 1 of 3 failed, retrying in 2000 ms',
+      'RxResume: HTTP 503, attempt 2 of 3 failed, retrying in 5000 ms',
+      'RxResume: HTTP 503 (transient), no deploy this run',
+    ]);
+  });
+
+  it('keeps the short schedule: three attempts, pausing 2 s and 5 s, about 7 s in all', async () => {
+    const fake = behind({ rx: { status: 503 } });
+    const { promise, sleeps } = run(fake);
+    await promise;
+    expect(masterCalls(fake)).toHaveLength(3);
+    expect(sleeps).toEqual([2_000, 5_000]);
   });
 
   it('RxResume network error: exits 0, no deploy, and the error code only', async () => {
@@ -373,7 +399,11 @@ describe('checkResume: a transient failure skips the run quietly', () => {
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual(['RxResume: network error ECONNREFUSED (transient), no deploy this run']);
+    expect(lines).toEqual([
+      'RxResume: network error ECONNREFUSED, attempt 1 of 3 failed, retrying in 2000 ms',
+      'RxResume: network error ECONNREFUSED, attempt 2 of 3 failed, retrying in 5000 ms',
+      'RxResume: network error ECONNREFUSED (transient), no deploy this run',
+    ]);
   });
 
   it('RxResume timeout: exits 0, no deploy', async () => {
@@ -382,7 +412,7 @@ describe('checkResume: a transient failure skips the run quietly', () => {
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual(['RxResume: timeout (transient), no deploy this run']);
+    expect(lines.at(-1)).toBe('RxResume: timeout (transient), no deploy this run');
   });
 
   it('Coolify 502 on the deployments check: exits 0, no deploy', async () => {
@@ -410,6 +440,15 @@ describe('checkResume: a configuration or auth failure stops the run loudly', ()
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 1, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
+  });
+
+  it('RxResume 401 is not retried by the checker: one call, no retry line, a configuration stop', async () => {
+    const fake = behind({ rx: { status: 401 } });
+    const { promise, lines, sleeps } = run(fake);
+    expect(await promise).toMatchObject({ exitCode: 1, deployed: false });
+    expect(masterCalls(fake)).toHaveLength(1);
+    expect(sleeps).toEqual([]);
+    expect(lines.some((line) => line.includes('attempt'))).toBe(false);
   });
 
   it('a refused redirect (RxResume URL is wrong, not down): exits 1 and does not deploy', async () => {

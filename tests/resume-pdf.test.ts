@@ -31,6 +31,8 @@ const main = {
   metadata: { template: 'onyx', notes: 'private note' },
 };
 
+const noWait = async () => {};
+
 describe('pdfDataFrom', () => {
   it('blanks the phone and drops the custom fields that hold it, and keeps everything else', () => {
     const data = pdfDataFrom(main) as Record<string, any>;
@@ -115,7 +117,7 @@ describe('createApi', () => {
 
   it('calls the OpenAPI routes with the key, never follows a redirect and times out', async () => {
     const fake = fakeRxResume({ main, key: 'secret' });
-    const api = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
     const resume = (await api.getResume(fake.mainId)) as { data: Record<string, unknown> };
     expect(resume.data.summary).toBeDefined();
     expect(fake.calls[0]).toMatchObject({ method: 'GET', path: '/resumes/main-fr' });
@@ -123,7 +125,7 @@ describe('createApi', () => {
 
   it('creates a resume from a name and a slug, and returns its id', async () => {
     const fake = fakeRxResume({ main });
-    const api = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
     const id = await api.createResume({ name: 'tmp-portfolio-pdf-fr-1', slug: 'tmp-portfolio-pdf-fr-1' });
     expect(id).toBe('temp-1');
     expect(fake.calls[0]).toMatchObject({ method: 'POST', path: '/resumes', body: { name: 'tmp-portfolio-pdf-fr-1', slug: 'tmp-portfolio-pdf-fr-1' } });
@@ -131,7 +133,7 @@ describe('createApi', () => {
 
   it('removes a resume by moving it to Trash, then purging it: the resume type and id only', async () => {
     const fake = fakeRxResume({ main });
-    const api = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
     const id = await api.createResume({ name: 'tmp-portfolio-pdf-fr-1', slug: 'tmp-portfolio-pdf-fr-1' });
     await api.removeResume(id);
     expect(fake.calls.slice(1).map((c) => `${c.method} ${c.path}`)).toEqual([`DELETE /resumes/${id}`, 'POST /documents/purge']);
@@ -141,19 +143,19 @@ describe('createApi', () => {
 
   it('reports only the status when a call fails', async () => {
     const fake = fakeRxResume({ main, pdfFails: true });
-    const api = createApi({ baseUrl, key: 'wrong', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'wrong', fetchImpl: fake.fetchImpl });
     await expect(api.getResume(fake.mainId)).rejects.toThrow(/401/);
-    const ok = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
+    const ok = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl: fake.fetchImpl });
     await expect(ok.downloadPdf(fake.mainId)).rejects.toThrow(/500/);
   });
 
   it('refuses a non-https base URL', () => {
-    expect(() => createApi({ baseUrl: 'http://rx.example', key: 'k' })).toThrow(/https/);
+    expect(() => createApi({ sleep: noWait, baseUrl: 'http://rx.example', key: 'k' })).toThrow(/https/);
   });
 
   it('never writes to or deletes the main resume, whatever the caller asks, and makes no call for it', async () => {
     const fake = fakeRxResume({ main });
-    const api = createApi({ baseUrl, key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
     await expect(api.removeResume(fake.mainId)).rejects.toThrow(/main resume/);
     await expect(api.patchResume(fake.mainId, [{ op: 'add', path: '/summary', value: {} }], 'x')).rejects.toThrow(/main resume/);
     await expect(api.removeResume('')).rejects.toThrow(/without an id/);
@@ -163,7 +165,7 @@ describe('createApi', () => {
 
   it('never reports the text of an answer that is not JSON, since it can be resume data', async () => {
     const fetchImpl = (async () => new Response('{"name":"Julien","phone":"+33 7 98 76 54 32"', { status: 200 })) as unknown as typeof fetch;
-    const api = createApi({ baseUrl, key: 'secret', fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl, key: 'secret', fetchImpl });
     const error = (await api.getResume('x').catch((e: Error) => e)) as Error;
     expect(error.message).toMatch(/not JSON/);
     expect(error.message).not.toMatch(/Julien|98 76|phone/);
@@ -172,7 +174,7 @@ describe('createApi', () => {
 
 describe('makePdf', () => {
   const run = (fake: ReturnType<typeof fakeRxResume>, source: Record<string, unknown> = main, lang = 'fr') => {
-    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
+    const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
     return makePdf({ api, mainId: fake.mainId, lang, source, phone: PHONE, stamp: '20260310', log: () => {} });
   };
 
@@ -221,7 +223,7 @@ describe('makePdf', () => {
       }
       return response;
     }) as unknown as typeof fetch;
-    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: leaky });
+    const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: leaky });
     await expect(makePdf({ api, mainId: fake.mainId, lang: 'fr', source: main, phone: PHONE, stamp: '1', log: () => {} })).rejects.toThrow(/phone/);
     expect(fake.store.has('temp-1')).toBe(false);
   });
@@ -308,7 +310,7 @@ describe('cleanupLeftovers', () => {
         { id: 'keep-2', name: 'Pas tmp-portfolio-pdf-', slug: 'x' },
       ],
     });
-    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
     expect(await cleanupLeftovers({ api, mainId: fake.mainId })).toBe(2);
     expect([...fake.store.keys()].sort()).toEqual([fake.mainId, 'keep-1', 'keep-2'].sort());
     expect(fake.calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/resumes/leftover-1', '/resumes/leftover-2']);
@@ -321,7 +323,7 @@ describe('cleanupLeftovers', () => {
       others: [{ id: 'leftover-1', name: 'tmp-portfolio-pdf-fr-old', slug: 'tmp-portfolio-pdf-fr-old' }],
     });
     fake.store.get('main-fr')!.name = 'tmp-portfolio-pdf-main';
-    const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
+    const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl });
     await expect(cleanupLeftovers({ api, mainId: 'main-fr' })).rejects.toThrow(/main resume/);
     expect(fake.calls.filter((c) => c.method === 'DELETE')).toEqual([]);
     expect(fake.store.has('leftover-1')).toBe(true);

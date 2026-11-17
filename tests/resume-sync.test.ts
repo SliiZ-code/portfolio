@@ -3,7 +3,7 @@ import { createApi } from '../scripts/lib/rxresume.mjs';
 import { parseCache } from '../scripts/lib/translate.mjs';
 import { sha } from '../scripts/lib/strings.mjs';
 import { fingerprintResume } from '../scripts/lib/fingerprint.mjs';
-import { cvPdfFile, fingerprintToPublish, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
+import { buildApi, cvPdfFile, fingerprintToPublish, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
 import { cvPdfPath } from '../src/lib/cv-pdf';
 import { fakeRxResume } from './rxresume-fake';
 
@@ -75,8 +75,10 @@ const fakeTranslator = () => {
   };
 };
 
+const noWait = async () => {};
+
 const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], cache = parseCache(undefined), warnings: string[] = []) => {
-  const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
+  const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
   return runSync({
     mainId: fake.mainId,
     api,
@@ -159,6 +161,33 @@ describe('runSync: the PDFs', () => {
     expect(writes).toEqual([]);
     expect(fake.store.get(fake.mainId)!.data).toEqual(mainResume);
     expect([...fake.store.keys()]).toEqual([fake.mainId]);
+  });
+
+  it('one transient 401 on the list of leftover copies does not skip the PDFs', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    let refused = false;
+    const flaky = (async (url: string, init: RequestInit = {}) => {
+      if (!refused && (init.method ?? 'GET') === 'GET' && new URL(url).pathname === '/api/openapi/resumes') {
+        refused = true;
+        return new Response('{}', { status: 401 });
+      }
+      return fake.fetchImpl(url, init);
+    }) as unknown as typeof fetch;
+    const api = createApi({ sleep: noWait, log: () => {}, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: flaky, protectedId: fake.mainId });
+    const { provider } = fakeTranslator();
+    const result = await runSync({
+      mainId: fake.mainId,
+      api,
+      fingerprintKey: 'secret',
+      translators: [provider] as never,
+      cache: parseCache(undefined),
+      stamp: 'T1',
+      log: () => {},
+      warn: () => {},
+    });
+    expect(refused).toBe(true);
+    expect([...result.pdfs.keys()]).toEqual(['fr', 'en']);
+    expect(result.errors).toEqual([]);
   });
 
   it('the English copy carries the translated strings, and the French one the French', async () => {
@@ -327,5 +356,62 @@ describe('fingerprintToPublish', () => {
 
   it('publishes nothing when the English was not rebuilt', () => {
     expect(fingerprintToPublish({ ...complete, en: null })).toBeNull();
+  });
+});
+
+describe('buildApi: the build waits about a minute for RxResume', () => {
+  const BASE = 'https://rx.example';
+  const refusing = (fake: ReturnType<typeof fakeRxResume>, refusals: number, status: number) => {
+    let left = refusals;
+    const fetchImpl = (async (url: string, init: RequestInit = {}) => {
+      if (left > 0 && (init.method ?? 'GET') === 'GET' && new URL(url).pathname === `/api/openapi/resumes/${fake.mainId}`) {
+        left -= 1;
+        return new Response('{}', { status });
+      }
+      return fake.fetchImpl(url, init);
+    }) as unknown as typeof fetch;
+    return fetchImpl;
+  };
+
+  it('retries a refused read of the master five times in all, pausing 2, 5, 15 and 30 s', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const pauses: number[] = [];
+    const api = buildApi({
+      baseUrl: BASE,
+      key: 'secret',
+      mainId: fake.mainId,
+      fetchImpl: refusing(fake, 4, 401),
+      sleep: async (ms: number) => {
+        pauses.push(ms);
+      },
+      log: () => {},
+    });
+    const master = (await api.getResume(fake.mainId)) as { id: string };
+    expect(master.id).toBe(fake.mainId);
+    expect(pauses).toEqual([2_000, 5_000, 15_000, 30_000]);
+  });
+
+  it('gives up after five refusals, with the label and the status only', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const pauses: number[] = [];
+    const api = buildApi({
+      baseUrl: BASE,
+      key: 'secret',
+      mainId: fake.mainId,
+      fetchImpl: refusing(fake, 99, 503),
+      sleep: async (ms: number) => {
+        pauses.push(ms);
+      },
+      log: () => {},
+    });
+    await expect(api.getResume(fake.mainId)).rejects.toThrow(/^RxResume: HTTP 503$/);
+    expect(pauses).toHaveLength(4);
+  });
+
+  it('still refuses to write to or delete the main resume', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const api = buildApi({ baseUrl: BASE, key: 'secret', mainId: fake.mainId, fetchImpl: fake.fetchImpl, sleep: async () => {}, log: () => {} });
+    await expect(api.removeResume(fake.mainId)).rejects.toThrow(/main resume/);
+    expect(fake.calls).toEqual([]);
   });
 });

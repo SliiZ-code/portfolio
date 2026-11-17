@@ -18,7 +18,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { assertNoPhone, assertPdf, pdfHoldsPhone } from './lib/guard.mjs';
 import { fingerprintResume, withoutPhone } from './lib/fingerprint.mjs';
-import { createApi } from './lib/rxresume.mjs';
+import { BUILD_PAUSES_MS, createApi } from './lib/rxresume.mjs';
 import { configuredTranslators, emptyCache, parseCache, serializeCache, translateStrings } from './lib/translate.mjs';
 import { mapPdfTranslatable, mapTranslatable, pdfTranslatableStrings, sha, translatableStrings } from './lib/strings.mjs';
 import { dataOf, resumeFromResponse, sanitizeResume, stable, str } from './lib/sanitize.mjs';
@@ -203,6 +203,13 @@ export const runSync = async ({
   return { fr, en, cache: translation.cache, complete: translation.complete, pdfs, errors, fingerprint };
 };
 
+/**
+ * The build's client. RxResume can refuse a valid request for about a minute and the build can afford to wait,
+ * so it retries longer than the checker (BUILD_PAUSES_MS, see docs/resume-sync.md, "Retries").
+ */
+export const buildApi = ({ baseUrl, key, mainId, fetchImpl = fetch, sleep, log }) =>
+  createApi({ baseUrl, key, fetchImpl, protectedId: mainId, retryPausesMs: BUILD_PAUSES_MS, sleep, log });
+
 const readOptional = (url) => readFile(url, 'utf8').catch(() => '');
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
@@ -214,7 +221,7 @@ const main = async () => {
   if (!key) throw new Error('RXRESUME_API_KEY is required');
   const mainId = resumeIdFrom(env);
 
-  const api = createApi({ baseUrl, key, fetchImpl: fetch, protectedId: mainId });
+  const api = buildApi({ baseUrl, key, mainId });
   const translators = configuredTranslators(env, { fetchImpl: fetch, spawnImpl: spawn });
   const cache = parseCache(await readOptional(CACHE));
   const result = await runSync({ mainId, api, fingerprintKey: key, translators, cache, stamp: Date.now().toString(36) });
