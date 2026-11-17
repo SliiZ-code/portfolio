@@ -127,6 +127,82 @@ A test walks the English copy and fails if a French string that has a translatio
 PDF-only prose above is translated with the same cache. A hidden summary, section or item is never sent to a
 provider, hidden projects excepted: the site shows those, so they were already translated.
 
+## Redeploy when the resume changes
+
+RxResume has no webhooks and autosaves while you type, so the site is redeployed by polling, and only after
+the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml` runs
+`scripts/check-resume-change.mjs` every 15 minutes:
+
+1. **Fingerprint of the master.** The master is read (GET only) and fingerprinted: sha256 of the sanitised data
+   the site renders (`scripts/lib/sanitize.mjs`, `scripts/lib/fingerprint.mjs`). The phone number, metadata,
+   picture and update time are not part of it, so changing only those changes nothing. A hidden project still
+   counts (the site shows it); a hidden item of any other section does not (it leaves the site).
+2. **Fingerprint of the site.** The site serves its own fingerprint at `/resume-fingerprint.json`
+   (`src/pages/resume-fingerprint.json.ts`), computed from the committed `src/data/resume.fr.json`. A build without
+   the RxResume key therefore publishes the fingerprint of what it actually shows. The Caddy route for it is
+   `no-cache`.
+3. **Deploy only if** the two fingerprints differ **and** the master was last edited at least `QUIET_MINUTES`
+   ago (default 30). A missing or unreachable site fingerprint counts as different, but still waits for the quiet
+   period.
+4. **Wait** while Coolify has a deployment queued or in progress, and while the latest deployment started less than
+   `DEPLOY_COOLDOWN_MINUTES` ago (default 30). The cooldown stops a mismatch that a build cannot fix (for example, a
+   sync that keeps failing) from redeploying every 15 minutes.
+5. **Failure stops the loop.** When the latest deployment failed less than 6 hours ago, the checker does not
+   deploy and exits with code 1, so GitHub emails the owner. That email repeats on every run until a deploy
+   succeeds or 6 hours have passed.
+6. **Deploy:** `POST {COOLIFY_URL}/api/v1/deploy?uuid={COOLIFY_APP_UUID}&force=true`. The `force` flag is the cache
+   fix below.
+
+The logs are public (the repository is public), so they contain only decisions and 12-character fingerprint
+prefixes: never resume text, keys, tokens, URLs or the phone number. Every failure is reported by its message
+alone, never by a response body.
+
+**Why `force=true`.** The Docker builder runs `npm run sync:resume` in a layer. Secret mounts are not part of a
+layer's cache key, so a redeploy of the same commit reuses that layer and does not sync at all. A push changes
+the source, so it rebuilds the layer; a deploy triggered by the checker does not. `force` makes Coolify build
+without cache, so the sync runs again. The cost is one full build (`npm ci` included) per triggered deploy, which
+is rare. Normal push deploys are unchanged.
+
+**Known limit.** Only the site's data is fingerprinted. A change that only the CV PDF shows (template, colours,
+publications, custom sections) is not seen by the checker: the PDF is refreshed on the next deploy, or by pressing
+Redeploy in Coolify. Changing anything the site shows triggers a deploy, and that deploy rebuilds the PDFs too.
+
+**First run.** The live site has no fingerprint file until the first build with this change, so the first check
+after the merge deploys once, when the master has been quiet for 30 minutes.
+
+### GitHub secrets and variables
+
+Set them in the repository (Settings → Secrets and variables → Actions):
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `RXRESUME_URL` | secret | RxResume base URL (default `https://rxresu.me`) |
+| `RXRESUME_ID` | secret | ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
+| `RXRESUME_API_KEY` | secret | an RxResume API key (read access is enough: the checker only GETs) |
+| `COOLIFY_URL` | secret | the Coolify base URL, `https://` only |
+| `COOLIFY_DEPLOY_TOKEN` | secret | a Coolify API token with the read and deploy permissions only (see below) |
+| `COOLIFY_APP_UUID` | secret | the UUID of this application in Coolify |
+| `SITE_URL` | variable | the production site (default `https://sliiz.com`) |
+
+**Coolify token.** Create it in Coolify under Keys & Tokens → API tokens, with the `read` and `deploy`
+permissions only. Do not give it `write` or `root`: the checker reads deployments and triggers a deploy, nothing
+else. The permission names depend on the Coolify version; pick the two that match "read" and "deploy".
+
+**Keeping the schedule alive.** GitHub disables scheduled workflows in a public repository after 60 days without
+repository activity. `.github/workflows/resume-autodeploy-keepalive.yml` runs monthly and pushes an empty commit to
+the `keepalive` branch (not `main`, so Coolify does not deploy on it). Pushes are the activity that counts. This is
+not documented in detail by GitHub: if the autodeploy workflow ever shows as disabled, press Enable workflow.
+
+### Running the check locally
+
+```bash
+node --env-file=.env scripts/check-resume-change.mjs --dry-run
+```
+
+It reads the master and the live site and prints the decision (`would deploy`, `waiting`, `up to date`, …). It
+makes no deploy call. The Coolify settings are optional in a dry run; without them the deployments are not
+checked. Without `--dry-run` it deploys when the decision says so.
+
 ## Running it locally
 
 ```bash
@@ -135,4 +211,4 @@ npm run sync:resume
 npx vitest run
 ```
 
-The unit tests use fakes only: they never call RxResume or a provider.
+The unit tests use fakes only: they never call RxResume, a provider, Coolify or the site.
