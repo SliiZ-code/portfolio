@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createApi } from '../scripts/lib/rxresume.mjs';
 import { parseCache } from '../scripts/lib/translate.mjs';
 import { sha } from '../scripts/lib/strings.mjs';
-import { cvPdfFile, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
+import { fingerprintResume } from '../scripts/lib/fingerprint.mjs';
+import { cvPdfFile, fingerprintToPublish, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
 import { cvPdfPath } from '../src/lib/cv-pdf';
 import { fakeRxResume } from './rxresume-fake';
 
@@ -79,6 +80,7 @@ const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], 
   return runSync({
     mainId: fake.mainId,
     api,
+    fingerprintKey: 'secret',
     translators: translators as never,
     cache,
     stamp: 'T1',
@@ -299,5 +301,31 @@ describe('runSync: the English PDF copy is fully English', () => {
     const leaked = { sections: { experience: { items: [{ period: 'janv. 2026 – Aujourd’hui' }] } } };
     const entries = { ...result.cache.entries, [sha('janv. 2026 – Aujourd’hui')]: { en: 'Jan 2026 – present', model: 'x' } };
     expect(frenchLeftovers(leaked, entries)).toEqual(['janv. 2026 – Aujourd’hui']);
+  });
+});
+
+describe('runSync: the fingerprint of the master it applied', () => {
+  it('is the fingerprint of the master as read, without the phone', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const { provider } = fakeTranslator();
+    const result = await runWith(fake, [provider]);
+    expect(result.fingerprint).toBe(fingerprintResume(mainResume, 'secret'));
+    expect(result.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('fingerprintToPublish', () => {
+  const complete = { errors: [], en: {}, fingerprint: 'a'.repeat(64) };
+
+  it('publishes the fingerprint only when the whole master was applied', () => {
+    expect(fingerprintToPublish(complete)).toBe('a'.repeat(64));
+  });
+
+  it('publishes nothing after a failed PDF, so the checker keeps retrying', () => {
+    expect(fingerprintToPublish({ ...complete, errors: ['fr: copy refused'] })).toBeNull();
+  });
+
+  it('publishes nothing when the English was not rebuilt', () => {
+    expect(fingerprintToPublish({ ...complete, en: null })).toBeNull();
   });
 });

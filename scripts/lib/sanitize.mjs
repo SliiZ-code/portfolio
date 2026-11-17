@@ -1,6 +1,6 @@
 // The sanitiser: turns the RxResume resume into exactly what the site renders (src/data/resume.fr.json).
-// Pure, no I/O, no secrets: the sync, the fingerprint (scripts/lib/fingerprint.mjs) and the site's
-// fingerprint endpoint all use this one function, so they agree on what the site shows.
+// Pure, no I/O, no secrets. The sync and the site's data both come from it. The master's fingerprint
+// (scripts/lib/fingerprint.mjs) covers the whole phone-free data instead, since the CV PDF shows more.
 // Anything not in the output (metadata, picture, phone, hidden sections and items) never leaves it.
 
 const WEBSITE_KEYS = ['url', 'label', 'inlineLink'];

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { fingerprintResume } from '../scripts/lib/fingerprint.mjs';
-import { sanitizeResume } from '../scripts/lib/sanitize.mjs';
-import fr from '../src/data/resume.fr.json';
+import { fingerprintResume, withoutPhone } from '../scripts/lib/fingerprint.mjs';
 
 const PHONE = '+33 7 98 76 54 32';
+const KEY = 'rx-key-test-0001';
 
 const master = () => ({
   metadata: { template: 'onyx', notes: 'private note', page: { locale: 'fr-FR' } },
@@ -55,71 +54,98 @@ const master = () => ({
   },
 });
 
-const withChange = (edit: (raw: ReturnType<typeof master>) => void) => {
+const changed = (edit: (raw: ReturnType<typeof master>) => void) => {
   const raw = master();
   edit(raw);
   return raw;
 };
 
-describe('fingerprintResume', () => {
-  it('is a 64-character sha256 hex digest', () => {
-    expect(fingerprintResume(master())).toMatch(/^[0-9a-f]{64}$/);
+const fingerprint = (raw: unknown) => fingerprintResume(raw, KEY);
+
+describe('fingerprintResume: the function', () => {
+  it('is a 64-character HMAC-SHA256 hex digest', () => {
+    expect(fingerprint(master())).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('needs the RxResume key, and changes with it: a plain hash could be guessed from private text', () => {
+    expect(() => fingerprintResume(master(), '')).toThrow(/key/);
+    expect(fingerprintResume(master(), 'another-key')).not.toBe(fingerprint(master()));
   });
 
   it('is the same for the same content, whatever the order of the keys', () => {
     const reordered = Object.fromEntries(Object.entries(master()).reverse());
-    expect(fingerprintResume(reordered)).toBe(fingerprintResume(master()));
+    expect(fingerprint(reordered)).toBe(fingerprint(master()));
   });
 
-  it('does not change when only the phone number changes', () => {
-    const other = withChange((raw) => {
+  it('is the same for the { data } envelope and for the data itself, and ignores the update time of the envelope', () => {
+    const data = master();
+    expect(fingerprint({ data })).toBe(fingerprint(data));
+    expect(fingerprint({ data, updatedAt: '2026-11-01T00:00:00.000Z' })).toBe(fingerprint({ data, updatedAt: '2026-11-17T09:00:00.000Z' }));
+  });
+
+  it('does not modify the master it reads', () => {
+    const data = master();
+    fingerprint(data);
+    expect(data).toEqual(master());
+  });
+});
+
+describe('fingerprintResume: what changes it', () => {
+  it('does not change when only the phone number changes (basics.phone and the custom field holding it)', () => {
+    const other = changed((raw) => {
       raw.basics.phone = '+33 6 11 22 33 44';
       raw.basics.customFields[0].text = '+33 6 11 22 33 44';
     });
-    expect(fingerprintResume(other)).toBe(fingerprintResume(master()));
-  });
-
-  it('does not change for non-content metadata: the update time, the notes, the template, the picture', () => {
-    const other = withChange((raw) => {
-      raw.metadata.notes = 'another note';
-      raw.metadata.template = 'azurill';
-      raw.picture = { hidden: true, url: '/uploads/other.png' };
-    });
-    expect(fingerprintResume(other)).toBe(fingerprintResume(master()));
+    expect(fingerprint(other)).toBe(fingerprint(master()));
   });
 
   it('changes when a visible word of the site changes', () => {
-    const other = withChange((raw) => {
-      raw.basics.headline = 'Ingénieur logiciel';
-    });
-    expect(fingerprintResume(other)).not.toBe(fingerprintResume(master()));
+    expect(fingerprint(changed((raw) => (raw.basics.headline = 'Ingénieur logiciel')))).not.toBe(fingerprint(master()));
   });
 
-  it('changes when an item hidden from the site is hidden (it leaves the site)', () => {
-    const other = withChange((raw) => {
-      raw.sections.experience.items[1].hidden = true;
-    });
-    expect(fingerprintResume(other)).not.toBe(fingerprintResume(master()));
+  it('changes for a change only the CV PDF shows: the template, the picture, the layout', () => {
+    expect(fingerprint(changed((raw) => (raw.metadata.template = 'azurill')))).not.toBe(fingerprint(master()));
+    expect(fingerprint(changed((raw) => (raw.metadata.page.locale = 'en-US')))).not.toBe(fingerprint(master()));
+    expect(fingerprint(changed((raw) => (raw.picture = { hidden: true, url: '/uploads/me.png' })))).not.toBe(fingerprint(master()));
   });
 
-  it('does not change when a project is hidden, because the site still shows it', () => {
-    const other = withChange((raw) => {
-      raw.sections.projects.items[0].hidden = true;
+  it('changes when a section only the PDF shows is added, such as publications or a custom section', () => {
+    const publications = changed((raw) => {
+      (raw.sections as Record<string, unknown>).publications = { title: 'Publications', hidden: false, items: [{ id: 'pub1', hidden: false, title: 'Article' }] };
     });
-    expect(fingerprintResume(other)).toBe(fingerprintResume(master()));
+    expect(fingerprint(publications)).not.toBe(fingerprint(master()));
+    const custom = changed((raw) => {
+      (raw as Record<string, unknown>).customSections = [{ id: 'cs1', title: 'Langues', hidden: false, items: [] }];
+    });
+    expect(fingerprint(custom)).not.toBe(fingerprint(master()));
   });
 
-  it('is what the committed site data gives: the sanitised data is a fixed point', () => {
-    expect(fingerprintResume(fr)).toBe(fingerprintResume(sanitizeResume(fr)));
-    expect(fingerprintResume(fr)).toMatch(/^[0-9a-f]{64}$/);
+  it('changes when an item hidden from the site is hidden, and when a project is hidden: both leave the PDF', () => {
+    expect(fingerprint(changed((raw) => (raw.sections.experience.items[1].hidden = true)))).not.toBe(fingerprint(master()));
+    expect(fingerprint(changed((raw) => (raw.sections.projects.items[0].hidden = true)))).not.toBe(fingerprint(master()));
+  });
+
+  it('changes with the notes of the master: the autodeploy follows every edit that the PDF could show', () => {
+    expect(fingerprint(changed((raw) => (raw.metadata.notes = 'another note')))).not.toBe(fingerprint(master()));
+  });
+});
+
+describe('withoutPhone', () => {
+  it('blanks basics.phone and removes the custom fields that hold the phone number, and keeps the others', () => {
+    const data = withoutPhone(master());
+    expect(data.basics.phone).toBe('');
+    expect(data.basics.customFields).toEqual([]);
+    expect(JSON.stringify(data)).not.toContain('98 76 54');
   });
 });
 
 describe('the published fingerprint', () => {
-  it('is served at /resume-fingerprint.json as { fingerprint } from the committed site data', async () => {
+  it('is served at /resume-fingerprint.json as { fingerprint }, the value the sync committed (null until one is synced)', async () => {
     const { GET } = await import('../src/pages/resume-fingerprint.json');
     const response = await GET({} as never);
     expect(response.headers.get('content-type')).toContain('application/json');
-    expect(await response.json()).toEqual({ fingerprint: fingerprintResume(fr) });
+    const body = await response.json();
+    expect(Object.keys(body)).toEqual(['fingerprint']);
+    expect(body.fingerprint === null || /^[0-9a-f]{64}$/.test(body.fingerprint)).toBe(true);
   });
 });

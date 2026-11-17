@@ -43,7 +43,7 @@ const scenario = (overrides: Partial<World> = {}) => {
   const world: World = {
     data,
     updatedAt: new Date(NOW - 60 * MIN).toISOString(),
-    live: fingerprintResume({ data }),
+    live: fingerprintResume({ data }, RX_KEY),
     deployments: [],
     ...overrides,
   };
@@ -117,7 +117,7 @@ describe('checkResume: when to deploy', () => {
 
   it('waits when the master changed less than the quiet period ago', async () => {
     const data = resumeData({ basics: { ...resumeData().basics, headline: 'Ingénieur logiciel' } });
-    const fake = scenario({ data, updatedAt: new Date(NOW - 10 * MIN).toISOString(), live: fingerprintResume({ data: resumeData() }) });
+    const fake = scenario({ data, updatedAt: new Date(NOW - 10 * MIN).toISOString(), live: fingerprintResume({ data: resumeData() }, RX_KEY) });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
@@ -125,7 +125,7 @@ describe('checkResume: when to deploy', () => {
 
   it('deploys with force, once, when the master changed and the quiet period has passed', async () => {
     const data = resumeData({ basics: { ...resumeData().basics, headline: 'Ingénieur logiciel' } });
-    const fake = scenario({ data, live: fingerprintResume({ data: resumeData() }) });
+    const fake = scenario({ data, live: fingerprintResume({ data: resumeData() }, RX_KEY) });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: true });
     const calls = deployCalls(fake);
@@ -137,7 +137,7 @@ describe('checkResume: when to deploy', () => {
 
   it('treats a phone-only change as no change at all', async () => {
     const withOtherPhone = resumeData({ basics: { ...resumeData().basics, phone: '+33 6 11 22 33 44' } });
-    const fake = scenario({ data: withOtherPhone, live: fingerprintResume({ data: resumeData() }) });
+    const fake = scenario({ data: withOtherPhone, live: fingerprintResume({ data: resumeData() }, RX_KEY) });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);

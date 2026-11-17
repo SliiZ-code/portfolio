@@ -7,13 +7,17 @@
 //   3. for each language, a temporary copy is made in RxResume (name `tmp-portfolio-pdf-*`), its PDF is
 //      downloaded to public/cv/, and the copy is moved to Trash and purged, even when the PDF fails.
 //      Leftover copies from a crashed run are removed first. The main resume is only ever read.
+//   4. when all of that worked, the master's fingerprint (scripts/lib/fingerprint.mjs) is written to
+//      src/data/resume.fingerprint.json: the autodeploy checker reads it from the site. A partial run keeps
+//      the committed one, so the checker keeps retrying.
 // The phone number is checked everywhere it could leak: the site data, the cache, the AI payload,
 // the copies and the PDFs. Providers: CLAUDE_CODE_OAUTH_TOKEN, then GEMINI_API_KEY, then OPENROUTER_API_KEY.
 // Run with: npm run sync:resume
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { assertNoPhone, assertPdf, holdsPhone, pdfHoldsPhone } from './lib/guard.mjs';
+import { assertNoPhone, assertPdf, pdfHoldsPhone } from './lib/guard.mjs';
+import { fingerprintResume, withoutPhone } from './lib/fingerprint.mjs';
 import { createApi } from './lib/rxresume.mjs';
 import { configuredTranslators, emptyCache, parseCache, serializeCache, translateStrings } from './lib/translate.mjs';
 import { mapPdfTranslatable, mapTranslatable, pdfTranslatableStrings, sha, translatableStrings } from './lib/strings.mjs';
@@ -33,6 +37,7 @@ const OUT = {
   en: new URL('../src/data/resume.en.json', import.meta.url),
 };
 const CACHE = new URL('../src/data/resume.translations.json', import.meta.url);
+const FINGERPRINT = new URL('../src/data/resume.fingerprint.json', import.meta.url);
 
 /** The file name must match src/lib/cv-pdf.ts, which links to it. */
 export const cvPdfFile = (lang) => `julien-petit-colboc-${lang}.pdf`;
@@ -71,21 +76,20 @@ const merged = (base, overrides) =>
 
 /**
  * What a temporary copy holds: the resume's data, whole (sections, custom sections, metadata, picture...),
- * except that `basics.phone` is empty and the custom fields that hold the phone are gone. Hidden
- * items keep their flag, so RxResume leaves them off the PDF. `overrides` is merged into `metadata`
- * (see PDF_METADATA). Pure: the input is not modified.
+ * without the phone (scripts/lib/fingerprint.mjs withoutPhone). Hidden items keep their flag, so RxResume
+ * leaves them off the PDF. `overrides` is merged into `metadata` (see PDF_METADATA). Pure: the input is not modified.
  */
 export const pdfDataFrom = (mainData, overrides = {}) => {
-  const data = structuredClone(mainData && typeof mainData === 'object' ? mainData : {});
-  const basics = data.basics;
-  if (basics && typeof basics === 'object') {
-    const phone = str(basics.phone).trim();
-    basics.phone = '';
-    if (Array.isArray(basics.customFields)) basics.customFields = basics.customFields.filter((field) => !holdsPhone(field, phone));
-  }
+  const data = withoutPhone(mainData);
   if (Object.keys(overrides).length) data.metadata = merged(isPlain(data.metadata) ? data.metadata : {}, overrides);
   return data;
 };
+
+/**
+ * The fingerprint to publish after a run: only when the whole master was applied (site data, English and both
+ * PDFs). Otherwise null, and the committed fingerprint is kept, so the checker sees a mismatch and retries.
+ */
+export const fingerprintToPublish = (result) => (result.errors.length === 0 && result.en ? result.fingerprint : null);
 
 /** The main resume's id: RXRESUME_ID, with RXRESUME_ID_FR accepted as an alias. */
 export const resumeIdFrom = (env) => {
@@ -148,8 +152,18 @@ export const makePdf = async ({ api, mainId, lang, source, phone, stamp, log = c
  * The whole sync, with every outside call injected. Returns what to write; writes nothing itself.
  * Throws (and writes nothing) when a phone number would reach the site data.
  */
-export const runSync = async ({ mainId, api, translators = [], cache = emptyCache(), stamp = Date.now().toString(36), log = console.log, warn = console.warn }) => {
+export const runSync = async ({
+  mainId,
+  api,
+  fingerprintKey,
+  translators = [],
+  cache = emptyCache(),
+  stamp = Date.now().toString(36),
+  log = console.log,
+  warn = console.warn,
+}) => {
   const data = dataOf(await api.getResume(mainId));
+  const fingerprint = fingerprintResume(data, fingerprintKey);
   const phone = str(data?.basics?.phone).trim();
   if (!phone) warn("WARNING: the main resume has no phone in basics.phone, so the phone checks are skipped");
 
@@ -186,7 +200,7 @@ export const runSync = async ({ mainId, api, translators = [], cache = emptyCach
       }
     }
   }
-  return { fr, en, cache: translation.cache, complete: translation.complete, pdfs, errors };
+  return { fr, en, cache: translation.cache, complete: translation.complete, pdfs, errors, fingerprint };
 };
 
 const readOptional = (url) => readFile(url, 'utf8').catch(() => '');
@@ -203,7 +217,7 @@ const main = async () => {
   const api = createApi({ baseUrl, key, fetchImpl: fetch, protectedId: mainId });
   const translators = configuredTranslators(env, { fetchImpl: fetch, spawnImpl: spawn });
   const cache = parseCache(await readOptional(CACHE));
-  const result = await runSync({ mainId, api, translators, cache, stamp: Date.now().toString(36) });
+  const result = await runSync({ mainId, api, fingerprintKey: key, translators, cache, stamp: Date.now().toString(36) });
 
   await writeFile(OUT.fr, json(result.fr));
   console.log(`fr: ${result.fr.basics.name || 'resume'} -> ${OUT.fr.pathname}`);
@@ -217,6 +231,8 @@ const main = async () => {
     await writeFile(pdfOut(lang), bytes);
     console.log(`${lang}: pdf -> ${pdfOut(lang).pathname}`);
   }
+  const published = fingerprintToPublish(result);
+  if (published) await writeFile(FINGERPRINT, json({ fingerprint: published }));
   // a refused PDF keeps the previous file; the failure still shows in the build log
   if (result.errors.length) throw new Error(`PDF skipped, previous file kept: ${result.errors.join('; ')}`);
 };

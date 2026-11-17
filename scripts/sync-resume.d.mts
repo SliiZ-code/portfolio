@@ -19,12 +19,14 @@ export function makePdf(options: {
   stamp: string;
   log?: (message: string) => void;
 }): Promise<Uint8Array>;
+export function fingerprintToPublish(result: { errors: string[]; en: unknown; fingerprint: string }): string | null;
 export function runSync(options: {
   mainId: string;
   api: any;
+  fingerprintKey: string;
   translators?: any[];
   cache?: any;
   stamp?: string;
   log?: (message: string) => void;
   warn?: (message: string) => void;
-}): Promise<{ fr: any; en: any; cache: any; complete: boolean; pdfs: Map<string, Uint8Array>; errors: string[] }>;
+}): Promise<{ fr: any; en: any; cache: any; complete: boolean; pdfs: Map<string, Uint8Array>; errors: string[]; fingerprint: string }>;

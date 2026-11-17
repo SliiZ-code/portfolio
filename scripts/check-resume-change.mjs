@@ -158,7 +158,7 @@ export const checkResume = async ({ env = {}, fetchImpl = fetch, now = Date.now(
     const config = readConfig(env, dryRun);
     const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl, protectedId: config.mainId });
     const master = await api.getResume(config.mainId);
-    const masterFingerprint = fingerprintResume(master);
+    const masterFingerprint = fingerprintResume(master, config.key);
     const live = await liveFingerprint({ siteUrl: config.siteUrl, fetchImpl, now, log });
     log(`master ${masterFingerprint.slice(0, 12)}, live ${live ? live.slice(0, 12) : 'unavailable'}`);
 
