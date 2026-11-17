@@ -115,13 +115,15 @@ write to it or deletion of it (`protectedId`, checked below the sync, so no call
 Hidden projects keep their flag in the copy, so RxResume leaves them off the PDF while the site still shows
 them. Hidden sections and items are off the site and, as before, off the PDF.
 
+The rule for the public PDFs: they keep the original RxResume layout, unmodified, and the only change is the
+phone number, removed. For English, the translated text and the English date locale are part of the translation.
+No layout setting (line height, margins, template, fonts, page count) is overridden for either language.
+
 Each language can change the copy's metadata, and nothing else (`PDF_METADATA` in `scripts/sync-resume.mjs`):
 
-- **English**: `metadata.page.locale` is `en-US`. RxResume formats the dates and their "present" label from that
-  locale, so with the French locale the English PDF printed `janv. 2026 – Aujourd’hui`. The same locale as the
-  hand-made English resume, which fitted on one page.
-- **English**: the body line height is 1.35 (1.4 in the French resume). It keeps the English on one page,
-  where the same text with the French look ran onto a second page by three lines.
+- **English**: `metadata.page.locale` is `en-US`, and nothing else. RxResume formats the dates and their "present"
+  label from that locale, so with the French locale the English PDF printed `janv. 2026 – Aujourd’hui`. It is also
+  the locale of the hand-made English resume.
 - **French**: no override, the main resume's metadata as it is.
 
 A test walks the English copy and fails if a French string that has a translation is still there. The

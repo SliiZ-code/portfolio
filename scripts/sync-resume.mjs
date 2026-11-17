@@ -60,12 +60,13 @@ export const dataOperations = (current, target) => {
 };
 
 /**
- * What each language's PDF copy changes on top of the main resume: the language only, the look stays the
- * main resume's. RxResume formats the dates, and their "present" label, from `metadata.page.locale`: with the
- * French locale the English PDF printed "janv. 2026 – Aujourd’hui" and "sept. 2028". en-US is the locale of the
- * hand-made English resume, which fitted on one page.
+ * What each language's PDF copy changes on top of the main resume. The rule: the public PDFs keep the original
+ * RxResume layout, unmodified, and the only change is the phone number, removed. For English, the translated text
+ * and the English date locale are part of the translation. RxResume formats the dates, and their "present" label,
+ * from `metadata.page.locale`: with the French locale the English PDF printed "janv. 2026 – Aujourd’hui" and
+ * "sept. 2028". en-US is the locale of the hand-made English resume.
  */
-export const PDF_METADATA = { fr: {}, en: { page: { locale: 'en-US' }, typography: { body: { lineHeight: 1.35 } } } };
+export const PDF_METADATA = { fr: {}, en: { page: { locale: 'en-US' } } };
 
 const isPlain = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const merged = (base, overrides) =>

@@ -347,7 +347,7 @@ describe('per-language PDF metadata', () => {
     expect(out.metadata.page.marginX).toBe(18);
     expect(out.metadata.page.dateFormat).toBe('short');
     expect(out.metadata.template).toBe('gengar');
-    expect(out.metadata.typography.body).toEqual({ ...body, lineHeight: 1.35 });
+    expect(out.metadata.typography.body).toEqual(body);
     expect(out.metadata.typography.heading).toBeUndefined();
   });
 
@@ -357,7 +357,8 @@ describe('per-language PDF metadata', () => {
     expect(data.metadata.page.locale).toBe('fr-FR');
   });
 
-  it('the English locale is en-*, and the French copy has no override', () => {
+  it('the English override changes only the locale (en-*), and the French copy has no override', () => {
+    expect(PDF_METADATA.en).toEqual({ page: { locale: 'en-US' } });
     expect(PDF_METADATA.en.page.locale).toMatch(/^en-/);
     expect(PDF_METADATA.fr).toEqual({});
   });
@@ -368,8 +369,6 @@ describe('per-language PDF metadata', () => {
     expect(out.metadata.page.locale).toBe('en-US');
     expect(bare).toEqual({ basics: { name: 'Julien', phone: '' } });
     out.metadata.page.locale = 'de-DE';
-    out.metadata.typography.body.lineHeight = 2;
     expect(PDF_METADATA.en.page.locale).toBe('en-US');
-    expect(PDF_METADATA.en.typography.body.lineHeight).toBe(1.35);
   });
 });
