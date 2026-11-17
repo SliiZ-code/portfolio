@@ -6,14 +6,18 @@
 //
 // Per run, read-only except for the one deploy call:
 //   1. the master is read from RxResume (scripts/lib/rxresume.mjs, GET only) and fingerprinted
-//      (scripts/lib/fingerprint.mjs): the phone, metadata and update time do not count
+//      (scripts/lib/fingerprint.mjs): the whole phone-free master, keyed with the RxResume key
 //   2. the site's fingerprint is read from SITE_URL/resume-fingerprint.json (missing or unreachable = changed)
-//   3. the latest Coolify deployment is read: queued or in progress -> wait; failed in the last 6 hours -> wait
-//      and exit 1 (GitHub then emails the owner, instead of redeploying every 15 minutes); started less than
-//      DEPLOY_COOLDOWN_MINUTES ago -> wait
-//   4. deploy only when the fingerprints differ and the master was last edited at least QUIET_MINUTES ago:
-//      POST {COOLIFY_URL}/api/v1/deploy?uuid=...&force=true (force = build without the Docker cache, so the
-//      sync layer runs again; see docs/resume-sync.md)
+//   3. the newest of the latest Coolify deployments is read, and the decision is made (decideDeploy):
+//      - a failed deployment that ended less than one cron interval ago: exit 1, once (GitHub emails the owner);
+//        for the next six hours, no redeploy and exit 0 (no email for every run)
+//      - the live site matches the master: nothing to do
+//      - the master changed less than QUIET_MINUTES ago, or a deployment is queued or running: wait
+//      - a deployment started less than DEPLOY_COOLDOWN_MINUTES ago: wait
+//      - a deployment that started after the last edit and still left the site behind: its build could not
+//        sync (RxResume or the translation failed), so wait and retry at most every six hours, not every run
+//   4. deploy: POST {COOLIFY_URL}/api/v1/deploy?uuid=...&force=true (force = build without the Docker cache, so
+//      the sync layer runs again; see docs/resume-sync.md)
 // Logs carry decisions and 12-character fingerprint prefixes only: never resume text, keys, tokens, the phone
 // number or URLs (the repository is public and Actions logs are public).
 import { pathToFileURL } from 'node:url';
@@ -22,7 +26,12 @@ import { fingerprintResume } from './lib/fingerprint.mjs';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
-const FAILURE_WINDOW_MS = 6 * HOUR;
+// The schedule runs every 15 minutes: the first run after a failure is the only one within this window, so a
+// failure is reported by one run (a later run within the window would report it again).
+const ALERT_WINDOW_MS = 15 * MINUTE;
+const FAILURE_PAUSE_MS = 6 * HOUR;
+const RETRY_PAUSE_MS = 6 * HOUR;
+const DEPLOYMENTS_SEEN = 5;
 const REQUEST_TIMEOUT_MS = 30_000;
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -37,10 +46,23 @@ const stateOf = (status) => {
 };
 
 /**
- * The decision, as data. `latest` is the most recent Coolify deployment (`{ status, at }`, `at` in ms) or null.
- * Returns `{ deploy, exitCode, reason }`; `exitCode` 1 means "stop, and tell the owner".
+ * The decision, as data. `latest` is the newest Coolify deployment, `{ status, startedAt, endedAt }` with the
+ * times in ms (NaN when unreadable), or null. Returns `{ deploy, exitCode, reason }`; `exitCode` 1 means
+ * "stop, and tell the owner": GitHub then emails once for that run.
  */
 export const decideDeploy = ({ masterFingerprint, live, updatedAt, now, quietMinutes, latest, cooldownMinutes }) => {
+  if (latest && stateOf(latest.status) === 'failed') {
+    const endedAt = Number.isFinite(latest.endedAt) ? latest.endedAt : latest.startedAt;
+    if (!Number.isFinite(endedAt)) return { deploy: false, exitCode: 1, reason: 'the latest Coolify deployment has no readable time: stopping' };
+    const agoMs = now - endedAt;
+    if (agoMs < ALERT_WINDOW_MS) {
+      return { deploy: false, exitCode: 1, reason: `the latest deployment failed ${Math.floor(agoMs / MINUTE)} min ago: reported once, no redeploy for 6 hours` };
+    }
+    if (agoMs < FAILURE_PAUSE_MS) {
+      return { deploy: false, exitCode: 0, reason: `the latest deployment failed ${Math.floor(agoMs / MINUTE)} min ago: no redeploy for 6 hours` };
+    }
+  }
+
   if (live === masterFingerprint) return { deploy: false, exitCode: 0, reason: 'the live site matches the master: nothing to do' };
 
   const edited = Date.parse(updatedAt);
@@ -51,15 +73,16 @@ export const decideDeploy = ({ masterFingerprint, live, updatedAt, now, quietMin
   }
 
   if (latest) {
-    const state = stateOf(latest.status);
-    if (state === 'busy') return { deploy: false, exitCode: 0, reason: 'a Coolify deployment is queued or in progress: waiting' };
-    if (!Number.isFinite(latest.at)) return { deploy: false, exitCode: 1, reason: 'the latest Coolify deployment has no readable time: stopping' };
-    const ageMs = now - latest.at;
-    if (state === 'failed' && ageMs < FAILURE_WINDOW_MS) {
-      return { deploy: false, exitCode: 1, reason: `the latest deployment failed ${Math.floor(ageMs / MINUTE)} min ago: not redeploying within 6 hours` };
+    if (stateOf(latest.status) === 'busy') return { deploy: false, exitCode: 0, reason: 'a Coolify deployment is queued or in progress: waiting' };
+    if (!Number.isFinite(latest.startedAt)) return { deploy: false, exitCode: 1, reason: 'the latest Coolify deployment has no readable time: stopping' };
+    const sinceStartMs = now - latest.startedAt;
+    if (sinceStartMs < cooldownMinutes * MINUTE) {
+      return { deploy: false, exitCode: 0, reason: `the latest deployment started ${Math.floor(sinceStartMs / MINUTE)} min ago, cooldown ${cooldownMinutes} min: waiting` };
     }
-    if (ageMs < cooldownMinutes * MINUTE) {
-      return { deploy: false, exitCode: 0, reason: `the latest deployment was ${Math.floor(ageMs / MINUTE)} min ago, cooldown ${cooldownMinutes} min: waiting` };
+    // Started after the last edit, so its build read the current master: if the site still differs, that build
+    // could not sync. Retrying every cooldown would rebuild forever, so retry at most every six hours.
+    if (latest.startedAt >= edited && sinceStartMs < RETRY_PAUSE_MS) {
+      return { deploy: false, exitCode: 0, reason: 'a deployment started after the last edit and left the site behind (its sync failed?): retry in 6 hours' };
     }
   }
 
@@ -122,18 +145,35 @@ const liveFingerprint = async ({ siteUrl, fetchImpl, now, log }) => {
   }
 };
 
-/** The most recent Coolify deployment, or null when there is none (or no Coolify settings in a dry run). */
+/** Coolify answers UTC times, sometimes without a zone: those are read as UTC, never as the machine's local time. */
+const parseTime = (value) => {
+  const text = String(value ?? '').trim();
+  const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(text) ? `${text.replace(' ', 'T')}Z` : text;
+  return Date.parse(iso);
+};
+
+/**
+ * The newest Coolify deployment as `{ status, startedAt, endedAt }`, or null when there is none. The order of
+ * the answer is not documented, so the newest by start time is picked out of the last few.
+ */
 const latestDeployment = async ({ coolify, fetchImpl }) => {
-  const response = await fetchImpl(`${coolify.url}/api/v1/deployments/applications/${encodeURIComponent(coolify.app)}?take=1`, {
+  const response = await fetchImpl(`${coolify.url}/api/v1/deployments/applications/${encodeURIComponent(coolify.app)}?take=${DEPLOYMENTS_SEEN}`, {
     headers: { authorization: `Bearer ${coolify.token}`, accept: 'application/json' },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`Coolify deployments: HTTP ${response.status}`);
   const body = await response.json().catch(() => null);
   if (!body || !Array.isArray(body.deployments)) throw new Error('Coolify deployments: unexpected answer');
-  const [first] = body.deployments;
-  if (!first) return null;
-  return { status: first.status, at: Date.parse(first.updated_at ?? first.created_at) };
+  const deployments = body.deployments
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      status: item.status,
+      startedAt: parseTime(item.created_at ?? item.updated_at),
+      endedAt: parseTime(item.updated_at ?? item.created_at),
+    }));
+  if (!deployments.length) return null;
+  const rank = (item) => (Number.isFinite(item.startedAt) ? item.startedAt : -Infinity);
+  return deployments.reduce((newest, item) => (rank(item) > rank(newest) ? item : newest));
 };
 
 const triggerDeploy = async ({ coolify, fetchImpl }) => {

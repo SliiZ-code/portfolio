@@ -28,13 +28,26 @@ const resumeData = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+interface Deployment {
+  status: string;
+  startedAt: number;
+  endedAt: number;
+}
+
+/** A deployment that started and ended this many minutes ago. */
+const dep = (status: string, startedMinAgo: number, endedMinAgo = startedMinAgo): Deployment => ({
+  status,
+  startedAt: NOW - startedMinAgo * MIN,
+  endedAt: NOW - endedMinAgo * MIN,
+});
+
 interface World {
   data: Record<string, any>;
   updatedAt: string;
   /** the fingerprint the site publishes: a 64-hex string, null (404), or 'unreachable' (network error) */
   live: string | null | 'unreachable';
-  /** Coolify's answer for GET /deployments/applications/:uuid?take=1 */
-  deployments: { status: string; updated_at: string }[] | 'error';
+  /** Coolify's answer for GET /deployments/applications/:uuid?take=5, in the order given */
+  deployments: Deployment[] | 'error';
   rxStatus?: number;
 }
 
@@ -48,6 +61,7 @@ const scenario = (overrides: Partial<World> = {}) => {
     ...overrides,
   };
   const calls: { method: string; url: string; auth: string | null }[] = [];
+  const ago = (ms: number) => new Date(ms).toISOString();
   const fetchImpl = async (input: string | URL, init: RequestInit = {}) => {
     const url = String(input);
     const method = init.method ?? 'GET';
@@ -68,7 +82,10 @@ const scenario = (overrides: Partial<World> = {}) => {
     if (url.startsWith(`${CF}/api/v1/deployments/applications/${APP}`)) {
       if (!headers.get('authorization')?.startsWith('Bearer ') || headers.get('authorization') !== `Bearer ${CF_TOKEN}`) return json({ message: 'unauthenticated' }, 401);
       if (world.deployments === 'error') return json({ message: 'server error' }, 500);
-      return json({ count: world.deployments.length, deployments: world.deployments.map((d, i) => ({ id: i, status: d.status, updated_at: d.updated_at, created_at: d.updated_at })) });
+      return json({
+        count: world.deployments.length,
+        deployments: world.deployments.map((d, i) => ({ id: i, status: d.status, created_at: ago(d.startedAt), updated_at: ago(d.endedAt) })),
+      });
     }
     if (url.startsWith(`${CF}/api/v1/deploy?`)) {
       if (method !== 'POST') return json({ message: 'method not allowed' }, 405);
@@ -109,8 +126,7 @@ const deployCalls = (fake: ReturnType<typeof scenario>) => fake.calls.filter((ca
 describe('checkResume: when to deploy', () => {
   it('does nothing when the live site already matches the master', async () => {
     const fake = scenario();
-    const { promise } = run(fake);
-    const result = await promise;
+    const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
   });
@@ -135,6 +151,12 @@ describe('checkResume: when to deploy', () => {
     expect(calls[0].auth).toBe(`Bearer ${CF_TOKEN}`);
   });
 
+  it('deploys a change only the CV PDF shows, such as the template', async () => {
+    const data = resumeData({ metadata: { template: 'azurill', notes: 'private note' } });
+    const fake = scenario({ data, live: fingerprintResume({ data: resumeData() }, RX_KEY) });
+    expect((await run(fake).promise).deployed).toBe(true);
+  });
+
   it('treats a phone-only change as no change at all', async () => {
     const withOtherPhone = resumeData({ basics: { ...resumeData().basics, phone: '+33 6 11 22 33 44' } });
     const fake = scenario({ data: withOtherPhone, live: fingerprintResume({ data: resumeData() }, RX_KEY) });
@@ -154,36 +176,103 @@ describe('checkResume: when to deploy', () => {
     expect(deployCalls(recent)).toHaveLength(0);
   });
 
-  it('also treats a missing live fingerprint (404) as changed', async () => {
+  it('also treats a missing live fingerprint (404, or null) as changed', async () => {
     const fake = scenario({ live: null });
     expect((await run(fake).promise).deployed).toBe(true);
   });
 
   it.each(['queued', 'in_progress'])('skips while a deployment is %s', async (status) => {
-    const fake = scenario({ live: 'unreachable', deployments: [{ status, updated_at: new Date(NOW - 1 * MIN).toISOString() }] });
+    const fake = scenario({ live: 'unreachable', deployments: [dep(status, 1)] });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
   });
 
-  it('skips and exits non-zero when the latest deployment failed in the last 6 hours', async () => {
-    const fake = scenario({ live: 'unreachable', deployments: [{ status: 'failed', updated_at: new Date(NOW - 2 * 60 * MIN).toISOString() }] });
+  it('waits when the latest deployment started less than the cooldown ago', async () => {
+    const fake = scenario({ live: 'unreachable', deployments: [dep('finished', 10)] });
+    const result = await run(fake).promise;
+    expect(result).toMatchObject({ exitCode: 0, deployed: false });
+    expect(deployCalls(fake)).toHaveLength(0);
+  });
+});
+
+describe('checkResume: a failed deployment is reported once', () => {
+  it('exits 1 and does not redeploy when the failure ended less than 15 minutes ago', async () => {
+    const fake = scenario({ live: 'unreachable', deployments: [dep('failed', 20, 10)] });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 1, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
   });
 
+  it('is reported even while the master is still in its quiet period', async () => {
+    const fake = scenario({ live: 'unreachable', updatedAt: new Date(NOW - 3 * MIN).toISOString(), deployments: [dep('failed', 20, 5)] });
+    expect((await run(fake).promise).exitCode).toBe(1);
+  });
+
+  it('stays quiet on the next runs: exit 0, no redeploy, for six hours after the failure', async () => {
+    for (const endedMinAgo of [20, 35, 120, 5 * 60]) {
+      const fake = scenario({ live: 'unreachable', deployments: [dep('failed', endedMinAgo + 5, endedMinAgo)] });
+      const result = await run(fake).promise;
+      expect(result).toMatchObject({ exitCode: 0, deployed: false });
+      expect(deployCalls(fake)).toHaveLength(0);
+    }
+  });
+
   it('deploys again once the failed deployment is older than 6 hours', async () => {
-    const fake = scenario({ live: 'unreachable', deployments: [{ status: 'failed', updated_at: new Date(NOW - 7 * 60 * MIN).toISOString() }] });
+    const fake = scenario({ live: 'unreachable', deployments: [dep('failed', 7 * 60 + 5, 7 * 60)] });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: true });
   });
 
-  it('waits when the latest deployment started less than the cooldown ago, so a mismatch cannot redeploy every run', async () => {
-    const fake = scenario({ live: 'unreachable', deployments: [{ status: 'finished', updated_at: new Date(NOW - 10 * MIN).toISOString() }] });
+  it('reads the newest deployment, not the first one listed', async () => {
+    const fake = scenario({
+      live: 'unreachable',
+      updatedAt: new Date(NOW - 2 * 60 * MIN).toISOString(),
+      deployments: [dep('finished', 5 * 60), dep('failed', 20, 10)],
+    });
+    const result = await run(fake).promise;
+    expect(result).toMatchObject({ exitCode: 1, deployed: false });
+    expect(fake.calls.some((call) => call.url === `${CF}/api/v1/deployments/applications/${APP}?take=5`)).toBe(true);
+  });
+});
+
+describe('checkResume: a sync that keeps failing does not rebuild every cooldown', () => {
+  it('waits after a deployment that started after the last edit left the site behind', async () => {
+    const fake = scenario({
+      live: 'unreachable',
+      updatedAt: new Date(NOW - 3 * 60 * MIN).toISOString(),
+      deployments: [dep('finished', 2 * 60)],
+    });
     const result = await run(fake).promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
+  });
+
+  it('retries once six hours have passed since that deployment', async () => {
+    const fake = scenario({
+      live: 'unreachable',
+      updatedAt: new Date(NOW - 10 * 60 * MIN).toISOString(),
+      deployments: [dep('finished', 7 * 60)],
+    });
+    expect((await run(fake).promise).deployed).toBe(true);
+  });
+
+  it('does not hold back a deployment that started before the last edit', async () => {
+    const fake = scenario({
+      live: 'unreachable',
+      updatedAt: new Date(NOW - 2 * 60 * MIN).toISOString(),
+      deployments: [dep('finished', 3 * 60)],
+    });
+    expect((await run(fake).promise).deployed).toBe(true);
+  });
+
+  it('does not mistake an edit made while a build was running for a failed sync', async () => {
+    const fake = scenario({
+      live: 'unreachable',
+      updatedAt: new Date(NOW - 58 * MIN).toISOString(),
+      deployments: [dep('finished', 60, 55)],
+    });
+    expect((await run(fake).promise).deployed).toBe(true);
   });
 });
 
