@@ -1,9 +1,8 @@
 ---
-// Projects. On a desktop with a mouse: an index of big names, no pictures; each name swells under the pointer.
-// Elsewhere: a small picture (or the seed as a poster) beside the name, a line or two and the links. The hidden ones (not on the PDF) follow as a plain list.
+// Projects: an index of big names, no pictures, on every screen; each name swells under a pointer. A line or two and
+// the links sit under the name on a phone. The hidden ones (not on the PDF) follow as a plain list.
 import '@fontsource-variable/fraunces/wght.css';
 import HomeSection from './HomeSection.astro';
-import ProjectMedia from './ProjectMedia.astro';
 import { leadSentences, linkLabel, splitProjects } from './content';
 import type { BoardProject } from '../../data/board';
 import { htmlToText, type Lang } from '../../lib/resume';
@@ -28,9 +27,6 @@ const leadOf = (project: BoardProject) => leadSentences(htmlToText(project.descr
       <ul class="hc-projects" data-hover-index>
         {featured.map((project) => (
           <li class="hc-project">
-            <div class="hc-media">
-              <ProjectMedia project={project} label={project.displayName} />
-            </div>
             <div class="hc-project-text">
               <h3 class="hc-entry-title hc-project-name">
                 {project.website.url ? <a href={project.website.url}>{project.displayName}</a> : <span>{project.displayName}</span>}
