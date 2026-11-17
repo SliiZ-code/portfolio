@@ -1,0 +1,49 @@
+# Redeploys the site when the RxResume master resume changed, about 30 minutes after the last edit
+# (QUIET_MINUTES, see scripts/check-resume-change.mjs). Read-only except for the one Coolify deploy call.
+# The repository is public: the logs show decisions and short hashes only. See docs/resume-sync.md.
+name: resume-autodeploy
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the decision without deploying'
+        type: boolean
+        default: false
+
+# One run at a time: a slow run never overlaps the next one
+concurrency:
+  group: resume-autodeploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The checker only uses Node built-ins and scripts/lib: no npm install
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Check the master resume and deploy if it changed
+        env:
+          RXRESUME_URL: ${{ secrets.RXRESUME_URL }}
+          RXRESUME_ID: ${{ secrets.RXRESUME_ID }}
+          RXRESUME_API_KEY: ${{ secrets.RXRESUME_API_KEY }}
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: node scripts/check-resume-change.mjs${{ inputs.dry_run && ' --dry-run' || '' }}
