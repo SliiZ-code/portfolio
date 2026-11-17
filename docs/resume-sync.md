@@ -16,8 +16,11 @@ works with the committed files.
 
 ## Coolify settings
 
-Set these as build variables or build secrets (Coolify: tick "Build Variable", and enable "Use Docker
-Build Secrets" so the keys arrive as secrets):
+Set these as build variables or build secrets (Coolify: tick "Build Variable" for the variables, and enable
+"Use Docker Build Secrets" for the keys). Coolify passes build variables as secrets when Use Docker Build
+Secrets is on, and as `--build-arg` otherwise. The Dockerfile reads both: the sync RUN mounts every setting below
+as a secret (`--mount=type=secret,id=NAME,env=SECRET_NAME`) and uses the `ARG` of the same name when the secret is
+absent or empty. A missing setting is optional, so a build without it still works.
 
 | Name | Kind | Value |
 | --- | --- | --- |
