@@ -156,14 +156,26 @@ the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml`
 6. **A failed deployment is reported once.** The first run that sees a failed deployment ended less than 15 minutes
    ago exits with code 1, so GitHub sends one failure email for it. The runs after it stay quiet (exit 0) and do not
    redeploy for six hours. The schedule runs every 15 minutes, so that window holds one run. If GitHub runs the
-   schedule late, that run can fall outside the window: the failure then shows only in Coolify, and the site keeps
+   schedule late, or Coolify cannot be read on that run, the failure then shows only in Coolify, and the site keeps
    its previous build.
 7. **Deploy:** `POST {COOLIFY_URL}/api/v1/deploy?uuid={COOLIFY_APP_UUID}&force=true`. The `force` flag is the cache
    fix below.
 
-The logs are public (the repository is public), so they contain only decisions and 12-character fingerprint
-prefixes: never resume text, keys, tokens, URLs or the phone number. Every failure is reported by its message
-alone, never by a response body.
+**Failures come in two kinds.** Every RxResume and Coolify call has a 20-second timeout.
+
+- **Transient** (a timeout, a network error, HTTP 5xx or 429): the run logs one line, for example
+  `RxResume: HTTP 503 (transient), no deploy this run`, and exits 0. Nothing is deployed, and the next run tries
+  again. An outage does not email the owner every 15 minutes.
+- **Configuration or auth** (a missing setting, a `COOLIFY_URL` that is not `https://`, HTTP 401 or 403, 404 on the
+  master, a master that is not JSON, a refused redirect): the run exits 1, so GitHub tells the owner. It repeats on
+  every run until it is fixed.
+
+The site's fingerprint keeps its own rule: unreachable or missing counts as changed, and waits for the quiet period
+(item 2). The job also has a timeout (`timeout-minutes`), so a stuck run cannot hold up the schedule.
+
+The logs are public (the repository is public), so they contain only decisions, service names, status or error
+codes, and 12-character fingerprint prefixes: never resume text, keys, tokens, URLs, the phone number or response
+bodies. Every failure is reported by the service name and its status or error code only.
 
 **Why `force=true`.** The Docker builder runs `npm run sync:resume` in a layer. Secret mounts are not part of a
 layer's cache key, so a redeploy of the same commit reuses that layer and does not sync at all. A push changes
@@ -175,8 +187,11 @@ is rare. Normal push deploys are unchanged.
 
 - A sync that fails during a build is a warning: the build succeeds with the previous data, and no email is sent.
   The site stays on its previous version until the next retry (every six hours while the sync fails) succeeds.
-- A checker error (RxResume or Coolify unreachable, a bad key) exits with code 1 on every run, so an outage sends
-  one failure email per run. A failed deployment does not: see item 6.
+- A configuration or auth error (a bad or expired RxResume key, a Coolify token without the permissions) exits with
+  code 1 on every run, so it sends one failure email per run until it is fixed. A transient outage does not: see
+  Failures above.
+- An outage of Coolify that covers the 15 minutes after a failed deployment ends hides that failure: the checker
+  cannot read it, and it is not reported later. The failure shows in Coolify, and the site keeps its previous build.
 - The fingerprint depends on the RxResume key. Rotate the GitHub and Coolify copies of that key together: a
   mismatch in between causes one extra deploy.
 

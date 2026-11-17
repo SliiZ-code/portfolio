@@ -14,10 +14,10 @@ const API = '/api/openapi';
  * `protectedId` is the main resume. This client never writes to it and never deletes it, whatever the
  * caller asks: the check sits here, below every caller, and is what keeps the main resume safe.
  */
-export const createApi = ({ baseUrl, key, fetchImpl = fetch, protectedId = '' }) => {
+export const createApi = ({ baseUrl, key, fetchImpl = fetch, protectedId = '', timeoutMs: defaultTimeoutMs = 30_000 }) => {
   const origin = String(baseUrl ?? '').replace(/\/+$/, '');
   if (!origin.startsWith('https://')) throw new Error('RXRESUME_URL must use https://');
-  const send = async (label, path, { method = 'GET', body, timeoutMs = 30_000 } = {}) => {
+  const send = async (label, path, { method = 'GET', body, timeoutMs = defaultTimeoutMs } = {}) => {
     const init = {
       method,
       headers: { 'x-api-key': key, ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
@@ -45,7 +45,8 @@ export const createApi = ({ baseUrl, key, fetchImpl = fetch, protectedId = '' })
   };
 
   return {
-    getResume: (id) => sendJson(`RxResume ${id}`, at(id)),
+    // the label carries no id: the checker logs this message, and its logs are public
+    getResume: (id) => sendJson('RxResume', at(id)),
 
     listResumes: () => sendJson('RxResume list', '/resumes'),
 

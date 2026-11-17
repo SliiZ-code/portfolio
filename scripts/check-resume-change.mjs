@@ -18,8 +18,15 @@
 //        sync (RxResume or the translation failed), so wait and retry at most every six hours, not every run
 //   4. deploy: POST {COOLIFY_URL}/api/v1/deploy?uuid=...&force=true (force = build without the Docker cache, so
 //      the sync layer runs again; see docs/resume-sync.md)
-// Logs carry decisions and 12-character fingerprint prefixes only: never resume text, keys, tokens, the phone
-// number or URLs (the repository is public and Actions logs are public).
+// Failures of RxResume or Coolify are either transient or configuration problems:
+//   - transient (a timeout, a network error, HTTP 5xx or 429): one log line, exit 0, no deploy. An outage does not
+//     email the owner every 15 minutes; the next run tries again.
+//   - configuration or auth (missing settings, HTTP 401/403, 404 on the master, an unreadable master, a refused
+//     redirect): exit 1, so the owner is told.
+// The site's fingerprint keeps its own rule: unreachable or missing counts as changed (see liveFingerprint).
+// Logs carry decisions, service names, status or error codes and 12-character fingerprint prefixes only: never
+// resume text, keys, tokens, the phone number, response bodies or URLs (the repository is public and Actions
+// logs are public).
 import { pathToFileURL } from 'node:url';
 import { createApi } from './lib/rxresume.mjs';
 import { fingerprintResume } from './lib/fingerprint.mjs';
@@ -32,8 +39,46 @@ const ALERT_WINDOW_MS = 15 * MINUTE;
 const FAILURE_PAUSE_MS = 6 * HOUR;
 const RETRY_PAUSE_MS = 6 * HOUR;
 const DEPLOYMENTS_SEEN = 5;
-const REQUEST_TIMEOUT_MS = 30_000;
+// Each request stops after this long, so a hung connection cannot stall the job (the workflow also caps the job).
+const REQUEST_TIMEOUT_MS = 20_000;
 const HEX64 = /^[0-9a-f]{64}$/;
+const ERROR_CODE = /^[A-Z][A-Z0-9_]{1,40}$/;
+
+/** A failure of one service. `transient` failures skip the run (exit 0); the others are configuration or auth. */
+class ServiceError extends Error {
+  constructor(service, detail, transient) {
+    super(`${service}: ${detail}`);
+    this.name = 'ServiceError';
+    this.transient = transient;
+  }
+}
+
+/** A fetch that threw. The message of a fetch error can quote the URL, so only its name and error code are kept. */
+const networkFailure = (service, error) => {
+  if (error?.name === 'TimeoutError' || error?.name === 'AbortError') return new ServiceError(service, 'timeout', true);
+  // redirect: 'error' refuses a redirect: the configured URL is wrong, which no retry fixes
+  if (/redirect/i.test(String(error?.cause?.message ?? ''))) return new ServiceError(service, 'redirect refused, check the URL', false);
+  const code = error?.cause?.code;
+  return new ServiceError(service, typeof code === 'string' && ERROR_CODE.test(code) ? `network error ${code}` : 'network error', true);
+};
+
+/**
+ * Wraps the fetch of one service. The body is read inside the same try, so a stalled or dropped body is a timeout
+ * or network error too. Returns a 2xx response with its body already read; any other answer throws a ServiceError.
+ */
+const guard = (service, fetchImpl) => async (url, init) => {
+  let response;
+  let text;
+  try {
+    response = await fetchImpl(url, init);
+    text = await response.text();
+  } catch (error) {
+    throw networkFailure(service, error);
+  }
+  if (response.status === 429 || response.status >= 500) throw new ServiceError(service, `HTTP ${response.status}`, true);
+  if (!response.ok) throw new ServiceError(service, `HTTP ${response.status}`, false);
+  return new Response(text || null, { status: response.status, headers: response.headers });
+};
 
 /** Coolify statuses are not documented in full: queued and in_progress/in-progress count as busy. */
 const stateOf = (status) => {
@@ -161,7 +206,6 @@ const latestDeployment = async ({ coolify, fetchImpl }) => {
     headers: { authorization: `Bearer ${coolify.token}`, accept: 'application/json' },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  if (!response.ok) throw new Error(`Coolify deployments: HTTP ${response.status}`);
   const body = await response.json().catch(() => null);
   if (!body || !Array.isArray(body.deployments)) throw new Error('Coolify deployments: unexpected answer');
   const deployments = body.deployments
@@ -183,20 +227,21 @@ const triggerDeploy = async ({ coolify, fetchImpl }) => {
     headers: { authorization: `Bearer ${coolify.token}`, accept: 'application/json' },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  if (!response.ok) throw new Error(`Coolify deploy: HTTP ${response.status}`);
   const body = await response.json().catch(() => null);
   const id = body?.deployments?.[0]?.deployment_uuid;
   return typeof id === 'string' ? id.slice(0, 8) : null;
 };
 
 /**
- * One check. Returns `{ exitCode, deployed, decision }` and logs decisions only. Every failure is caught
- * here and reported as exit code 1 with a short message: a message never carries a secret or resume text.
+ * One check. Returns `{ exitCode, deployed, decision }` and logs decisions only. Every failure is caught here:
+ * a transient one (see ServiceError) logs one line and exits 0 without deploying; any other exits 1. A message
+ * never carries a secret, a response body or resume text.
  */
 export const checkResume = async ({ env = {}, fetchImpl = fetch, now = Date.now(), dryRun = false, log = console.log } = {}) => {
   try {
     const config = readConfig(env, dryRun);
-    const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl, protectedId: config.mainId });
+    const rxFetch = guard('RxResume', fetchImpl);
+    const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl: rxFetch, protectedId: config.mainId, timeoutMs: REQUEST_TIMEOUT_MS });
     const master = await api.getResume(config.mainId);
     const masterFingerprint = fingerprintResume(master, config.key);
     const live = await liveFingerprint({ siteUrl: config.siteUrl, fetchImpl, now, log });
@@ -204,7 +249,7 @@ export const checkResume = async ({ env = {}, fetchImpl = fetch, now = Date.now(
 
     let latest = null;
     if (config.coolify) {
-      latest = await latestDeployment({ coolify: config.coolify, fetchImpl });
+      latest = await latestDeployment({ coolify: config.coolify, fetchImpl: guard('Coolify', fetchImpl) });
     } else {
       log('coolify: no settings in this dry run, deployments not checked');
     }
@@ -225,10 +270,14 @@ export const checkResume = async ({ env = {}, fetchImpl = fetch, now = Date.now(
       log('dry run: would deploy (no deploy call made)');
       return { exitCode: 0, deployed: false, decision };
     }
-    const deployment = await triggerDeploy({ coolify: config.coolify, fetchImpl });
+    const deployment = await triggerDeploy({ coolify: config.coolify, fetchImpl: guard('Coolify', fetchImpl) });
     log(`deployment queued${deployment ? ` (${deployment}…)` : ''}, built without cache`);
     return { exitCode: 0, deployed: true, decision };
   } catch (error) {
+    if (error instanceof ServiceError) {
+      log(`${error.message}${error.transient ? ' (transient), no deploy this run' : ', stopping'}`);
+      return { exitCode: error.transient ? 0 : 1, deployed: false, decision: null };
+    }
     log(`error: ${error.message}`);
     return { exitCode: 1, deployed: false, decision: null };
   }
