@@ -57,11 +57,6 @@ describe('known project overlay', () => {
     expect(bySlug.blink.tag).toBe('Python');
   });
 
-  it('keeps the media', () => {
-    expect(bySlug['jeu-de-la-vie'].media).toEqual({ video: '/media/conway.mp4' });
-    expect(bySlug.thrive.media).toEqual({ image: '/media/thrive.jpg', webp: '/media/thrive.webp' });
-  });
-
   it('ignores overlay entries that are not in the resume', () => {
     const only = getBoardProjects(withProjects(sampleResume('fr'), [sampleResume('fr').projects[0]]));
     expect(only).toHaveLength(1);

@@ -1,5 +1,4 @@
 import type { Project, Resume } from '../lib/resume';
-import { findMedia, type Media } from '../lib/media';
 import { METHUSELAHS, type MethuselahName } from '../scripts/board/patterns';
 
 export interface BoardOverlay {
@@ -9,24 +8,21 @@ export interface BoardOverlay {
   aliases?: string[];
   /** The language or tool shown next to the name on the board. */
   tag: string;
-  media?: Media;
 }
 
 /**
- * Site-only layer: a project's seed, tag and capture. Keyed by the slug of the
- * RxResume project name.
+ * Site-only layer: a project's seed and tag. Keyed by the slug of the RxResume
+ * project name.
  */
 export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
   'jeu-de-la-vie': {
     seed: 'r-pentomino',
     aliases: ['game-of-life'],
     tag: 'C++',
-    media: { video: '/media/conway.mp4' },
   },
   thrive: {
     seed: 'acorn',
     tag: 'Flutter',
-    media: { image: '/media/thrive.jpg', webp: '/media/thrive.webp' },
   },
   'worldwide-weather-watcher': {
     seed: 'pi-heptomino',
@@ -35,7 +31,6 @@ export const BOARD_OVERLAY: Record<string, BoardOverlay> = {
   blink: {
     seed: 'diehard',
     tag: 'Python',
-    media: { video: '/media/blink.mp4' },
   },
   // the slugs of "L'Arduino en pixels" and "The Arduino in pixels"
   'larduino-en-pixels': {
@@ -54,7 +49,6 @@ export interface BoardProject extends Project {
   tag: string;
   /** Tag and period, for the list and the project page. */
   meta: string;
-  media?: Media;
 }
 
 const OVERLAY_KEYS = new Map<string, string>();
@@ -86,35 +80,12 @@ export const seedFor = (project: Project): MethuselahName =>
 export const projectMeta = (project: Project): string =>
   [overlayFor(project)?.tag, project.period].filter(Boolean).join(' · ');
 
-/**
- * An explicit overlay media wins; otherwise a file in public/media named after the project's
- * slug, its overlay key or the slug of its other-language twin is picked up by convention.
- */
-export const boardMedia = (
-  project: Project,
-  alternate?: Project,
-  exists?: (file: string) => boolean,
-): BoardOverlay['media'] =>
-  overlayFor(project)?.media ?? findMedia([project.slug, overlayKeyFor(project) ?? '', alternate?.slug ?? ''], exists);
-
 export function getBoardProjects(resume: Resume): BoardProject[] {
-  return resume.projects.map((project) => {
-    const overlay = overlayFor(project);
-    const base = { ...project, displayName: project.name };
-    if (!overlay) {
-      return {
-        ...base,
-        seed: seedFor(project),
-        tag: '',
-        meta: projectMeta(project),
-      };
-    }
-    return {
-      ...base,
-      seed: seedFor(project),
-      tag: overlay.tag,
-      meta: projectMeta(project),
-      media: overlay.media,
-    };
-  });
+  return resume.projects.map((project) => ({
+    ...project,
+    displayName: project.name,
+    seed: seedFor(project),
+    tag: overlayFor(project)?.tag ?? '',
+    meta: projectMeta(project),
+  }));
 }
