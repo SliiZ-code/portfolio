@@ -5,32 +5,48 @@
 
   try_files {path} {path}/ {path}.html
 
-  # Long immutable cache for content-hashed Astro assets only
-  route /_astro/* {
+  # Every response gets exactly one Cache-Control. These are handle blocks: the first matching one serves the
+  # request, and the last one (no matcher) takes every other path. No top-level header, so nothing is set twice.
+
+  # Content-hashed Astro bundles: the file name changes with the content, so a year is safe
+  handle /_astro/* {
     header Cache-Control "public, max-age=31536000, immutable"
     file_server
   }
 
-  # Fixed-name assets: revalidate daily (ETag still works)
-  route /media/* {
+  # Fixed-name assets that only change by hand: a day, then ETag revalidation
+  handle /media/* {
     header Cache-Control "public, max-age=86400"
     file_server
   }
 
-  route /fonts/* {
+  handle /fonts/* {
     header Cache-Control "public, max-age=86400"
     file_server
   }
 
-  # The autodeploy checker reads this after each deploy: never a cached copy
-  route /resume-fingerprint.json {
+  # Fixed-name images that only change by hand (social card, icons): a day. A new image shows within a day
+  # on a phone, and the ETag makes the revalidation a 304 when nothing changed.
+  @brand path /og.png /apple-touch-icon.png /favicon.svg
+  handle @brand {
+    header Cache-Control "public, max-age=86400"
+    file_server
+  }
+
+  # Regenerated on every deploy, so a browser must ask every time (cheap 304 through the ETag).
+  # The autodeploy checker reads the fingerprint after each deploy: it must never be a cached copy.
+  @generated path /robots.txt /sitemap*.xml /resume-fingerprint.json
+  handle @generated {
     header Cache-Control "no-cache"
     file_server
   }
 
-  # Default: short cache for HTML and everything else
-  header Cache-Control "public, max-age=3600"
-  file_server
+  # Default: HTML pages, the CV PDFs (/cv/*.pdf, which the owner replaces on each resume change) and anything
+  # else. The browser may store them but must revalidate on every visit, so a redeploy shows at once.
+  handle {
+    header Cache-Control "no-cache"
+    file_server
+  }
 
   # Error handling: override cache for error responses
   handle_errors {

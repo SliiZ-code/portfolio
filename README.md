@@ -269,10 +269,15 @@ run are in [docs/resume-sync.md](docs/resume-sync.md#redeploy-when-the-resume-ch
 **Caddyfile** configuration:
 - `encode zstd gzip` for compression
 - `try_files` for HTML routing (maps directory URLs to `.html` files)
-- Long immutable cache for `/_astro/*` (1 year)
-- Short revalidation for `/media/*` and `/fonts/*` (1 day, via ETag)
-- Default short cache for HTML (1 hour)
-- `handle_errors` serves `/404.html` with HTTP 404 status
+- Long immutable cache for `/_astro/*` (1 year): the file names change with their content
+- A day for `/media/*`, `/fonts/*` and the hand-made brand images (`/og.png`, `/apple-touch-icon.png`,
+  `/favicon.svg`), revalidated through the ETag once it expires
+- `no-cache` for everything else: HTML pages, the CV PDFs, `/robots.txt`, the sitemaps and
+  `/resume-fingerprint.json`. A browser may keep a copy but asks the server on every visit, and the ETag makes
+  an unchanged file a cheap `304`. So a redeploy shows at once, which an hour-long cache did not allow
+- Each path gets exactly one `Cache-Control`: the `handle` blocks are tried in order and the last one takes
+  every other path, so no top-level `header` is set on top of them
+- `handle_errors` serves `/404.html` with HTTP 404 status (`no-cache`)
 - Health check via `wget` to `http://127.0.0.1/`
 
 To build and test locally:
