@@ -434,6 +434,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     };
 
     const ensureSourceLoaded = (): void => {
+      if (figure.offsetParent === null) return;
       if (video && !video.src && video.dataset.src) video.src = video.dataset.src;
     };
 
@@ -462,6 +463,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
     };
 
     const resize = (): void => {
+      if (figure.offsetParent === null) return;
       const nextCols = Math.max(8, Math.round(figure.clientWidth / CELL_PX));
       const nextRows = Math.max(6, Math.round(nextCols / ASPECT));
       if (nextCols === cols && nextRows === rows) return;
@@ -523,7 +525,7 @@ const seed = JSON.stringify({ w: cols, h: pattern.length, cells });
 
     // on touch a tap toggles the colour reveal (a figure is not a link, so the tap does nothing else)
     figure.addEventListener('click', () => {
-      if (!touchOnly.matches) return;
+      if (!touchOnly.matches || figure.offsetParent === null) return;
       ensureSourceLoaded();
       life = null;
       if (revealed) {

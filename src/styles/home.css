@@ -219,8 +219,9 @@
   gap: 14px;
 }
 
-/* the media box: ProjectMedia fills it at 4:3 */
+/* the media box: the home project list shows no previews, like the desktop index */
 .hc-media {
+  display: none;
   position: relative;
   aspect-ratio: 4 / 3;
   overflow: hidden;
@@ -320,12 +321,6 @@
 }
 
 @media (min-width: 560px) {
-  .hc-project {
-    grid-template-columns: 176px minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-  }
-
   .hc-rows > div {
     display: grid;
     grid-template-columns: 200px minmax(0, 1fr);
