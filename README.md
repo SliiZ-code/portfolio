@@ -80,7 +80,7 @@ build time; without it the HUD and the list link to the HTML CV page, which offe
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
-`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Seed, tag, page note, capture and optional live
+`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Seed, tag, page note and optional live
 experiment are a site-only overlay in `src/data/board.ts`, keyed by that slug. A project that
 exists in RxResume but not in the overlay is still rendered, in the board list, in the
 no-JavaScript list and as a page: it gets no tag and a methuselah picked from its slug
@@ -97,11 +97,6 @@ resume keeps the ids), then by overlay key, then by position.
 
 A project's meta line (project page, no-JavaScript list) is the overlay tag and the RxResume
 period joined by ` · `; an empty part is skipped.
-
-Captures need no overlay entry: drop `<slug>.mp4`, `.webm`, `.jpg`, `.jpeg`, `.png` or `.webp`
-in `public/media/` (video wins over image). The project's own slug is tried first, then its
-overlay key, then the slug of its other-language twin. An explicit `media` in the overlay
-still wins.
 
 ## Routes
 
