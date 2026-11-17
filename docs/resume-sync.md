@@ -128,6 +128,31 @@ A test walks the English copy and fails if a French string that has a translatio
 PDF-only prose above is translated with the same cache. A hidden summary, section or item is never sent to a
 provider, hidden projects excepted: the site shows those, so they were already translated.
 
+## Retries
+
+RxResume sometimes refuses a request that is valid and works a minute later: a 401 on a good key was seen once in
+production and once locally, and the PDFs were skipped for it. The client (`scripts/lib/rxresume.mjs`) retries those
+refusals, so one blip does not skip a sync or a deploy.
+
+| Request | Retried on | Why |
+| --- | --- | --- |
+| GET: list, read, PDF (the sync and the checker) | 401, 408, 429, 5xx, a network error, a timeout | a GET changes nothing, so a second try cannot do harm |
+| POST create, PATCH, DELETE, POST purge | 401, 429 only | the server refused it before it ran, so a retry cannot run it twice |
+| everything else | never | the request may already have run: a retried create could leave a duplicate copy |
+
+- Up to **3 attempts**. The pause before the second is **2 s**, before the third **5 s**. A `Retry-After` header
+  (seconds or a date) replaces the pause, capped at **30 s**.
+- Each retry logs one line, with the label, the status and the attempt, for example
+  `RxResume list: HTTP 401, attempt 1 of 3 failed, retrying in 2000 ms`. The labels carry no id. No key, URL,
+  response body or resume text is logged.
+- When the attempts run out, the error is the same as before, with the label and the status only
+  (`RxResume list: HTTP 503`). The sync then skips the PDFs, and the checker treats it as transient.
+- The window is short: about 7 seconds in all. A refusal that lasts longer is not covered; the run then skips as it
+  did before, and the checker tries again after six hours.
+- The checker's own fetch wrapper classifies HTTP 401 as configuration before the client sees it, so the checker
+  does not retry a 401 (it still exits 1, as documented below). The sync does retry it. The wrapper also does not
+  pass `Retry-After` through, so in the checker the pause is always the backoff.
+
 ## Redeploy when the resume changes
 
 RxResume has no webhooks and autosaves while you type, so the site is redeployed by polling, and only after
@@ -163,9 +188,9 @@ the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml`
 
 **Failures come in two kinds.** Every RxResume and Coolify call has a 20-second timeout.
 
-- **Transient** (a timeout, a network error, HTTP 5xx or 429): the run logs one line, for example
-  `RxResume: HTTP 503 (transient), no deploy this run`, and exits 0. Nothing is deployed, and the next run tries
-  again. An outage does not email the owner every 15 minutes.
+- **Transient** (a timeout, a network error, HTTP 5xx or 429): the client retries first (see Retries). If the
+  failure persists, the run logs one line, for example `RxResume: HTTP 503 (transient), no deploy this run`, and
+  exits 0. Nothing is deployed, and the next run tries again. An outage does not email the owner every 15 minutes.
 - **Configuration or auth** (a missing setting, a `COOLIFY_URL` that is not `https://`, HTTP 401 or 403, 404 on the
   master, a master that is not JSON, a refused redirect): the run exits 1, so GitHub tells the owner. It repeats on
   every run until it is fixed.
