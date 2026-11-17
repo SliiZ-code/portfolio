@@ -75,8 +75,10 @@ const fakeTranslator = () => {
   };
 };
 
+const noWait = async () => {};
+
 const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], cache = parseCache(undefined), warnings: string[] = []) => {
-  const api = createApi({ baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
+  const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
   return runSync({
     mainId: fake.mainId,
     api,
@@ -159,6 +161,33 @@ describe('runSync: the PDFs', () => {
     expect(writes).toEqual([]);
     expect(fake.store.get(fake.mainId)!.data).toEqual(mainResume);
     expect([...fake.store.keys()]).toEqual([fake.mainId]);
+  });
+
+  it('one transient 401 on the list of leftover copies does not skip the PDFs', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    let refused = false;
+    const flaky = (async (url: string, init: RequestInit = {}) => {
+      if (!refused && (init.method ?? 'GET') === 'GET' && new URL(url).pathname === '/api/openapi/resumes') {
+        refused = true;
+        return new Response('{}', { status: 401 });
+      }
+      return fake.fetchImpl(url, init);
+    }) as unknown as typeof fetch;
+    const api = createApi({ sleep: noWait, log: () => {}, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: flaky, protectedId: fake.mainId });
+    const { provider } = fakeTranslator();
+    const result = await runSync({
+      mainId: fake.mainId,
+      api,
+      fingerprintKey: 'secret',
+      translators: [provider] as never,
+      cache: parseCache(undefined),
+      stamp: 'T1',
+      log: () => {},
+      warn: () => {},
+    });
+    expect(refused).toBe(true);
+    expect([...result.pdfs.keys()]).toEqual(['fr', 'en']);
+    expect(result.errors).toEqual([]);
   });
 
   it('the English copy carries the translated strings, and the French one the French', async () => {

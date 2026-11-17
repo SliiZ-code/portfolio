@@ -49,6 +49,7 @@ class ServiceError extends Error {
   constructor(service, detail, transient) {
     super(`${service}: ${detail}`);
     this.name = 'ServiceError';
+    this.detail = detail;
     this.transient = transient;
   }
 }
@@ -237,11 +238,19 @@ const triggerDeploy = async ({ coolify, fetchImpl }) => {
  * a transient one (see ServiceError) logs one line and exits 0 without deploying; any other exits 1. A message
  * never carries a secret, a response body or resume text.
  */
-export const checkResume = async ({ env = {}, fetchImpl = fetch, now = Date.now(), dryRun = false, log = console.log } = {}) => {
+export const checkResume = async ({
+  env = {},
+  fetchImpl = fetch,
+  now = Date.now(),
+  dryRun = false,
+  log = console.log,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+} = {}) => {
   try {
     const config = readConfig(env, dryRun);
     const rxFetch = guard('RxResume', fetchImpl);
-    const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl: rxFetch, protectedId: config.mainId, timeoutMs: REQUEST_TIMEOUT_MS });
+    // the client retries a GET that failed transiently, and logs one line per retry
+    const api = createApi({ baseUrl: config.rxUrl, key: config.key, fetchImpl: rxFetch, protectedId: config.mainId, timeoutMs: REQUEST_TIMEOUT_MS, sleep, log });
     const master = await api.getResume(config.mainId);
     const masterFingerprint = fingerprintResume(master, config.key);
     const live = await liveFingerprint({ siteUrl: config.siteUrl, fetchImpl, now, log });

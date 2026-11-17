@@ -133,6 +133,7 @@ const run = (fake: ReturnType<typeof scenario>, options: { env?: Record<string, 
     now: NOW,
     dryRun: options.dryRun ?? false,
     log: (line: string) => lines.push(line),
+    sleep: async () => {},
   });
   return { promise, lines };
 };
@@ -364,7 +365,17 @@ describe('checkResume: a transient failure skips the run quietly', () => {
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual([`RxResume: HTTP ${status} (transient), no deploy this run`]);
+    expect(lines.at(-1)).toBe(`RxResume: HTTP ${status} (transient), no deploy this run`);
+  });
+
+  it('retries the master read before skipping the run, one line per retry', async () => {
+    const fake = behind({ rx: { status: 503 } });
+    const { promise, lines } = run(fake);
+    await promise;
+    expect(lines.filter((line) => line.includes('attempt'))).toEqual([
+      'RxResume: HTTP 503, attempt 1 of 3 failed, retrying in 2000 ms',
+      'RxResume: HTTP 503, attempt 2 of 3 failed, retrying in 5000 ms',
+    ]);
   });
 
   it('RxResume network error: exits 0, no deploy, and the error code only', async () => {
@@ -373,7 +384,7 @@ describe('checkResume: a transient failure skips the run quietly', () => {
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual(['RxResume: network error ECONNREFUSED (transient), no deploy this run']);
+    expect(lines.at(-1)).toBe('RxResume: network error ECONNREFUSED (transient), no deploy this run');
   });
 
   it('RxResume timeout: exits 0, no deploy', async () => {
@@ -382,7 +393,7 @@ describe('checkResume: a transient failure skips the run quietly', () => {
     const result = await promise;
     expect(result).toMatchObject({ exitCode: 0, deployed: false });
     expect(deployCalls(fake)).toHaveLength(0);
-    expect(lines).toEqual(['RxResume: timeout (transient), no deploy this run']);
+    expect(lines.at(-1)).toBe('RxResume: timeout (transient), no deploy this run');
   });
 
   it('Coolify 502 on the deployments check: exits 0, no deploy', async () => {
