@@ -19,10 +19,11 @@
 //   4. deploy: POST {COOLIFY_URL}/api/v1/deploy?uuid=...&force=true (force = build without the Docker cache, so
 //      the sync layer runs again; see docs/resume-sync.md)
 // Failures of RxResume or Coolify are either transient or configuration problems:
-//   - transient (a timeout, a network error, HTTP 5xx or 429): one log line, exit 0, no deploy. An outage does not
-//     email the owner every 15 minutes; the next run tries again.
-//   - configuration or auth (missing settings, HTTP 401/403, 404 on the master, an unreadable master, a refused
-//     redirect): exit 1, so the owner is told.
+//   - transient (a timeout, a network error, HTTP 408, 429 or 5xx): the client retries a read of the master first
+//     (three attempts, see docs/resume-sync.md). Then one log line, exit 0, no deploy. An outage does not email the
+//     owner every 15 minutes; the next run tries again.
+//   - configuration or auth (missing settings, HTTP 401/403 and other 4xx, 404 on the master, an unreadable master,
+//     a refused redirect): exit 1, so the owner is told. A 401 is not retried here.
 // The site's fingerprint keeps its own rule: unreachable or missing counts as changed (see liveFingerprint).
 // Logs carry decisions, service names, status or error codes and 12-character fingerprint prefixes only: never
 // resume text, keys, tokens, the phone number, response bodies or URLs (the repository is public and Actions
@@ -76,7 +77,8 @@ const guard = (service, fetchImpl) => async (url, init) => {
   } catch (error) {
     throw networkFailure(service, error);
   }
-  if (response.status === 429 || response.status >= 500) throw new ServiceError(service, `HTTP ${response.status}`, true);
+  // 408 is a request that timed out on the server's side: transient, like the client's retries for a GET
+  if (response.status === 408 || response.status === 429 || response.status >= 500) throw new ServiceError(service, `HTTP ${response.status}`, true);
   if (!response.ok) throw new ServiceError(service, `HTTP ${response.status}`, false);
   return new Response(text || null, { status: response.status, headers: response.headers });
 };
