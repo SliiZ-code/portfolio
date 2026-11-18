@@ -8,6 +8,7 @@ import {
   claudeProvider,
   configuredTranslators,
   geminiProvider,
+  opencodeProvider,
   openrouterProvider,
   parseCache,
   serializeCache,
@@ -304,6 +305,47 @@ describe('claudeProvider', () => {
   });
 });
 
+describe('opencodeProvider', () => {
+  const answer = new Response(JSON.stringify({ choices: [{ message: { content: '{"s1":"Hello"}' } }] }), { status: 200 });
+
+  it('calls the OpenCode inference endpoint with its key, its user agent and one session id per run', async () => {
+    const seen: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen.push({ url: String(url), init });
+      return answer.clone();
+    }) as unknown as typeof fetch;
+    const provider = opencodeProvider({ apiKey: 'oc-secret', model: 'deepseek-v4.1-flash', fetchImpl });
+    expect(await provider.translate({ s1: 'Bonjour' })).toEqual({ s1: 'Hello' });
+
+    expect(seen[0].url).toBe('https://opencode.ai/inference/openai/v1/chat/completions');
+    expect(seen[0].init.method).toBe('POST');
+    expect(seen[0].init.redirect).toBe('error');
+    expect(seen[0].init.signal).toBeInstanceOf(AbortSignal);
+    const headers = seen[0].init.headers as Record<string, string>;
+    expect(headers['content-type']).toBe('application/json');
+    expect(headers.authorization).toBe('Bearer oc-secret');
+    expect(headers['user-agent']).toBe('portfolio-resume-sync/1.0');
+    expect(headers['x-opencode-session']).toMatch(/^[0-9a-f-]{36}$/);
+    expect(seen[0].url).not.toContain('oc-secret');
+
+    const body = JSON.parse(String(seen[0].init.body));
+    expect(body.model).toBe('deepseek-v4.1-flash');
+    expect(body.messages).toEqual([{ role: 'user', content: buildPrompt({ s1: 'Bonjour' }) }]);
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    expect(body.temperature).toBe(0.2);
+
+    // one session for the whole run: the next chunk of the same provider sends the same id
+    await provider.translate({ s1: 'Salut' });
+    expect((seen[1].init.headers as Record<string, string>)['x-opencode-session']).toBe(headers['x-opencode-session']);
+  });
+
+  it('reports only the HTTP status, never the body that may echo the key or the resume', async () => {
+    const fetchImpl = (async () => new Response('oc-secret and Bonjour echoed', { status: 500 })) as unknown as typeof fetch;
+    const error = await opencodeProvider({ apiKey: 'oc-secret', model: 'm', fetchImpl }).translate({ s1: 'Bonjour' }).catch((e: Error) => e);
+    expect((error as Error).message).toBe('opencode: HTTP 500');
+  });
+});
+
 describe('geminiProvider', () => {
   it('calls generateContent with the key in a header, never in the URL, and asks for JSON', async () => {
     const seen: { url: string; init: RequestInit }[] = [];
@@ -357,13 +399,14 @@ describe('configuredTranslators', () => {
     expect(configuredTranslators({ PATH: '/usr/bin' }, { findCommand })).toEqual([]);
   });
 
-  it('keeps the order claude, gemini, openrouter, each only when configured', () => {
+  it('keeps the order opencode, claude, gemini, openrouter, each only when configured', () => {
     const all = configuredTranslators(
-      { PATH: '/usr/bin', HOME: '/h', CLAUDE_CODE_OAUTH_TOKEN: 't', GEMINI_API_KEY: 'g', OPENROUTER_API_KEY: 'o' },
+      { PATH: '/usr/bin', HOME: '/h', OPENCODE_API_KEY: 'c', CLAUDE_CODE_OAUTH_TOKEN: 't', GEMINI_API_KEY: 'g', OPENROUTER_API_KEY: 'o' },
       { findCommand },
     );
-    expect(all.map((p) => p.name)).toEqual(['claude', 'gemini', 'openrouter']);
+    expect(all.map((p) => p.name)).toEqual(['opencode', 'claude', 'gemini', 'openrouter']);
     expect(configuredTranslators({ OPENROUTER_API_KEY: 'o' }, { findCommand }).map((p) => p.name)).toEqual(['openrouter']);
+    expect(configuredTranslators({ OPENCODE_API_KEY: 'c' }, { findCommand }).map((p) => p.name)).toEqual(['opencode']);
   });
 
   it('uses the local Claude Code login only when TRANSLATE_CLAUDE_LOCAL=1, and npx when claude is not on PATH', () => {
@@ -385,9 +428,16 @@ describe('configuredTranslators', () => {
   });
 
   it('applies the model overrides', () => {
+    const [opencode] = configuredTranslators({ OPENCODE_API_KEY: 'c', TRANSLATE_OPENCODE_MODEL: 'deepseek-x' }, { findCommand });
+    expect(opencode.model).toBe('deepseek-x');
     const [gemini] = configuredTranslators({ GEMINI_API_KEY: 'g', TRANSLATE_GEMINI_MODEL: 'gemini-x' }, { findCommand });
     expect(gemini.model).toBe('gemini-x');
     const [openrouter] = configuredTranslators({ OPENROUTER_API_KEY: 'o' }, { findCommand });
     expect(openrouter.model).toBe('anthropic/claude-haiku-4.5');
+  });
+
+  it('defaults the OpenCode model to deepseek-v4.1-flash', () => {
+    const [opencode] = configuredTranslators({ OPENCODE_API_KEY: 'c' }, { findCommand });
+    expect(opencode.model).toBe('deepseek-v4.1-flash');
   });
 });

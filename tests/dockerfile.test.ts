@@ -15,7 +15,7 @@ const SETTINGS = [
   'TRANSLATE_OPENROUTER_MODEL',
 ];
 
-const API_KEYS = ['RXRESUME_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'GEMINI_API_KEY', 'OPENROUTER_API_KEY'];
+const API_KEYS = ['RXRESUME_API_KEY', 'OPENCODE_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'GEMINI_API_KEY', 'OPENROUTER_API_KEY'];
 
 /** The instruction that runs the sync: from its first mount to the blank line that ends it. */
 const syncRun = (() => {

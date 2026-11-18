@@ -1,9 +1,10 @@
 // French -> English for the resume's prose, with a committed cache (src/data/resume.translations.json)
 // keyed by sha256(French). Only strings missing from the cache reach an AI provider. Providers are
-// tried in order (claude, gemini, openrouter): the first one configured wins, and a failure falls
-// through to the next. Every answer is validated before it is cached, and a provider never sees
+// tried in order (opencode, claude, gemini, openrouter): the first one configured wins, and a failure
+// falls through to the next. Every answer is validated before it is cached, and a provider never sees
 // the phone number.
 import { spawn as nodeSpawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { accessSync, constants, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
@@ -11,6 +12,7 @@ import { holdsPhone } from './guard.mjs';
 import { sameTags, sha } from './strings.mjs';
 
 export const DEFAULT_MODELS = {
+  opencode: 'deepseek-v4.1-flash',
   claude: 'claude-haiku-5-5',
   gemini: 'gemini-3.5-flash',
   openrouter: 'anthropic/claude-haiku-4.5',
@@ -230,6 +232,40 @@ export const claudeProvider = ({ command = 'claude', args = [], env = process.en
     }),
 });
 
+/**
+ * OpenCode Go, OpenAI-compatible chat completions, JSON mode. The session id is random and fixed per
+ * provider instance, so the chunks of one run share it; it carries nothing from the resume.
+ */
+export const opencodeProvider = ({ apiKey, model = DEFAULT_MODELS.opencode, fetchImpl = fetch, timeoutMs = 120_000 } = {}) => {
+  const session = randomUUID();
+  return {
+    name: 'opencode',
+    model,
+    translate: async (input) => {
+      const response = await fetchImpl('https://opencode.ai/inference/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${apiKey}`,
+          'user-agent': 'portfolio-resume-sync/1.0',
+          'x-opencode-session': session,
+        },
+        redirect: 'error',
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: buildPrompt(input) }],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
+      });
+      if (!response.ok) throw new Error(`opencode: HTTP ${response.status}`);
+      const body = await response.json().catch(() => null);
+      return parseJsonObject(body?.choices?.[0]?.message?.content);
+    },
+  };
+};
+
 /** Gemini REST generateContent, JSON mode. The key goes in a header, never in the URL. */
 export const geminiProvider = ({ apiKey, model = DEFAULT_MODELS.gemini, fetchImpl = fetch, timeoutMs = 120_000 } = {}) => ({
   name: 'gemini',
@@ -292,6 +328,9 @@ export const findExecutable = (name, pathValue = '') => {
 /** The providers the environment configures, in the order they are tried. */
 export const configuredTranslators = (env, { fetchImpl = fetch, spawnImpl = nodeSpawn, findCommand = (name) => findExecutable(name, env.PATH) } = {}) => {
   const providers = [];
+  if (env.OPENCODE_API_KEY) {
+    providers.push(opencodeProvider({ apiKey: env.OPENCODE_API_KEY, model: env.TRANSLATE_OPENCODE_MODEL || DEFAULT_MODELS.opencode, fetchImpl }));
+  }
   if (env.CLAUDE_CODE_OAUTH_TOKEN || env.TRANSLATE_CLAUDE_LOCAL === '1') {
     const found = findCommand('claude');
     providers.push(
