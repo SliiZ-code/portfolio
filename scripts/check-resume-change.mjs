@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Redeploys the site when the master resume changed, about QUIET_MINUTES after the last edit.
 // RxResume has no webhooks and autosaves while typing, so the checker waits for a quiet period before it
-// deploys. It runs every 15 minutes in .github/workflows/resume-autodeploy.yml; locally:
+// deploys. The autodeploy container (scripts/autodeploy-loop.mjs, Dockerfile.autodeploy) runs it every
+// CHECK_INTERVAL_MINUTES (15 by default); locally:
 //   node --env-file=.env scripts/check-resume-change.mjs --dry-run
 //
 // Per run, read-only except for the one deploy call:
@@ -9,8 +10,8 @@
 //      (scripts/lib/fingerprint.mjs): the whole phone-free master, keyed with the RxResume key
 //   2. the site's fingerprint is read from SITE_URL/resume-fingerprint.json (missing or unreachable = changed)
 //   3. the newest of the latest Coolify deployments is read, and the decision is made (decideDeploy):
-//      - a failed deployment that ended less than one cron interval ago: exit 1, once (GitHub emails the owner);
-//        for the next six hours, no redeploy and exit 0 (no email for every run)
+//      - a failed deployment that ended less than 15 minutes ago: exit 1, once (the loop logs it);
+//        for the next six hours, no redeploy and exit 0 (no noise for every check)
 //      - the live site matches the master: nothing to do
 //      - the master changed less than QUIET_MINUTES ago, or a deployment is queued or running: wait
 //      - a deployment started less than DEPLOY_COOLDOWN_MINUTES ago: wait
@@ -20,14 +21,13 @@
 //      the sync layer runs again; see docs/resume-sync.md)
 // Failures of RxResume or Coolify are either transient or configuration problems:
 //   - transient (a timeout, a network error, HTTP 408, 429 or 5xx): the client retries a read of the master first
-//     (three attempts, see docs/resume-sync.md). Then one log line, exit 0, no deploy. An outage does not email the
-//     owner every 15 minutes; the next run tries again.
+//     (three attempts, see docs/resume-sync.md). Then one log line, exit 0, no deploy. An outage does not fill the
+//     container log every interval; the next check tries again.
 //   - configuration or auth (missing settings, HTTP 401/403 and other 4xx, 404 on the master, an unreadable master,
-//     a refused redirect): exit 1, so the owner is told. A 401 is not retried here.
+//     a refused redirect): exit 1, so the loop logs it. A 401 is not retried here.
 // The site's fingerprint keeps its own rule: unreachable or missing counts as changed (see liveFingerprint).
 // Logs carry decisions, service names, status or error codes and 12-character fingerprint prefixes only: never
-// resume text, keys, tokens, the phone number, response bodies or URLs (the repository is public and Actions
-// logs are public).
+// resume text, keys, tokens, the phone number, response bodies or URLs.
 import { pathToFileURL } from 'node:url';
 import { CHECKER_PAUSES_MS, createApi, pauseFor } from './lib/rxresume.mjs';
 import { fingerprintResume } from './lib/fingerprint.mjs';
@@ -40,7 +40,7 @@ const ALERT_WINDOW_MS = 15 * MINUTE;
 const FAILURE_PAUSE_MS = 6 * HOUR;
 const RETRY_PAUSE_MS = 6 * HOUR;
 const DEPLOYMENTS_SEEN = 5;
-// Each request stops after this long, so a hung connection cannot stall the job (the workflow also caps the job).
+// Each request stops after this long, so a hung connection cannot stall the check (the loop runs one at a time).
 const REQUEST_TIMEOUT_MS = 20_000;
 const HEX64 = /^[0-9a-f]{64}$/;
 const ERROR_CODE = /^[A-Z][A-Z0-9_]{1,40}$/;
@@ -96,7 +96,7 @@ const stateOf = (status) => {
 /**
  * The decision, as data. `latest` is the newest Coolify deployment, `{ status, startedAt, endedAt }` with the
  * times in ms (NaN when unreadable), or null. Returns `{ deploy, exitCode, reason }`; `exitCode` 1 means
- * "stop, and tell the owner": GitHub then emails once for that run.
+ * "stop, and tell the owner": the loop logs it once for that run.
  */
 export const decideDeploy = ({ masterFingerprint, live, updatedAt, now, quietMinutes, latest, cooldownMinutes }) => {
   if (latest && stateOf(latest.status) === 'failed') {

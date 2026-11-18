@@ -149,7 +149,8 @@ refusals, so one blip does not skip a sync or a deploy.
   The pauses before each retry are **2 s, 5 s, 15 s and 30 s**: about **52 seconds** in all, enough for a refusal
   that lasts about a minute. A build can afford to wait.
 - The **checker** (`scripts/check-resume-change.mjs`) makes up to **3 attempts**, pausing **2 s** and then **5 s**:
-  about **7 seconds**. It runs every 15 minutes and tries again on its next run, so it does not wait longer.
+  about **7 seconds**. It runs every 15 minutes by default and tries again on its next check, so it does not wait
+  longer.
 - A `Retry-After` header (seconds or a date) replaces the pause in both, capped at **30 s**.
 - Each retry logs one line, with the label, the status and the attempt, for example
   `RxResume list: HTTP 401, attempt 1 of 5 failed, retrying in 2000 ms`. The labels carry no id. No key, URL,
@@ -166,8 +167,9 @@ refusals, so one blip does not skip a sync or a deploy.
 ## Redeploy when the resume changes
 
 RxResume has no webhooks and autosaves while you type, so the site is redeployed by polling, and only after
-the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml` runs
-`scripts/check-resume-change.mjs` every 15 minutes:
+the resume has been quiet for a while. The autodeploy application (`Dockerfile.autodeploy`) runs
+`scripts/autodeploy-loop.mjs`, which calls `scripts/check-resume-change.mjs` at start and then every
+`CHECK_INTERVAL_MINUTES` (default 15), one check at a time:
 
 1. **Fingerprint of the master.** The master is read (GET only) and fingerprinted: HMAC-SHA256, keyed with the
    RxResume API key, over the whole master as the sync reads it, without the phone number
@@ -188,10 +190,10 @@ the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml`
 5. **A sync that keeps failing does not rebuild every cooldown.** When a deployment started after the last edit
    and the site still differs, its sync failed (for example RxResume was down). The checker then retries at most
    every six hours.
-6. **A failed deployment is reported once.** The first run that sees a failed deployment ended less than 15 minutes
-   ago exits with code 1, so GitHub sends one failure email for it. The runs after it stay quiet (exit 0) and do not
-   redeploy for six hours. The schedule runs every 15 minutes, so that window holds one run. If GitHub runs the
-   schedule late, or Coolify cannot be read on that run, the failure then shows only in Coolify, and the site keeps
+6. **A failed deployment is reported once.** The first check that sees a failed deployment ended less than 15 minutes
+   ago exits with code 1, and the loop logs it (`check N exit 1`). The checks after it stay quiet (exit 0) and do not
+   redeploy for six hours. The default interval is 15 minutes, so that window holds one check. If a check runs late,
+   or Coolify cannot be read on that check, the failure then shows only in the Coolify deployment, and the site keeps
    its previous build.
 7. **Deploy:** `POST {COOLIFY_URL}/api/v1/deploy?uuid={COOLIFY_APP_UUID}&force=true`. The `force` flag is the cache
    fix below.
@@ -200,18 +202,18 @@ the resume has been quiet for a while. `.github/workflows/resume-autodeploy.yml`
 
 - **Transient** (a timeout, a network error, HTTP 408, 429 or 5xx): the client retries a read of the master first
   (see Retries). If the failure persists, the run logs one line, for example
-  `RxResume: HTTP 503 (transient), no deploy this run`, and exits 0. Nothing is deployed, and the next run tries
-  again. An outage does not email the owner every 15 minutes.
+  `RxResume: HTTP 503 (transient), no deploy this run`, and exits 0. Nothing is deployed, and the next check tries
+  again. An outage does not fill the container log every interval.
 - **Configuration or auth** (a missing setting, a `COOLIFY_URL` that is not `https://`, HTTP 401 or 403, another 4xx
-  such as 404 on the master, a master that is not JSON, a refused redirect): the run exits 1, so GitHub tells the
-  owner. It repeats on every run until it is fixed.
+  such as 404 on the master, a master that is not JSON, a refused redirect): the check exits 1, so the loop logs it
+  and keeps running. It repeats on every check until it is fixed.
 
 The site's fingerprint keeps its own rule: unreachable or missing counts as changed, and waits for the quiet period
-(item 2). The job also has a timeout (`timeout-minutes`), so a stuck run cannot hold up the schedule.
+(item 2).
 
-The logs are public (the repository is public), so they contain only decisions, service names, status or error
-codes, and 12-character fingerprint prefixes: never resume text, keys, tokens, URLs, the phone number or response
-bodies. Every failure is reported by the service name and its status or error code only.
+The container logs contain only decisions, service names, status or error codes, and 12-character fingerprint
+prefixes: never resume text, keys, tokens, URLs, the phone number or response bodies. Every failure is reported by
+the service name and its status or error code only.
 
 **Why `force=true`.** The Docker builder runs `npm run sync:resume` in a layer. Secret mounts are not part of a
 layer's cache key, so a redeploy of the same commit reuses that layer and does not sync at all. A push changes
@@ -221,41 +223,44 @@ is rare. Normal push deploys are unchanged.
 
 **Known limits.**
 
-- A sync that fails during a build is a warning: the build succeeds with the previous data, and no email is sent.
-  The site stays on its previous version until the next retry (every six hours while the sync fails) succeeds.
+- A sync that fails during a build is a warning: the build succeeds with the previous data, and the failure shows in
+  the deployment log. The site stays on its previous version until the next retry (every six hours while the sync
+  fails) succeeds.
 - A configuration or auth error (a bad or expired RxResume key, a Coolify token without the permissions) exits with
-  code 1 on every run, so it sends one failure email per run until it is fixed. A transient outage does not: see
+  code 1 on every check, so the loop logs it at every interval until it is fixed. A transient outage does not: see
   Failures above.
 - An outage of Coolify that covers the 15 minutes after a failed deployment ends hides that failure: the checker
   cannot read it, and it is not reported later. The failure shows in Coolify, and the site keeps its previous build.
-- The fingerprint depends on the RxResume key. Rotate the GitHub and Coolify copies of that key together: a
-  mismatch in between causes one extra deploy.
+- The fingerprint depends on the RxResume key. Rotate the copies of that key in the autodeploy application and in
+  the site's build variables together: a mismatch in between causes one extra deploy.
 
 **First build.** The site has no fingerprint until a build with the RxResume key runs the sync. The first push
 deploy of this change does that (Coolify deploys on push), so the checker finds nothing to do afterwards.
 
-### GitHub secrets and variables
+### Coolify application
 
-Set them in the repository (Settings → Secrets and variables → Actions):
+The autodeploy timer is its own Coolify application: same repository, branch `main`, **Dockerfile** build pack,
+Dockerfile `/Dockerfile.autodeploy`. It serves nothing, so give it no domain and publish no port. Set it to restart on failure,
+so a crash (for example a bad `CHECK_INTERVAL_MINUTES`) starts the timer again instead of leaving it stopped.
+
+Set these as runtime environment variables, not build variables:
 
 | Name | Kind | Value |
 | --- | --- | --- |
-| `RXRESUME_URL` | secret | RxResume base URL (default `https://rxresu.me`) |
-| `RXRESUME_ID` | secret | ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
+| `RXRESUME_URL` | variable | RxResume base URL (default `https://rxresu.me`) |
+| `RXRESUME_ID` | variable | ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
 | `RXRESUME_API_KEY` | secret | an RxResume API key (read access is enough: the checker only GETs). Also the fingerprint key, see above |
-| `COOLIFY_URL` | secret | the Coolify base URL, `https://` only |
+| `COOLIFY_URL` | variable | the Coolify base URL, `https://` only |
 | `COOLIFY_DEPLOY_TOKEN` | secret | a Coolify API token with the read and deploy permissions only (see below) |
-| `COOLIFY_APP_UUID` | secret | the UUID of this application in Coolify |
+| `COOLIFY_APP_UUID` | variable | the UUID of the site's application in Coolify |
 | `SITE_URL` | variable | the production site (default `https://sliiz.com`) |
+| `CHECK_INTERVAL_MINUTES` | variable | optional, minutes between two checks (default 15) |
+| `QUIET_MINUTES` | variable | optional, minutes without an edit before a deploy (default 30) |
+| `DEPLOY_COOLDOWN_MINUTES` | variable | optional, minutes between two automatic deploys (default 30) |
 
 **Coolify token.** Create it in Coolify under Keys & Tokens → API tokens, with the `read` and `deploy`
 permissions only. Do not give it `write` or `root`: the checker reads deployments and triggers a deploy, nothing
 else. The permission names depend on the Coolify version; pick the two that match "read" and "deploy".
-
-**Keeping the schedule alive.** GitHub disables scheduled workflows in a public repository after 60 days without
-repository activity. `.github/workflows/resume-autodeploy-keepalive.yml` runs monthly and pushes an empty commit to
-the `keepalive` branch (not `main`, so Coolify does not deploy on it). Pushes are the activity that counts. This is
-not documented in detail by GitHub: if the autodeploy workflow ever shows as disabled, press Enable workflow.
 
 ### Running the check locally
 
