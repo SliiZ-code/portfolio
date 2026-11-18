@@ -42,8 +42,9 @@ the committed files.
 
 Tried in this order; the first one configured is used, and a failure falls through to the next:
 
-1. **OpenCode Go** (`OPENCODE_API_KEY`): the primary translator. Chat completions on
-   `https://opencode.ai/inference/openai/v1/chat/completions`, model `deepseek-v4.1-flash`
+1. **OpenCode Go** (`OPENCODE_API_KEY`): the primary translator. Chat completions on the Go base URL,
+   `https://opencode.ai/inference/go/openai/v1/chat/completions` (not `/inference`, which is pay-as-you-go),
+   model `deepseek-v4.1-flash`
    (`TRANSLATE_OPENCODE_MODEL`), the model the Console labels DeepSeek V4.1 Flash 1017. Create the key in the
    Console under Account → Personal API keys, with Models: Request only. Each run sends one random
    `x-opencode-session` header (shared by its chunks) and the user agent `portfolio-resume-sync/1.0`. Errors are

@@ -317,7 +317,7 @@ describe('opencodeProvider', () => {
     const provider = opencodeProvider({ apiKey: 'oc-secret', model: 'deepseek-v4.1-flash', fetchImpl });
     expect(await provider.translate({ s1: 'Bonjour' })).toEqual({ s1: 'Hello' });
 
-    expect(seen[0].url).toBe('https://opencode.ai/inference/openai/v1/chat/completions');
+    expect(seen[0].url).toBe('https://opencode.ai/inference/go/openai/v1/chat/completions');
     expect(seen[0].init.method).toBe('POST');
     expect(seen[0].init.redirect).toBe('error');
     expect(seen[0].init.signal).toBeInstanceOf(AbortSignal);

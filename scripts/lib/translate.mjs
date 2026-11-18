@@ -242,7 +242,7 @@ export const opencodeProvider = ({ apiKey, model = DEFAULT_MODELS.opencode, fetc
     name: 'opencode',
     model,
     translate: async (input) => {
-      const response = await fetchImpl('https://opencode.ai/inference/openai/v1/chat/completions', {
+      const response = await fetchImpl('https://opencode.ai/inference/go/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
