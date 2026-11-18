@@ -10,7 +10,7 @@
 //      (scripts/lib/fingerprint.mjs): the whole phone-free master, keyed with the RxResume key
 //   2. the site's fingerprint is read from SITE_URL/resume-fingerprint.json (missing or unreachable = changed)
 //   3. the newest of the latest Coolify deployments is read, and the decision is made (decideDeploy):
-//      - a failed deployment that ended less than one check interval ago: exit 1, once (the loop logs it);
+//      - a failed deployment that ended less than 15 minutes ago: exit 1, once (the loop logs it);
 //        for the next six hours, no redeploy and exit 0 (no noise for every check)
 //      - the live site matches the master: nothing to do
 //      - the master changed less than QUIET_MINUTES ago, or a deployment is queued or running: wait
@@ -96,7 +96,7 @@ const stateOf = (status) => {
 /**
  * The decision, as data. `latest` is the newest Coolify deployment, `{ status, startedAt, endedAt }` with the
  * times in ms (NaN when unreadable), or null. Returns `{ deploy, exitCode, reason }`; `exitCode` 1 means
- * "stop, and tell the owner": GitHub then emails once for that run.
+ * "stop, and tell the owner": the loop logs it once for that run.
  */
 export const decideDeploy = ({ masterFingerprint, live, updatedAt, now, quietMinutes, latest, cooldownMinutes }) => {
   if (latest && stateOf(latest.status) === 'failed') {

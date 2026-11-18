@@ -239,8 +239,8 @@ deploy of this change does that (Coolify deploys on push), so the checker finds 
 
 ### Coolify application
 
-The autodeploy timer is its own Coolify application: same repository, branch `main`, Dockerfile
-`/Dockerfile.autodeploy`. It serves nothing, so give it no domain and publish no port. Set it to restart on failure,
+The autodeploy timer is its own Coolify application: same repository, branch `main`, **Dockerfile** build pack,
+Dockerfile `/Dockerfile.autodeploy`. It serves nothing, so give it no domain and publish no port. Set it to restart on failure,
 so a crash (for example a bad `CHECK_INTERVAL_MINUTES`) starts the timer again instead of leaving it stopped.
 
 Set these as runtime environment variables, not build variables:
@@ -255,6 +255,8 @@ Set these as runtime environment variables, not build variables:
 | `COOLIFY_APP_UUID` | variable | the UUID of the site's application in Coolify |
 | `SITE_URL` | variable | the production site (default `https://sliiz.com`) |
 | `CHECK_INTERVAL_MINUTES` | variable | optional, minutes between two checks (default 15) |
+| `QUIET_MINUTES` | variable | optional, minutes without an edit before a deploy (default 30) |
+| `DEPLOY_COOLDOWN_MINUTES` | variable | optional, minutes between two automatic deploys (default 30) |
 
 **Coolify token.** Create it in Coolify under Keys & Tokens → API tokens, with the `read` and `deploy`
 permissions only. Do not give it `write` or `root`: the checker reads deployments and triggers a deploy, nothing
