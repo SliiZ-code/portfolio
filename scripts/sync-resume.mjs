@@ -11,7 +11,8 @@
 //      src/data/resume.fingerprint.json: the autodeploy checker reads it from the site. A partial run keeps
 //      the committed one, so the checker keeps retrying.
 // The phone number is checked everywhere it could leak: the site data, the cache, the AI payload,
-// the copies and the PDFs. Providers: CLAUDE_CODE_OAUTH_TOKEN, then GEMINI_API_KEY, then OPENROUTER_API_KEY.
+// the copies and the PDFs. Providers: OPENCODE_API_KEY, then CLAUDE_CODE_OAUTH_TOKEN, then GEMINI_API_KEY,
+// then OPENROUTER_API_KEY.
 // Run with: npm run sync:resume
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
