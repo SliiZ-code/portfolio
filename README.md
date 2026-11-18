@@ -255,11 +255,11 @@ URL and IDs, and turn on "Use Docker Build Secrets" so the keys arrive as secret
 | `OPENROUTER_API_KEY` | secret | Translator used when there is neither of the above |
 | `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | build variable | Optional model overrides |
 
-The resumes are only fetched at build time. A GitHub Actions workflow
-(`.github/workflows/resume-autodeploy.yml`) checks every 15 minutes whether the RxResume master changed and, when it
-has been quiet for 30 minutes, asks Coolify to redeploy the site (with `force`, so the sync runs again). Nothing to do
-by hand. It needs six GitHub secrets (and a `SITE_URL` variable): the list, the Coolify token permissions and a dry
-run are in [docs/resume-sync.md](docs/resume-sync.md#redeploy-when-the-resume-changes).
+The resumes are only fetched at build time. A separate Coolify application (`Dockerfile.autodeploy`, no domain and
+no published port) checks every 15 minutes whether the RxResume master changed and, once it has been quiet for 30
+minutes, asks Coolify to redeploy the site with `force`, so the sync runs again. Nothing to do by hand. Its runtime
+environment variables, the Coolify token permissions and a dry run are in
+[docs/resume-sync.md](docs/resume-sync.md#redeploy-when-the-resume-changes).
 
 **Caddyfile** configuration:
 - `encode zstd gzip` for compression

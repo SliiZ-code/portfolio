@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# The resume autodeploy timer: its own Coolify application, no domain and no published port. It starts
+# scripts/autodeploy-loop.mjs, which runs the checker at once and then every CHECK_INTERVAL_MINUTES
+# (scripts/check-resume-change.mjs makes every decision; docs/resume-sync.md, "Redeploy when the resume
+# changes"). The checker and the loop use Node built-ins only, so there is no npm install and no package.json.
+FROM node:24-bookworm-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY scripts/check-resume-change.mjs scripts/autodeploy-loop.mjs ./scripts/
+COPY scripts/lib ./scripts/lib
+
+# The node image ships this unprivileged user; the container only reads the scripts and talks to RxResume,
+# the site and Coolify, so it needs nothing else.
+USER node
+
+ENTRYPOINT ["node", "scripts/autodeploy-loop.mjs"]
