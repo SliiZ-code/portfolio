@@ -20,31 +20,36 @@ COPY . .
 ARG RXRESUME_URL
 ARG RXRESUME_ID
 ARG RXRESUME_ID_FR
+ARG TRANSLATE_OPENCODE_MODEL
 ARG TRANSLATE_CLAUDE_MODEL
 ARG TRANSLATE_GEMINI_MODEL
 ARG TRANSLATE_OPENROUTER_MODEL
 
 # Refresh the resume data, the English translation and the CV PDFs when the RxResume key is given.
-# The first translation provider with a key wins (claude, then gemini, then openrouter). If RxResume
-# or the translation fails, build with the committed or already synced files instead of breaking the deploy.
+# The first translation provider with a key wins (opencode, then claude, then gemini, then openrouter).
+# If RxResume or the translation fails, build with the committed or already synced files instead of
+# breaking the deploy.
 # Each setting is mounted under a SECRET_ name and used only when it is not empty, so an absent or empty
 # secret never blanks the ARG value (and no secret can unset it).
 # Cache: the secret mounts are not part of the layer's cache key, so a redeploy of the same commit reuses
 # this layer and does not sync. A push changes the source and rebuilds it. The resume autodeploy
 # (scripts/check-resume-change.mjs) redeploys with force=true (Coolify builds with no cache) so it always syncs.
 RUN --mount=type=secret,id=RXRESUME_API_KEY,env=RXRESUME_API_KEY \
+    --mount=type=secret,id=OPENCODE_API_KEY,env=OPENCODE_API_KEY \
     --mount=type=secret,id=CLAUDE_CODE_OAUTH_TOKEN,env=CLAUDE_CODE_OAUTH_TOKEN \
     --mount=type=secret,id=GEMINI_API_KEY,env=GEMINI_API_KEY \
     --mount=type=secret,id=OPENROUTER_API_KEY,env=OPENROUTER_API_KEY \
     --mount=type=secret,id=RXRESUME_URL,env=SECRET_RXRESUME_URL \
     --mount=type=secret,id=RXRESUME_ID,env=SECRET_RXRESUME_ID \
     --mount=type=secret,id=RXRESUME_ID_FR,env=SECRET_RXRESUME_ID_FR \
+    --mount=type=secret,id=TRANSLATE_OPENCODE_MODEL,env=SECRET_TRANSLATE_OPENCODE_MODEL \
     --mount=type=secret,id=TRANSLATE_CLAUDE_MODEL,env=SECRET_TRANSLATE_CLAUDE_MODEL \
     --mount=type=secret,id=TRANSLATE_GEMINI_MODEL,env=SECRET_TRANSLATE_GEMINI_MODEL \
     --mount=type=secret,id=TRANSLATE_OPENROUTER_MODEL,env=SECRET_TRANSLATE_OPENROUTER_MODEL \
     export RXRESUME_URL="${SECRET_RXRESUME_URL:-$RXRESUME_URL}" \
       RXRESUME_ID="${SECRET_RXRESUME_ID:-$RXRESUME_ID}" \
       RXRESUME_ID_FR="${SECRET_RXRESUME_ID_FR:-$RXRESUME_ID_FR}" \
+      TRANSLATE_OPENCODE_MODEL="${SECRET_TRANSLATE_OPENCODE_MODEL:-$TRANSLATE_OPENCODE_MODEL}" \
       TRANSLATE_CLAUDE_MODEL="${SECRET_TRANSLATE_CLAUDE_MODEL:-$TRANSLATE_CLAUDE_MODEL}" \
       TRANSLATE_GEMINI_MODEL="${SECRET_TRANSLATE_GEMINI_MODEL:-$TRANSLATE_GEMINI_MODEL}" \
       TRANSLATE_OPENROUTER_MODEL="${SECRET_TRANSLATE_OPENROUTER_MODEL:-$TRANSLATE_OPENROUTER_MODEL}"; \

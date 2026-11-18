@@ -44,13 +44,13 @@ RxResume API
   -> pages and components
 ```
 
-Create `.env` from `.env.example` and fill in the values. [docs/resume-sync.md](docs/resume-sync.md) explains each one, how to get the Claude token and how the translation cache works.
+Create `.env` from `.env.example` and fill in the values. [docs/resume-sync.md](docs/resume-sync.md) explains each one, how to get the translation keys and how the translation cache works.
 
 ```bash
 RXRESUME_URL=https://rxresu.me
 RXRESUME_API_KEY=...
 RXRESUME_ID=...                # the one French resume
-CLAUDE_CODE_OAUTH_TOKEN=...    # translation: or GEMINI_API_KEY / OPENROUTER_API_KEY
+OPENCODE_API_KEY=...           # translation: or CLAUDE_CODE_OAUTH_TOKEN / GEMINI_API_KEY / OPENROUTER_API_KEY
 ```
 
 Then run `npm run sync:resume`. It reads the French resume once (`GET /api/openapi/resumes/:id`) and keeps only
@@ -250,10 +250,11 @@ URL and IDs, and turn on "Use Docker Build Secrets" so the keys arrive as secret
 | `RXRESUME_URL` | build variable | RxResume base URL, `https://` only (default `https://rxresu.me`) |
 | `RXRESUME_ID` | build variable | ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
 | `RXRESUME_API_KEY` | secret | RxResume API key; without it the sync is skipped and the committed files are used |
-| `CLAUDE_CODE_OAUTH_TOKEN` | secret | Token from `claude setup-token`: translates with the Claude subscription (first choice) |
-| `GEMINI_API_KEY` | secret | Translator used when there is no Claude token |
-| `OPENROUTER_API_KEY` | secret | Translator used when there is neither of the above |
-| `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | build variable | Optional model overrides |
+| `OPENCODE_API_KEY` | secret | OpenCode Go API key: the primary translator (DeepSeek V4.1 Flash 1017) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | secret | Optional fallback: token from `claude setup-token`, translates with the Claude subscription |
+| `GEMINI_API_KEY` | secret | Translator used when neither OpenCode nor Claude is configured |
+| `OPENROUTER_API_KEY` | secret | Translator used when none of the above is configured |
+| `TRANSLATE_OPENCODE_MODEL`, `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | build variable | Optional model overrides |
 
 The resumes are only fetched at build time. A separate Coolify application (`Dockerfile.autodeploy`, no domain and
 no published port) checks every 15 minutes whether the RxResume master changed and, once it has been quiet for 30

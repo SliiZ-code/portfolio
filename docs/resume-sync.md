@@ -27,42 +27,53 @@ absent or empty. A missing setting is optional, so a build without it still work
 | `RXRESUME_URL` | variable | `https://rxresu.me` (default) |
 | `RXRESUME_ID` | variable | the ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
 | `RXRESUME_API_KEY` | secret | an RxResume API key |
-| `CLAUDE_CODE_OAUTH_TOKEN` | secret | token of your Claude subscription (see below) |
-| `GEMINI_API_KEY` | secret | optional, used when there is no Claude token |
-| `OPENROUTER_API_KEY` | secret | optional, used when there is neither |
-| `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | variable | optional model overrides |
+| `OPENCODE_API_KEY` | secret | OpenCode Go API key: the primary translator (see below) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | secret | optional fallback: token of a Claude subscription (see below) |
+| `GEMINI_API_KEY` | secret | optional, used when neither OpenCode nor Claude is set |
+| `OPENROUTER_API_KEY` | secret | optional, used when none of the above is set |
+| `TRANSLATE_OPENCODE_MODEL`, `TRANSLATE_CLAUDE_MODEL`, `TRANSLATE_GEMINI_MODEL`, `TRANSLATE_OPENROUTER_MODEL` | variable | optional model overrides |
 
 Remove `RXRESUME_ID_EN`, `RXRESUME_PDF_ID_FR` and `RXRESUME_PDF_ID_EN`: they are not read any more.
 
 Without `RXRESUME_API_KEY` the sync is skipped. A failed sync prints a warning and the deploy builds with
 the committed files.
 
-## Getting the Claude token
+## Translation providers
 
-On a machine where Claude Code is logged in with your subscription:
+Tried in this order; the first one configured is used, and a failure falls through to the next:
+
+1. **OpenCode Go** (`OPENCODE_API_KEY`): the primary translator. Chat completions on the Go base URL,
+   `https://opencode.ai/inference/go/openai/v1/chat/completions` (not `/inference`, which is pay-as-you-go),
+   model `deepseek-v4.1-flash`
+   (`TRANSLATE_OPENCODE_MODEL`), the model the Console labels DeepSeek V4.1 Flash 1017. Create the key in the
+   Console under Account → Personal API keys, with Models: Request only. Each run sends one random
+   `x-opencode-session` header (shared by its chunks) and the user agent `portfolio-resume-sync/1.0`. Errors are
+   reported by status only.
+2. **Claude** (`CLAUDE_CODE_OAUTH_TOKEN`), optional fallback: `claude -p --output-format json --tools ""`, prompt
+   on stdin, model `claude-haiku-5-5` (`TRANSLATE_CLAUDE_MODEL`). Uses `npx -y @anthropic-ai/claude-code@2.1.311`
+   when `claude` is not on the PATH (the Docker builder). The version is pinned in `scripts/lib/translate.mjs`:
+   bump it on purpose. The child runs in an empty temporary directory, with only PATH, HOME and the token in its
+   environment. Local development can use the Claude Code login of the machine with `TRANSLATE_CLAUDE_LOCAL=1`
+   instead of a token.
+3. **Gemini** (`GEMINI_API_KEY`): used when neither OpenCode nor Claude is configured. `generateContent` in JSON
+   mode, model `gemini-3.5-flash` (`TRANSLATE_GEMINI_MODEL`).
+4. **OpenRouter** (`OPENROUTER_API_KEY`): last. Chat completions, model `anthropic/claude-haiku-4.5`
+   (`TRANSLATE_OPENROUTER_MODEL`).
+
+Every call has a timeout. Errors are reported by status only; keys, tokens and answers are never logged.
+
+### Optional: the Claude token
+
+Claude is not the primary provider: OpenCode Go is. Keep the Claude subscription as a fallback only. On a machine
+where Claude Code is logged in with your subscription:
 
 ```bash
 claude setup-token
 ```
 
-It prints a long-lived OAuth token. Put it in Coolify as `CLAUDE_CODE_OAUTH_TOKEN`. The token is only
-given to the `claude` process that runs the translation, never to the RxResume calls.
-
-## Translation providers
-
-Tried in this order; the first one configured is used, and a failure falls through to the next:
-
-1. **Claude** (`CLAUDE_CODE_OAUTH_TOKEN`): `claude -p --output-format json --tools ""`, prompt on stdin,
-   model `claude-haiku-5-5` (`TRANSLATE_CLAUDE_MODEL`). Uses `npx -y @anthropic-ai/claude-code@2.1.311` when `claude`
-   is not on the PATH (the Docker builder). The version is pinned in `scripts/lib/translate.mjs`: bump it on purpose.
-   The child runs in an empty temporary directory, with only PATH, HOME and the token in its environment. Local development can use the Claude Code login of the machine
-   with `TRANSLATE_CLAUDE_LOCAL=1` instead of a token.
-2. **Gemini** (`GEMINI_API_KEY`): `generateContent` in JSON mode, model `gemini-3.5-flash`
-   (`TRANSLATE_GEMINI_MODEL`).
-3. **OpenRouter** (`OPENROUTER_API_KEY`): chat completions, model `anthropic/claude-haiku-4.5`
-   (`TRANSLATE_OPENROUTER_MODEL`).
-
-Every call has a timeout. Errors are reported by status only; keys, tokens and answers are never logged.
+It prints a long-lived OAuth token. Put it in Coolify as `CLAUDE_CODE_OAUTH_TOKEN`. The token is only given to the
+`claude` process that runs the translation, never to the RxResume calls. Without it, and without
+`TRANSLATE_CLAUDE_LOCAL=1`, the Claude provider is skipped.
 
 ## What is translated
 

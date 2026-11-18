@@ -7,7 +7,7 @@ export interface Cache {
   version: number;
   entries: Record<string, { en: string; model: string }>;
 }
-export const DEFAULT_MODELS: { claude: string; gemini: string; openrouter: string };
+export const DEFAULT_MODELS: { opencode: string; claude: string; gemini: string; openrouter: string };
 export const CLAUDE_CODE_PACKAGE: string;
 export function buildPrompt(input: Record<string, string>): string;
 export function emptyCache(): Cache;
@@ -25,6 +25,7 @@ export function translateStrings(options: {
 }): Promise<{ cache: Cache; complete: boolean }>;
 export function claudeEnv(env: Record<string, string | undefined>): Record<string, string>;
 export function claudeProvider(options?: any): Provider;
+export function opencodeProvider(options?: any): Provider;
 export function geminiProvider(options?: any): Provider;
 export function openrouterProvider(options?: any): Provider;
 export function findExecutable(name: string, pathValue?: string): string | null;
