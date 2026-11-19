@@ -71,13 +71,75 @@ export function countLive(cells: Uint8Array): number {
   return live;
 }
 
-/** The board starts busy: `density` of every cell that `isProtected` doesn't claim. */
+/** The board starts busy at once: `density` of every cell that `isProtected` doesn't claim. Used when there is no opening wave. */
 export function seedWorld(world: World, isProtected: (x: number, y: number) => boolean, density: number, rnd: () => number = Math.random): void {
   for (let y = 0; y < world.h; y++) {
     for (let x = 0; x < world.w; x++) {
       if (!isProtected(x, y) && rnd() < density) world.cells[y * world.w + x] = 1;
     }
   }
+}
+
+/**
+ * The opening wave's sowing order: every cell index once, nearest the front's centre first, with its
+ * squared distance. Sorted once per layout, so a frame only walks the ring the front just crossed
+ * instead of measuring the whole grid.
+ */
+export interface SowPlan {
+  order: Uint32Array;
+  /** Squared distance of each entry in `order`. */
+  dist2: Float32Array;
+  /** How far into `order` the wave has got: every entry before it had its one chance. */
+  cursor: number;
+}
+
+export function createSowPlan(world: World, centre: { x: number; y: number }): SowPlan {
+  const n = world.w * world.h;
+  const order = new Uint32Array(n);
+  const dist2 = new Float32Array(n);
+  for (let y = 0; y < world.h; y++) {
+    for (let x = 0; x < world.w; x++) {
+      const i = y * world.w + x;
+      order[i] = i;
+      dist2[i] = (x - centre.x) ** 2 + (y - centre.y) ** 2;
+    }
+  }
+  order.sort((a, b) => dist2[a] - dist2[b]);
+  return { order, dist2, cursor: 0 };
+}
+
+/**
+ * Sows the soup inside the wave's front, each cell once: `density` of the free cells it newly reaches
+ * turn alive, protected cells are skipped for good. The cursor only moves forward, so a second call
+ * with the same (or a smaller) front does nothing, and `Infinity` sows whatever the wave has not reached.
+ * Returns how many cells were newly sown.
+ */
+export function sowWithin(
+  world: World,
+  plan: SowPlan,
+  front: number,
+  isProtected: (x: number, y: number) => boolean,
+  density: number,
+  rnd: () => number = Math.random,
+): number {
+  // also rejects NaN and a wave that has not started
+  if (!(front > 0)) return 0;
+  const limit = front * front;
+  const { order, dist2 } = plan;
+  let cursor = plan.cursor;
+  let sown = 0;
+  while (cursor < order.length && dist2[order[cursor]] <= limit) {
+    const i = order[cursor++];
+    const x = i % world.w;
+    const y = (i / world.w) | 0;
+    // one chance per cell: a protected cell is never retried as the front grows
+    if (isProtected(x, y) || !(rnd() < density)) continue;
+    world.cells[i] = 1;
+    world.age[i] = 0;
+    sown++;
+  }
+  plan.cursor = cursor;
+  return sown;
 }
 
 /** Free cells die inside keep-clear boxes, so labels stay readable. */
