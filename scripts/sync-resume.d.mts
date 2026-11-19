@@ -1,3 +1,5 @@
+import type { TagCache } from './lib/project-tags.mjs';
+
 export function sanitizeResume(input: unknown): any;
 export function resumeFromResponse(body: unknown): any;
 export function cvPdfFile(lang: string): string;
@@ -34,7 +36,20 @@ export function runSync(options: {
   fingerprintKey: string;
   translators?: any[];
   cache?: any;
+  tagCache?: TagCache;
+  tagComplete?: (prompt: string) => Promise<unknown>;
+  tagModel?: string;
   stamp?: string;
   log?: (message: string) => void;
   warn?: (message: string) => void;
-}): Promise<{ fr: any; en: any; cache: any; complete: boolean; pdfs: Map<string, Uint8Array>; errors: string[]; fingerprint: string }>;
+}): Promise<{
+  fr: any;
+  en: any;
+  cache: any;
+  complete: boolean;
+  tagCache: TagCache;
+  tagStats: { total: number; reused: number };
+  pdfs: Map<string, Uint8Array>;
+  errors: string[];
+  fingerprint: string;
+}>;

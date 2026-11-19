@@ -1,12 +1,28 @@
 import type { Project, Resume } from '../lib/resume';
 import { METHUSELAHS, type MethuselahName } from '../scripts/board/patterns';
+import tagCache from './project-tags.json';
+
+/** One generated entry of src/data/project-tags.json. */
+export interface ProjectTagEntry {
+  tags: string[];
+  model: string;
+  hash: string;
+}
+
+/** The tag cache the resume sync writes, keyed by the RxResume project id. */
+export interface ProjectTagCache {
+  version: number;
+  projects: Record<string, ProjectTagEntry>;
+}
+
+export const TAG_CACHE = tagCache as ProjectTagCache;
 
 export interface BoardOverlay {
   /** The methuselah drawn as the project's poster; defaults to one picked from the slug. */
   seed?: MethuselahName;
   /** Other language slugs that resolve to this same project. */
   aliases?: string[];
-  /** The language or tool shown next to the name on the board. */
+  /** The manual fallback tag, shown only when the tag cache has none for the project. */
   tag: string;
 }
 
@@ -45,7 +61,7 @@ export interface BoardProject extends Project {
   displayName: string;
   /** The methuselah this project fires onto the board. */
   seed: MethuselahName;
-  /** Empty for a project outside the overlay. */
+  /** The generated tags, else the overlay's one, joined by " · "; empty when both are missing. */
   tag: string;
   /** Tag and period, for the list and the project page. */
   meta: string;
@@ -76,16 +92,28 @@ const hash = (value: string): number => {
 export const seedFor = (project: Project): MethuselahName =>
   overlayFor(project)?.seed ?? METHUSELAHS[hash(project.slug) % METHUSELAHS.length];
 
-/** The overlay tag and the RxResume period, whichever of the two exist. */
-export const projectMeta = (project: Project): string =>
-  [overlayFor(project)?.tag, project.period].filter(Boolean).join(' · ');
+/**
+ * The tags of a project: the ones the sync generated from its RxResume description, and the overlay's
+ * hand-written one only as a fallback (or when the cache has none). Pure: pass any cache in tests.
+ */
+export const tagsFor = (project: Project, cache: ProjectTagCache = TAG_CACHE): string[] => {
+  const generated = cache.projects?.[project.id]?.tags;
+  const tags = (Array.isArray(generated) ? generated : []).filter((tag) => typeof tag === 'string' && tag.trim()).map((tag) => tag.trim());
+  if (tags.length) return tags;
+  const manual = overlayFor(project)?.tag;
+  return manual ? [manual] : [];
+};
 
-export function getBoardProjects(resume: Resume): BoardProject[] {
+/** The tags and the RxResume period, whichever of them exist. */
+export const projectMeta = (project: Project, cache: ProjectTagCache = TAG_CACHE): string =>
+  [...tagsFor(project, cache), project.period].filter(Boolean).join(' · ');
+
+export function getBoardProjects(resume: Resume, cache: ProjectTagCache = TAG_CACHE): BoardProject[] {
   return resume.projects.map((project) => ({
     ...project,
     displayName: project.name,
     seed: seedFor(project),
-    tag: overlayFor(project)?.tag ?? '',
-    meta: projectMeta(project),
+    tag: tagsFor(project, cache).join(' · '),
+    meta: projectMeta(project, cache),
   }));
 }

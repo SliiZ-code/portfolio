@@ -339,6 +339,34 @@ describe('opencodeProvider', () => {
     expect((seen[1].init.headers as Record<string, string>)['x-opencode-session']).toBe(headers['x-opencode-session']);
   });
 
+  it('posts a generic prompt through complete and parses its JSON answer', async () => {
+    const seen: { url: string; init: RequestInit }[] = [];
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen.push({ url: String(url), init });
+      return new Response(JSON.stringify({ choices: [{ message: { content: '```json\n{"p1":["C++"]}\n```' } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const provider = opencodeProvider({ apiKey: 'oc-secret', model: 'm', fetchImpl });
+
+    expect(await provider.complete('Pick the technologies.')).toEqual({ p1: ['C++'] });
+    expect(seen[0].url).toBe('https://opencode.ai/inference/go/openai/v1/chat/completions');
+    const body = JSON.parse(String(seen[0].init.body));
+    expect(body.messages).toEqual([{ role: 'user', content: 'Pick the technologies.' }]);
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    expect((seen[0].init.headers as Record<string, string>).authorization).toBe('Bearer oc-secret');
+  });
+
+  it('translate still sends the translation prompt, over the same complete call', async () => {
+    const seen: RequestInit[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(init);
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"s1":"Hello"}' } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const provider = opencodeProvider({ apiKey: 'oc-secret', fetchImpl });
+
+    await provider.translate({ s1: 'Bonjour' });
+    expect(JSON.parse(String(seen[0].body)).messages).toEqual([{ role: 'user', content: buildPrompt({ s1: 'Bonjour' }) }]);
+  });
+
   it('reports only the HTTP status, never the body that may echo the key or the resume', async () => {
     const fetchImpl = (async () => new Response('oc-secret and Bonjour echoed', { status: 500 })) as unknown as typeof fetch;
     const error = await opencodeProvider({ apiKey: 'oc-secret', model: 'm', fetchImpl }).translate({ s1: 'Bonjour' }).catch((e: Error) => e);

@@ -5,6 +5,8 @@ import {
   overlayFor,
   projectMeta,
   seedFor,
+  tagsFor,
+  type ProjectTagCache,
 } from '../src/data/board';
 import { slugify, type Project, type Resume } from '../src/lib/resume';
 import { sampleResume } from './fixtures';
@@ -148,6 +150,40 @@ describe('the Arduino project', () => {
     expect(getBoardProjects(base).map((project) => project.slug)).not.toContain('larduino-en-pixels');
     const project = getBoardProjects(withProjects(base, [...base.projects, arduino('fr')])).find((entry) => entry.slug === 'larduino-en-pixels')!;
     expect(project).toMatchObject({ seed: 'b-heptomino', tag: 'three.js' });
+  });
+});
+
+describe('generated project tags', () => {
+  const base = sampleResume('fr');
+  const game = base.projects[0];
+  const empty: ProjectTagCache = { version: 1, projects: {} };
+  const cache = (projects: ProjectTagCache['projects']): ProjectTagCache => ({ version: 1, projects });
+
+  it('win over the overlay tag, and the board shows them joined', () => {
+    const tags = cache({ [game.id]: { tags: ['C++', 'SFML'], model: 'm', hash: 'h' } });
+    expect(tagsFor(game, tags)).toEqual(['C++', 'SFML']);
+
+    const dated = withProjects(base, base.projects.map((project) => ({ ...project, period: '2024' })));
+    const projects = getBoardProjects(dated, tags);
+    expect(projects[0].tag).toBe('C++ · SFML');
+    expect(projects[0].meta).toBe('C++ · SFML · 2024');
+  });
+
+  it('fall back to the overlay tag, and then to nothing', () => {
+    expect(tagsFor(game, empty)).toEqual(['C++']);
+    expect(projectMeta({ ...game, period: '2024' }, empty)).toBe('C++ · 2024');
+    expect(tagsFor(game, cache({ [game.id]: { tags: [], model: '', hash: 'h' } }))).toEqual(['C++']);
+
+    const intl = { ...extra('Unlisted'), id: 'unlisted' };
+    expect(tagsFor(intl, empty)).toEqual([]);
+    expect(projectMeta({ ...intl, period: '' }, empty)).toBe('');
+  });
+
+  it('also cover a project the overlay does not know', () => {
+    const project = { ...extra('Unlisted'), id: 'unlisted', period: '' };
+    const projects = getBoardProjects(withProjects(base, [project]), cache({ unlisted: { tags: ['Rust'], model: 'm', hash: 'h' } }));
+    expect(projects[0].tag).toBe('Rust');
+    expect(projects[0].meta).toBe('Rust');
   });
 });
 

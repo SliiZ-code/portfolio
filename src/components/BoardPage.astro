@@ -9,6 +9,7 @@ import { strings } from '../i18n';
 import { cvPdfPath } from '../lib/cv-pdf';
 import { boardName } from '../lib/name';
 import { getResume, type Lang } from '../lib/resume';
+import { resumeDescription, resumeTitle } from '../lib/meta';
 
 interface Props {
   lang: Lang;
@@ -32,8 +33,9 @@ const boardData = {
 };
 
 const json = JSON.stringify(boardData).replace(/</g, '\\u003c');
-const title = t.board.title(resume.name);
-const description = t.board.description;
+// the home title and description come from the resume; the i18n strings are only fallbacks
+const title = resumeTitle(resume, t.board.title(resume.name));
+const description = resumeDescription(resume, t.board.description);
 ---
 
 <Base lang={lang} title={title} description={description} alternates={{ fr: '/', en: '/en/' }} zoomable>

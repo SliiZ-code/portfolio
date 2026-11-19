@@ -3,6 +3,10 @@ export interface Provider {
   model: string;
   translate(input: Record<string, string>): Promise<Record<string, unknown>>;
 }
+export interface OpenCodeProvider extends Provider {
+  /** One generic prompt, one JSON object back: same call as `translate`, without the translation prompt. */
+  complete(prompt: string): Promise<Record<string, unknown>>;
+}
 export interface Cache {
   version: number;
   entries: Record<string, { en: string; model: string }>;
@@ -25,7 +29,7 @@ export function translateStrings(options: {
 }): Promise<{ cache: Cache; complete: boolean }>;
 export function claudeEnv(env: Record<string, string | undefined>): Record<string, string>;
 export function claudeProvider(options?: any): Provider;
-export function opencodeProvider(options?: any): Provider;
+export function opencodeProvider(options?: any): OpenCodeProvider;
 export function geminiProvider(options?: any): Provider;
 export function openrouterProvider(options?: any): Provider;
 export function findExecutable(name: string, pathValue?: string): string | null;

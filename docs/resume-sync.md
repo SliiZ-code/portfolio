@@ -8,6 +8,7 @@ builder before `npm run build`) turns it into everything the site and the CV dow
 | `src/data/resume.fr.json` | the French resume, sanitised to what the site renders | yes |
 | `src/data/resume.en.json` | the French, translated to English by AI (cache below) | yes |
 | `src/data/resume.translations.json` | the translation cache | yes |
+| `src/data/project-tags.json` | one or two technologies per project, chosen by AI from the French descriptions (see Project tags) | yes |
 | `public/cv/julien-petit-colboc-{fr,en}.pdf` | temporary copies of the resume in RxResume | yes |
 | `src/data/resume.fingerprint.json` | the fingerprint of the master this build applied (see redeploy below) | yes |
 
@@ -27,7 +28,7 @@ absent or empty. A missing setting is optional, so a build without it still work
 | `RXRESUME_URL` | variable | `https://rxresu.me` (default) |
 | `RXRESUME_ID` | variable | the ID of the French resume (`RXRESUME_ID_FR` is accepted as an alias) |
 | `RXRESUME_API_KEY` | secret | an RxResume API key |
-| `OPENCODE_API_KEY` | secret | OpenCode Go API key: the primary translator (see below) |
+| `OPENCODE_API_KEY` | secret | OpenCode Go API key: the primary translator, and the only generator of the project tags |
 | `CLAUDE_CODE_OAUTH_TOKEN` | secret | optional fallback: token of a Claude subscription (see below) |
 | `GEMINI_API_KEY` | secret | optional, used when neither OpenCode nor Claude is set |
 | `OPENROUTER_API_KEY` | secret | optional, used when none of the above is set |
@@ -46,9 +47,9 @@ Tried in this order; the first one configured is used, and a failure falls throu
    `https://opencode.ai/inference/go/openai/v1/chat/completions` (not `/inference`, which is pay-as-you-go),
    model `deepseek-v4.1-flash`
    (`TRANSLATE_OPENCODE_MODEL`), the model the Console labels DeepSeek V4.1 Flash 1017. Create the key in the
-   Console under Account → Personal API keys, with Models: Request only. Each run sends one random
-   `x-opencode-session` header (shared by its chunks) and the user agent `portfolio-resume-sync/1.0`. Errors are
-   reported by status only.
+   Console under Account → Personal API keys, with Models: Request only. Each provider instance sends one random
+   `x-opencode-session` header, shared by its calls: one instance translates, one picks the project tags, and both
+   use the user agent `portfolio-resume-sync/1.0`. Errors are reported by status only.
 2. **Claude** (`CLAUDE_CODE_OAUTH_TOKEN`), optional fallback: `claude -p --output-format json --tools ""`, prompt
    on stdin, model `claude-haiku-5-5` (`TRANSLATE_CLAUDE_MODEL`). Uses `npx -y @anthropic-ai/claude-code@2.1.311`
    when `claude` is not on the PATH (the Docker builder). The version is pinned in `scripts/lib/translate.mjs`:
@@ -100,6 +101,36 @@ change in the resume shows up as a small, readable diff.
 
 To correct a wording by hand, edit the `en` of its entry and leave the French key alone; the next sync uses
 the correction. To force a new translation, delete the entry.
+
+## Project tags
+
+Each project shows one or two technologies under its name on the board. They are derived from the French
+project descriptions in the synced site data, so RxResume stays the source of truth:
+
+- The sync sends the projects whose French name or description changed to OpenCode Go (`OPENCODE_API_KEY`,
+  the same model and endpoint as the translation), in one batch.
+- The prompt only allows a technology that the description already names verbatim, ignoring case; the model
+  must prefer the language or framework, and may not invent anything.
+- Every answer is checked before it is cached: a tag must be a non-empty string, at most two are kept, and
+  each must appear (case-insensitively) in the description. An invalid answer is retried once for the whole
+  batch; a project that is still invalid keeps its previous entry instead of invented tags.
+- `src/data/project-tags.json` is keyed by the RxResume project id and holds `tags`, `model` and the
+  `sha256` of `name + "\n" + description`. An entry whose hash matches is reused and never sent. Entries of
+  projects that no longer exist are pruned, and the file is written in a fixed order.
+- This step is passive: without `OPENCODE_API_KEY`, or when the call fails, it prints a warning, keeps the
+  previous tags, and the sync carries on. It adds nothing to the sync's errors and nothing to the
+  fingerprint. The run log says `tags: <projects> projects, <reused> reused`.
+
+`BOARD_OVERLAY.tag` in `src/data/board.ts` is only a manual fallback, for a project without generated tags
+(or to fix a tag by hand until the next sync). The seeds and aliases of the overlay are unchanged.
+
+## The home title and description
+
+The home page's `<title>` is the resume's name and headline (`Julien Petit-Colboc — Élève ingénieur ...`),
+and its meta description is the first sentence of the resume summary, cut at 160 characters. Both come from
+the synced resume, so a change in RxResume shows up on the home page. The `board.title` and
+`board.description` strings in `src/i18n/` are fallbacks only, used when the resume lacks a headline or a
+summary.
 
 ## The phone number
 

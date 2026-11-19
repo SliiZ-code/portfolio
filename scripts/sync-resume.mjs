@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 // Pulls the one French resume from RxResume and turns it into the site's data and the public CV PDFs:
 //   1. RXRESUME_ID (or RXRESUME_ID_FR) is read, sanitised to what the site renders -> src/data/resume.fr.json
-//   2. its prose is translated to English with AI (cached by sha256 in src/data/resume.translations.json)
+//   2. one or two project tags are derived from the French project descriptions with OpenCode Go (cached
+//      by sha256 in src/data/project-tags.json); this step never fails the sync and is not fingerprinted.
+//   3. its prose is translated to English with AI (cached by sha256 in src/data/resume.translations.json)
 //      -> src/data/resume.en.json. Without a provider, or when a string is missing, the committed
 //      English is kept and a WARNING is printed.
-//   3. for each language, a temporary copy is made in RxResume (name `tmp-portfolio-pdf-*`), its PDF is
+//   4. for each language, a temporary copy is made in RxResume (name `tmp-portfolio-pdf-*`), its PDF is
 //      downloaded to public/cv/, and the copy is moved to Trash and purged, even when the PDF fails.
 //      Leftover copies from a crashed run are removed first. The main resume is only ever read.
-//   4. when all of that worked, the master's fingerprint (scripts/lib/fingerprint.mjs) is written to
+//   5. when all of that worked, the master's fingerprint (scripts/lib/fingerprint.mjs) is written to
 //      src/data/resume.fingerprint.json: the autodeploy checker reads it from the site. A partial run keeps
 //      the committed one, so the checker keeps retrying.
-// The phone number is checked everywhere it could leak: the site data, the cache, the AI payload,
+// The phone number is checked everywhere it could leak: the site data, the caches, the AI payload,
 // the copies and the PDFs. Providers: OPENCODE_API_KEY, then CLAUDE_CODE_OAUTH_TOKEN, then GEMINI_API_KEY,
 // then OPENROUTER_API_KEY.
 // Run with: npm run sync:resume
@@ -20,7 +22,8 @@ import { pathToFileURL } from 'node:url';
 import { assertNoPhone, assertPdf, pdfHoldsPhone } from './lib/guard.mjs';
 import { fingerprintResume, withoutPhone } from './lib/fingerprint.mjs';
 import { BUILD_PAUSES_MS, createApi } from './lib/rxresume.mjs';
-import { configuredTranslators, emptyCache, parseCache, serializeCache, translateStrings } from './lib/translate.mjs';
+import { emptyTagCache, generateProjectTags, parseTagCache, serializeTagCache } from './lib/project-tags.mjs';
+import { DEFAULT_MODELS, configuredTranslators, emptyCache, opencodeProvider, parseCache, serializeCache, translateStrings } from './lib/translate.mjs';
 import { mapPdfTranslatable, mapTranslatable, pdfTranslatableStrings, sha, translatableStrings } from './lib/strings.mjs';
 import { dataOf, resumeFromResponse, sanitizeResume, stable, str } from './lib/sanitize.mjs';
 
@@ -38,6 +41,7 @@ const OUT = {
   en: new URL('../src/data/resume.en.json', import.meta.url),
 };
 const CACHE = new URL('../src/data/resume.translations.json', import.meta.url);
+const TAG_CACHE = new URL('../src/data/project-tags.json', import.meta.url);
 const FINGERPRINT = new URL('../src/data/resume.fingerprint.json', import.meta.url);
 
 /** The file name must match src/lib/cv-pdf.ts, which links to it. */
@@ -160,6 +164,9 @@ export const runSync = async ({
   fingerprintKey,
   translators = [],
   cache = emptyCache(),
+  tagCache = emptyTagCache(),
+  tagComplete,
+  tagModel = DEFAULT_MODELS.opencode,
   stamp = Date.now().toString(36),
   log = console.log,
   warn = console.warn,
@@ -171,6 +178,12 @@ export const runSync = async ({
 
   const fr = sanitizeResume(data);
   assertNoPhone(fr, phone, 'the French site data');
+
+  // one or two technologies per project, from the French descriptions the site already shows. This step
+  // never throws, and its result is not part of the fingerprint: a missing key or a bad answer keeps the
+  // previous tags and the run carries on.
+  const tagProjects = (fr.sections?.projects?.items ?? []).map((item) => ({ id: item.id, name: item.name, description: item.description }));
+  const tags = await generateProjectTags({ projects: tagProjects, cache: tagCache, complete: tagComplete, model: tagModel, warn });
 
   // the translators only see the sanitised French strings: the phone can not be in them (checked above and again before the call)
   // the site's strings, and the PDF-only prose (publications, custom sections...) that only the English copy shows
@@ -202,7 +215,7 @@ export const runSync = async ({
       }
     }
   }
-  return { fr, en, cache: translation.cache, complete: translation.complete, pdfs, errors, fingerprint };
+  return { fr, en, cache: translation.cache, complete: translation.complete, tagCache: tags.cache, tagStats: { total: tags.total, reused: tags.reused }, pdfs, errors, fingerprint };
 };
 
 /**
@@ -226,7 +239,20 @@ const main = async () => {
   const api = buildApi({ baseUrl, key, mainId });
   const translators = configuredTranslators(env, { fetchImpl: fetch, spawnImpl: spawn });
   const cache = parseCache(await readOptional(CACHE));
-  const result = await runSync({ mainId, api, fingerprintKey: key, translators, cache, stamp: Date.now().toString(36) });
+  const tagCache = parseTagCache(await readOptional(TAG_CACHE));
+  // tags are chosen by OpenCode Go only: the translators' fallbacks stay for the translation
+  const tagProvider = env.OPENCODE_API_KEY ? opencodeProvider({ apiKey: env.OPENCODE_API_KEY, model: env.TRANSLATE_OPENCODE_MODEL || DEFAULT_MODELS.opencode }) : null;
+  const result = await runSync({
+    mainId,
+    api,
+    fingerprintKey: key,
+    translators,
+    cache,
+    tagCache,
+    tagComplete: tagProvider?.complete,
+    tagModel: tagProvider?.model,
+    stamp: Date.now().toString(36),
+  });
 
   await writeFile(OUT.fr, json(result.fr));
   console.log(`fr: ${result.fr.basics.name || 'resume'} -> ${OUT.fr.pathname}`);
@@ -235,6 +261,8 @@ const main = async () => {
     console.log(`en: ${result.en.basics.name || 'resume'} -> ${OUT.en.pathname}`);
   }
   await writeFile(CACHE, serializeCache(result.cache));
+  await writeFile(TAG_CACHE, serializeTagCache(result.tagCache));
+  console.log(`tags: ${result.tagStats.total} projects, ${result.tagStats.reused} reused`);
   await mkdir(new URL('../public/cv/', import.meta.url), { recursive: true });
   for (const [lang, bytes] of result.pdfs) {
     await writeFile(pdfOut(lang), bytes);
