@@ -6,7 +6,7 @@
     "location": "Rouen, France",
     "website": {
       "url": "https://sliiz.com",
-      "label": "Portfolio – sliiz.com",
+      "label": "Portfolio",
       "inlineLink": false
     }
   },
@@ -14,30 +14,7 @@
     "profiles": {
       "title": "Réseaux",
       "hidden": false,
-      "items": [
-        {
-          "id": "h321sprjmoptspa9lxl9bte9",
-          "hidden": false,
-          "network": "GitHub",
-          "username": "SliiZ-code",
-          "website": {
-            "url": "https://github.com/SliiZ-code",
-            "label": "",
-            "inlineLink": false
-          }
-        },
-        {
-          "id": "r9p8gdq8d6ih29obyjtvyinl",
-          "hidden": false,
-          "network": "LinkedIn",
-          "username": "julien-petit-colboc",
-          "website": {
-            "url": "https://www.linkedin.com/in/julien-petit-colboc/",
-            "label": "",
-            "inlineLink": false
-          }
-        }
-      ]
+      "items": []
     },
     "experience": {
       "title": "Expériences",
@@ -55,7 +32,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Développeur principal de Cerebro, un outil interne qui rapproche les profils des consultants des appels d'offres clients grâce aux LLM.</p><ul><li><p>Conçu un pipeline IA qui extrait, catégorise et score les couples appel d'offres × profil, avec un traitement asynchrone par lots fiabilisé ; mis en production après plusieurs centaines d'appels d'offres traités.</p></li><li><p>Calibré le prompt de scoring (température, compétences requises ou souhaitées, trois sous-scores) et ajouté des justifications courtes pour que les utilisateurs puissent vérifier chaque score.</p></li><li><p>Lancé un jeu de référence annoté pour mesurer les faux positifs et les faux négatifs.</p></li><li><p>Développé le rapport quotidien envoyé à une dizaine de commerciaux ; sécurisé l'API et l'interface web par authentification et SSO. <em>Stack : Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
+          "description": "<p>Développeur principal de Cerebro, un outil interne qui rapproche les profils des consultants des appels d'offres clients grâce aux LLM.</p><ul><li><p>Conçu et mis en production un pipeline IA asynchrone d&#39;extraction et de scoring pour les paires appel d&#39;offres × profil, traitant plusieurs centaines de dossiers via une gestion par lots fiabilisée.</p></li><li><p>Calibré le prompt de scoring (température, compétences requises ou souhaitées, trois sous-scores) et ajouté des justifications courtes pour que les utilisateurs puissent vérifier chaque score.</p></li><li><p>Établi un jeu de données de référence annoté pour quantifier et réduire les taux de faux positifs et de faux négatifs du système de scoring.</p></li><li><p>Automatisé la génération de rapports quotidiens pour une équipe de dix commerciaux et sécurisé l&#39;accès à l&#39;API et à l&#39;interface web via authentification SSO. Stack : Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</p></li></ul>",
           "roles": []
         },
         {
@@ -70,7 +47,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Application VR de téléopération de robots (Scrum ; C#, .NET, Unity, API REST).</p><ul><li><p>Intégré le flux d'une caméra 360° placée sur le robot dans une vue VR immersive.</p></li><li><p>Sécurisé l'accès aux robots avec un chiffrement AES-256.</p></li><li><p>Conçu une interface temps réel pour éditer les points de passage.</p></li></ul>",
+          "description": "<p>Application VR de téléopération de robots (Scrum ; C#, .NET, Unity, API REST).</p><ul><li><p>Intégré dans une vue VR immersive le flux d&#39;une caméra 360° placée sur le robot.</p></li><li><p>Sécurisé l'accès aux robots avec un chiffrement AES-256.</p></li><li><p>Conçu une interface temps réel pour éditer les points de passage du robot.</p></li></ul>",
           "roles": []
         }
       ]
@@ -109,7 +86,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<ul><li><p>Jeu de la vie de Conway en C++ (projet en binôme, contributeur principal) : architecture MVC, modes console et graphique SFML, grille torique, cellules obstacles.</p></li></ul>"
+          "description": "<p></p>"
         }
       ]
     },
@@ -127,7 +104,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Pipeline Python qui génère des vidéos courtes à partir d'un simple sujet : GPT-3.5 écrit le script, Stable Diffusion XL crée les images, OpenAI TTS enregistre la voix off et Whisper génère les sous-titres. Appels API asynchrones, montage automatisé avec MoviePy.</p>"
+          "description": "<p>Pipeline Python d&#39;automatisation de bout en bout de création vidéo : il orchestre des agents IA (GPT-3.5 pour le script, Stable Diffusion XL pour les images, OpenAI TTS pour la voix, Whisper pour le sous-titrage) et réalise le montage automatisé via MoviePy.</p>"
         },
         {
           "id": "xzqf6qmt2htvrapycrr0p1qe",
@@ -308,7 +285,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Pilotage de la communication du BDE : contenus Instagram, affiches d'événements, couverture photo et vidéo.</p>"
+          "description": "<p>Responsable de la stratégie de communication du BDE : création de contenus visuels (Instagram, affiches) et couverture multimédia des événements.</p>"
         },
         {
           "id": "ek6hzd2ri77vmwa3gwao7asg",
@@ -332,7 +309,7 @@
         {
           "id": "328edb6c-a45f-4f9e-ac12-51dbd7b833b9",
           "hidden": false,
-          "name": "Course à pied (semi-marathon, mars 2027), callisthénie, graphisme, voyages",
+          "name": "Course à pied, jeux-vidéos, audiovisuel",
           "keywords": []
         }
       ]
@@ -351,6 +328,6 @@
   "summary": {
     "title": "Résumé",
     "hidden": false,
-    "content": "<p>Élève ingénieur en 4e année d'informatique (alternance) à CESI, apprenti chez CAPFI depuis janvier 2026. Développeur principal de Cerebro, un système de matching par LLM en production, sur lequel j'ai travaillé à rendre les scores explicables et mesurables. Auparavant stagiaire de recherche au CESI LINEACT sur la téléopération de robots en réalité virtuelle. Je recherche un stage à l'étranger à partir de juin 2027 (12 à 17 semaines) en IA, VR ou robotique, idéalement au sein d'une équipe de recherche.</p>"
+    "content": "<p data-resume-whitespace=\"preserve\">Élève ingénieur en 4e année d&#39;informatique (alternance) à CESI et apprenti chez CAPFI depuis janvier 2026. Développeur principal de Cerebro, un système de matching par LLM en production dont j&#39;ai rendu les scores explicables et mesurables. Auparavant stagiaire de recherche au CESI LINEACT sur la téléopération de robots en réalité virtuelle. Je recherche un stage à l&#39;étranger à partir de juin 2027 (12 à 16 semaines) en IA, VR ou robotique, idéalement au sein d&#39;une équipe de recherche.</p>"
   }
 }

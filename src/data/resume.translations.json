@@ -1,16 +1,8 @@
 {
   "version": 1,
   "entries": {
-    "039c0d216172af65ba5e4e8ce69369a58b18f6dcb94fdb0c88328c1e144d3704": {
-      "en": "<p>Lead developer of Cerebro, an internal tool that matches consultants' profiles to client tenders using LLMs.</p><ul><li><p>Designed an AI pipeline that extracts, categorises and scores tender × profile pairs, with reliable asynchronous batch processing; deployed to production after several hundred tenders were processed.</p></li><li><p>Calibrated the scoring prompt (temperature, required or preferred skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Launched an annotated reference set to measure false positives and false negatives.</p></li><li><p>Built the daily report sent to about ten sales staff; secured the API and web interface with authentication and SSO. <em>Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
-      "model": "claude-haiku-5-5"
-    },
     "040228846ead4a4195145fe089343cb0894d00a9380176a41a8f6c5ee70b4824": {
       "en": "C#",
-      "model": "claude-haiku-5-5"
-    },
-    "066a86e0c14425a8b50680748415b67f82b2af20eebea9200ad78b8a1139c6c3": {
-      "en": "<p>VR application for teleoperating robots (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured robot access with AES-256 encryption.</p></li><li><p>Designed a real-time interface for editing waypoints.</p></li></ul>",
       "model": "claude-haiku-5-5"
     },
     "06d866956e307ea3754cfa0bb6cff604770a598996ba66b9fc03236b9a35ace9": {
@@ -37,6 +29,10 @@
       "en": "Computer science, work-study/apprenticeship",
       "model": "claude-haiku-5-5"
     },
+    "1853eb2e9e5ed2bcc1d03b5a49cf407f2e43851363a8ffd0ce5ab7aa37ca8309": {
+      "en": "Portfolio",
+      "model": "deepseek-v4.1-flash"
+    },
     "18885f27b5af9012df19e496460f9294d5ab76128824c6f993787004f6d9a7db": {
       "en": "Python",
       "model": "claude-haiku-5-5"
@@ -59,10 +55,6 @@
     },
     "2246feb808d09dd616eb2d58d8fdb9f2f1428a0f42c952f40b02e9b8c7b9e987": {
       "en": "Structured outputs",
-      "model": "claude-haiku-5-5"
-    },
-    "22eade6f55843bb7f8070d0de4605eb40ffd88543221993d9b3c558c42ed4841": {
-      "en": "<p>Managing the student association's communications: Instagram content, event posters, photo and video coverage.</p>",
       "model": "claude-haiku-5-5"
     },
     "26e5b44ac115322031ede7107b2fcec2fa8bf9df40c8fa72b4700046137dd96a": {
@@ -145,6 +137,10 @@
       "en": "Engineering student in computer science – AI, VR and robotics",
       "model": "claude-haiku-5-5"
     },
+    "5108a5208213d7ffb14d16f714d3c7fa51f9d3deb0f375360256bb6ca24cc5c9": {
+      "en": "<p>VR robot teleoperation application (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured access to the robots with AES-256 encryption.</p></li><li><p>Designed a real-time interface to edit the robot's waypoints.</p></li></ul>",
+      "model": "deepseek-v4.1-flash"
+    },
     "547ec866b74fc8d07002d6005cd0c83d836c47624d3d0bc4b3eeb0ebae732bc3": {
       "en": "Thrive",
       "model": "reviewed-previous-en"
@@ -185,10 +181,6 @@
       "en": "Git Flow",
       "model": "claude-haiku-5-5"
     },
-    "605fca3aa081edf9efbbc98b17a5ad43d1effd63374a4c4554c8f6e1480eead9": {
-      "en": "Running (half marathon, March 2027), calisthenics, graphic design, travel",
-      "model": "claude-haiku-5-5"
-    },
     "64227cb011df37c026c297380a9827cf57bafd19c8b7c7f141c212eaf72607a8": {
       "en": "BDE CESI Rouen – Head of Communication",
       "model": "reviewed-previous-en"
@@ -204,6 +196,10 @@
     "6879a6be32201926dbcfd1c7e5290bb6f6d43588c5489bb3e7dbc2365ed9fb9a": {
       "en": "Worldwide Weather Watcher",
       "model": "reviewed-previous-en"
+    },
+    "6889a8b9ae57360c7e71e0226cb9b4399723c15e6ed29aff6c4d85acb0c4cc49": {
+      "en": "<p>Responsible for the BDE's communication strategy: creating visual content (Instagram, posters) and multimedia coverage of events.</p>",
+      "model": "deepseek-v4.1-flash"
     },
     "69824d3b0e70ca6aaa0da1613b65fd914c442bf1f7ad1bb22bcdfbdfe1a05e39": {
       "en": "References",
@@ -224,6 +220,10 @@
     "7526700fa2e9696810e8499faef3b7cb216c289afd8f522c9649ce8ad6a6f6df": {
       "en": "Arduino",
       "model": "claude-haiku-5-5"
+    },
+    "7d19105c20c9e154b359511e03bed604e0d345e4975135ae61066289e02dd64e": {
+      "en": "Running, video games, audiovisual",
+      "model": "deepseek-v4.1-flash"
     },
     "803e1610287cab9c730764316316cd0dbf6407738c81584c321f430ca02fba83": {
       "en": "Prompt engineering",
@@ -257,6 +257,10 @@
       "en": "Professional, TOEIC planned",
       "model": "claude-haiku-5-5"
     },
+    "a0d2c71468cac22b75d98ea4c30d319d4ebc01dc5b44ac5cd961dcd5ebb051f6": {
+      "en": "<p>Python pipeline for end-to-end automation of video creation: it orchestrates AI agents (GPT-3.5 for the script, Stable Diffusion XL for images, OpenAI TTS for voice, Whisper for subtitling) and performs automated editing via MoviePy.</p>",
+      "model": "deepseek-v4.1-flash"
+    },
     "a37430e22cd01df02ad1264610c5e986270e285b15cb764b7b1ed6ac73c499d1": {
       "en": "Blink",
       "model": "reviewed-previous-en"
@@ -269,16 +273,8 @@
       "en": "JavaScript",
       "model": "claude-haiku-5-5"
     },
-    "be53050715769857b05ad356a34ec764043c5f623418c1d3e5af7ea15745fe41": {
-      "en": "<p>Python pipeline that generates short videos from a simple topic: GPT-3.5 writes the script, Stable Diffusion XL creates the images, OpenAI TTS records the voiceover and Whisper generates the subtitles. Asynchronous API calls, automated editing with MoviePy.</p>",
-      "model": "claude-haiku-5-5"
-    },
     "be7f5492ce3b5452d46bd20023846eb877a37aae198d3935ce46abb44cec606c": {
       "en": "German",
-      "model": "claude-haiku-5-5"
-    },
-    "bf42e4807a277d403ee97d8e405219ce4ff20d326b2bf26e5b93e40d6714a652": {
-      "en": "<p>4th-year engineering student in computer science (work-study) at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on teleoperation of robots in virtual reality. I am looking for an internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>",
       "model": "claude-haiku-5-5"
     },
     "c9b5472848ca301f2f5ee22c84163db92f06710a0e136c3632d25b3ebccb9fd0": {
@@ -297,9 +293,9 @@
       "en": "VR, 3D and electronics",
       "model": "claude-haiku-5-5"
     },
-    "d859ccb27dcf323fa744f88535e19055fe7909c2d8c0741bc1f455bf810d2ab9": {
-      "en": "Portfolio – sliiz.com",
-      "model": "claude-haiku-5-5"
+    "d6586ed2d9c48e247848b06f53fa6af367f19b981e0ec4eae2ea3356df7c1706": {
+      "en": "<p>Lead developer of Cerebro, an internal tool that matches consultant profiles with client tenders using LLMs.</p><ul><li><p>Designed and put into production an asynchronous AI pipeline for extraction and scoring for tender × profile pairs, processing several hundred records via reliable batch management.</p></li><li><p>Calibrated the scoring prompt (temperature, required or desired skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Built an annotated benchmark dataset to quantify and reduce the false positive and false negative rates of the scoring system.</p></li><li><p>Automated the generation of daily reports for a team of ten salespeople and secured access to the API and web interface via SSO authentication. Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</p></li></ul>",
+      "model": "deepseek-v4.1-flash"
     },
     "d872080d70c9df7d5d90f880b5add32d68c2b22bbd9d85458aa8d4e60f14c04f": {
       "en": "Research intern",
@@ -312,6 +308,10 @@
     "e6169e958b37ce8662817b0f3e0bf450a174742fafc527800e67f430738b4b63": {
       "en": "Docker",
       "model": "claude-haiku-5-5"
+    },
+    "e61d33d6dfe31792aa18c1faf4b692885a67ffd2ab3df4b2e07ddfa14a960e90": {
+      "en": "<p data-resume-whitespace=\"preserve\">4th-year computer science engineering student (work-study/apprenticeship) at CESI and apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production whose scores I made explainable and measurable. Previously a research intern at CESI LINEACT on the teleoperation of robots in virtual reality. I am looking for an internship abroad starting in June 2027 (12 to 16 weeks) in AI, VR or robotics, ideally within a research team.</p>",
+      "model": "deepseek-v4.1-flash"
     },
     "e7d9c0e6ada1046c17024c11da75a0a50a6711c23b0d514b08dbc464853017ff": {
       "en": "CESI Robotics Club",
@@ -329,10 +329,6 @@
       "en": "UniLink",
       "model": "reviewed-previous-en"
     },
-    "f7cdd2d4beb086ad6d1845fbd3c1ad3655daa10f045b6a72798a5843ceef56a2": {
-      "en": "<ul><li><p>Conway's Game of Life in C++ (pair project, main contributor): MVC architecture, SFML console and graphical modes, toroidal grid, obstacle cells.</p></li></ul>",
-      "model": "claude-haiku-5-5"
-    },
     "f911e414cf6bdfc595532ab166b5ba0f63d73c021452fcdacbda363dda6ad8fb": {
       "en": "GitHub",
       "model": "claude-haiku-5-5"
@@ -344,6 +340,10 @@
     "fc69a16a041ee80535ff260ddbb5c0256277f87d05e0950e06afc187515c28c6": {
       "en": "2025 – present",
       "model": "claude-haiku-5-5"
+    },
+    "fe04a9dc88d3f3be8d4f6bc63a9a80f45a4c6d8460e7551dab849457c091920a": {
+      "en": "<p></p>",
+      "model": "deepseek-v4.1-flash"
     },
     "fecba91fe63640114b285873bb6577fb7bbd7bdcd339463de49ce7819f1ea31b": {
       "en": "<p>CESI robotics club BB-8 robot: a Raspberry Pi sends commands to an Arduino that drives the motors. I developed the web control interface and its Python server.</p>",

@@ -6,7 +6,7 @@
     "location": "Rouen, France",
     "website": {
       "url": "https://sliiz.com",
-      "label": "Portfolio – sliiz.com",
+      "label": "Portfolio",
       "inlineLink": false
     }
   },
@@ -14,30 +14,7 @@
     "profiles": {
       "title": "Online profiles",
       "hidden": false,
-      "items": [
-        {
-          "id": "h321sprjmoptspa9lxl9bte9",
-          "hidden": false,
-          "network": "GitHub",
-          "username": "SliiZ-code",
-          "website": {
-            "url": "https://github.com/SliiZ-code",
-            "label": "",
-            "inlineLink": false
-          }
-        },
-        {
-          "id": "r9p8gdq8d6ih29obyjtvyinl",
-          "hidden": false,
-          "network": "LinkedIn",
-          "username": "julien-petit-colboc",
-          "website": {
-            "url": "https://www.linkedin.com/in/julien-petit-colboc/",
-            "label": "",
-            "inlineLink": false
-          }
-        }
-      ]
+      "items": []
     },
     "experience": {
       "title": "Experience",
@@ -55,7 +32,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Lead developer of Cerebro, an internal tool that matches consultants' profiles to client tenders using LLMs.</p><ul><li><p>Designed an AI pipeline that extracts, categorises and scores tender × profile pairs, with reliable asynchronous batch processing; deployed to production after several hundred tenders were processed.</p></li><li><p>Calibrated the scoring prompt (temperature, required or preferred skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Launched an annotated reference set to measure false positives and false negatives.</p></li><li><p>Built the daily report sent to about ten sales staff; secured the API and web interface with authentication and SSO. <em>Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</em></p></li></ul>",
+          "description": "<p>Lead developer of Cerebro, an internal tool that matches consultant profiles with client tenders using LLMs.</p><ul><li><p>Designed and put into production an asynchronous AI pipeline for extraction and scoring for tender × profile pairs, processing several hundred records via reliable batch management.</p></li><li><p>Calibrated the scoring prompt (temperature, required or desired skills, three sub-scores) and added short justifications so users can verify each score.</p></li><li><p>Built an annotated benchmark dataset to quantify and reduce the false positive and false negative rates of the scoring system.</p></li><li><p>Automated the generation of daily reports for a team of ten salespeople and secured access to the API and web interface via SSO authentication. Stack: Python, FastAPI, Pydantic, SQLite, Docker, GitLab CI, Gemini.</p></li></ul>",
           "roles": []
         },
         {
@@ -70,7 +47,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>VR application for teleoperating robots (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured robot access with AES-256 encryption.</p></li><li><p>Designed a real-time interface for editing waypoints.</p></li></ul>",
+          "description": "<p>VR robot teleoperation application (Scrum; C#, .NET, Unity, REST API).</p><ul><li><p>Integrated the feed from a 360° camera mounted on the robot into an immersive VR view.</p></li><li><p>Secured access to the robots with AES-256 encryption.</p></li><li><p>Designed a real-time interface to edit the robot's waypoints.</p></li></ul>",
           "roles": []
         }
       ]
@@ -109,7 +86,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<ul><li><p>Conway's Game of Life in C++ (pair project, main contributor): MVC architecture, SFML console and graphical modes, toroidal grid, obstacle cells.</p></li></ul>"
+          "description": "<p></p>"
         }
       ]
     },
@@ -127,7 +104,7 @@
             "label": "GitHub",
             "inlineLink": false
           },
-          "description": "<p>Python pipeline that generates short videos from a simple topic: GPT-3.5 writes the script, Stable Diffusion XL creates the images, OpenAI TTS records the voiceover and Whisper generates the subtitles. Asynchronous API calls, automated editing with MoviePy.</p>"
+          "description": "<p>Python pipeline for end-to-end automation of video creation: it orchestrates AI agents (GPT-3.5 for the script, Stable Diffusion XL for images, OpenAI TTS for voice, Whisper for subtitling) and performs automated editing via MoviePy.</p>"
         },
         {
           "id": "xzqf6qmt2htvrapycrr0p1qe",
@@ -308,7 +285,7 @@
             "label": "",
             "inlineLink": false
           },
-          "description": "<p>Managing the student association's communications: Instagram content, event posters, photo and video coverage.</p>"
+          "description": "<p>Responsible for the BDE's communication strategy: creating visual content (Instagram, posters) and multimedia coverage of events.</p>"
         },
         {
           "id": "ek6hzd2ri77vmwa3gwao7asg",
@@ -332,7 +309,7 @@
         {
           "id": "328edb6c-a45f-4f9e-ac12-51dbd7b833b9",
           "hidden": false,
-          "name": "Running (half marathon, March 2027), calisthenics, graphic design, travel",
+          "name": "Running, video games, audiovisual",
           "keywords": []
         }
       ]
@@ -351,6 +328,6 @@
   "summary": {
     "title": "Summary",
     "hidden": false,
-    "content": "<p>4th-year engineering student in computer science (work-study) at CESI, apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production, where I worked on making its scores explainable and measurable. Previously a research intern at CESI LINEACT on teleoperation of robots in virtual reality. I am looking for an internship abroad from June 2027 (12 to 17 weeks) in AI, VR or robotics, ideally within a research team.</p>"
+    "content": "<p data-resume-whitespace=\"preserve\">4th-year computer science engineering student (work-study/apprenticeship) at CESI and apprentice at CAPFI since January 2026. Lead developer of Cerebro, an LLM-based matching system in production whose scores I made explainable and measurable. Previously a research intern at CESI LINEACT on the teleoperation of robots in virtual reality. I am looking for an internship abroad starting in June 2027 (12 to 16 weeks) in AI, VR or robotics, ideally within a research team.</p>"
   }
 }

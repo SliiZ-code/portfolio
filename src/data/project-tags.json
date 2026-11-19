@@ -1,4 +1,50 @@
 {
   "version": 1,
-  "projects": {}
+  "projects": {
+    "23fd2894-8610-4f84-9497-3018d020cc6f": {
+      "tags": [
+        "React",
+        "Express"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "9cc351ba12d697d65811c6a63bbb160d766511904dedc502461e9172ff446a5b"
+    },
+    "42e49092-48a3-4fa1-8c78-4654a7877f35": {
+      "tags": [
+        "C++"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "95bf2223c8a9e701789db087d224ef2baca833fbb1025bbeba30ccdd471d43bb"
+    },
+    "cd533142-b965-4ad7-90d6-bc1af4002e37": {
+      "tags": [
+        "Arduino"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "dd64a92e6c00f58e852fcb5d902ecc94cd01d07a92bdd22c47d9078ae0ed1259"
+    },
+    "fb8bd09b-fb02-4d2c-bf0f-33c29b55fce3": {
+      "tags": [
+        "Python",
+        "Raspberry Pi"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "48deb374b856534003580e0e5357702820cce74db8eca0eaf042dba535a70194"
+    },
+    "lb4mf4eeck6jgali322zvy6w": {
+      "tags": [
+        "Python"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "7eb9992cce11f17f9ada1fc8d075c03335e533ddcb6d3d60b4f0d5e063dcd1c2"
+    },
+    "xzqf6qmt2htvrapycrr0p1qe": {
+      "tags": [
+        "Flutter",
+        "Dart"
+      ],
+      "model": "deepseek-v4.1-flash",
+      "hash": "925fd5308ab467d9b1593411295e0fbffcf65fe7e440e215954245cb63e2b3c3"
+    }
+  }
 }
