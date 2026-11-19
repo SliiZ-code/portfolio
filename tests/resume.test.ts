@@ -59,6 +59,50 @@ describe('sanitizeResume', () => {
     expect(output.sections.projects.items.every((entry: any) => entry.hidden === false)).toBe(true);
   });
 
+  it('publishes the header custom fields that carry an http(s) link as profiles', () => {
+    const output = sanitizeResume({
+      basics: {
+        customFields: [
+          { id: 'gh', text: 'GitHub', link: 'https://github.com/SliiZ-code' },
+          { id: 'li', text: 'LinkedIn', link: 'https://www.linkedin.com/in/julien-petit-colboc/' },
+          { id: 'phone', text: '+33 6 12 34 56 78', link: '' },
+          { id: 'hidden', hidden: true, text: 'X', link: 'https://x.com/x' },
+        ],
+      },
+      sections: { profiles: { title: 'Réseaux', hidden: false, items: [] } },
+    }) as Record<string, any>;
+
+    expect(output.sections.profiles).toEqual({
+      title: 'Réseaux',
+      hidden: false,
+      items: [
+        {
+          id: 'gh',
+          hidden: false,
+          network: 'GitHub',
+          username: '',
+          website: { url: 'https://github.com/SliiZ-code', label: 'GitHub', inlineLink: false },
+        },
+        {
+          id: 'li',
+          hidden: false,
+          network: 'LinkedIn',
+          username: '',
+          website: { url: 'https://www.linkedin.com/in/julien-petit-colboc/', label: 'LinkedIn', inlineLink: false },
+        },
+      ],
+    });
+  });
+
+  it('keeps header links out when the Profiles section is hidden', () => {
+    const output = sanitizeResume({
+      basics: { customFields: [{ id: 'gh', text: 'GitHub', link: 'https://github.com/SliiZ-code' }] },
+      sections: { profiles: { title: 'Réseaux', hidden: true, items: [] } },
+    }) as Record<string, any>;
+
+    expect(output.sections.profiles).toBeUndefined();
+  });
+
   it('still drops hidden items of every other section', () => {
     const output = sanitizeResume({
       sections: {

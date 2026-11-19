@@ -81,6 +81,29 @@ const cleanSection = (section, key) => {
 };
 
 /**
+ * The header's custom fields that carry a public link, as profiles. RxResume keeps the GitHub and
+ * LinkedIn links there, not in the Profiles section; a field without an http(s) link (the phone,
+ * the email) or a hidden field never leaves this function.
+ */
+const linkedProfiles = (basics) =>
+  present(basics.customFields)
+    .filter((field) => !field.hidden)
+    .flatMap((field) => {
+      const network = str(field.text).trim();
+      const url = str(field.link).trim();
+      if (!network || !/^https?:\/\//i.test(url)) return [];
+      return [
+        {
+          id: str(field.id),
+          hidden: false,
+          network,
+          username: '',
+          website: { url, label: network, inlineLink: false },
+        },
+      ];
+    });
+
+/**
  * Structural sanitiser: metadata (private notes), custom sections, the picture,
  * hidden sections, hidden items and hidden custom fields must never leave this function.
  * The one exception is the items of the projects section: hiding a project keeps it off
@@ -114,6 +137,22 @@ export const sanitizeResume = (input) => {
   for (const key of Object.keys(ITEM_FIELDS)) {
     const section = cleanSection(sections[key], key);
     if (section) output.sections[key] = section;
+  }
+
+  // The header links (GitHub, LinkedIn) are custom fields, not Profiles items: publish the ones
+  // that carry an http(s) link, after the Profiles section's own items, and never when that section
+  // is hidden. A field without a link (the phone) is dropped like every other custom field.
+  const links = linkedProfiles(basics);
+  if (links.length && sections.profiles?.hidden !== true) {
+    const existing = output.sections.profiles;
+    const seen = new Set();
+    const items = [...links, ...(existing?.items ?? [])].filter((item) => {
+      const url = str(item.website?.url).trim().toLowerCase();
+      if (!url || seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
+    output.sections.profiles = { title: existing?.title ?? '', hidden: false, items };
   }
 
   return output;
