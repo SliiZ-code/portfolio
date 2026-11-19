@@ -58,6 +58,31 @@ export const tickInterval = (p: number, base: number): number => {
 export const needsLayout = (laid: { w: number; h: number }, now: { w: number; h: number }): boolean =>
   now.w !== laid.w || Math.abs(now.h - laid.h) >= TOOLBAR_PX;
 
+/** What the loop knows when it decides whether to advance a generation. */
+export interface TickGate {
+  /** The frame's timestamp. */
+  now: number;
+  /** When the last generation ran. */
+  last: number;
+  /** The tick interval: RATE at the top, stretched as the hero scrolls away, Infinity once the board is frozen. */
+  interval: number;
+  /** When the board started. */
+  t0: number;
+  reduced: boolean;
+  /** The board's entry: the opening wave, or straight in (reduced motion). */
+  entry: 'intro' | 'direct';
+}
+
+/** Whether the loop should advance one generation at `now`. The opening is the board's start: the wave runs over a live board, so generations begin at once; without a wave, the page settles first. */
+export const shouldTick = ({ now, last, interval, t0, reduced, entry }: TickGate): boolean => {
+  // reduced motion: the board only answers what the visitor draws, it never runs on its own
+  if (reduced) return false;
+  // without an opening the first generation waits a moment, so the page settles first
+  if (entry !== 'intro' && now - t0 < START_DELAY) return false;
+  // the interval stretches as the hero scrolls away, up to Infinity once the board is frozen
+  return now - last > interval;
+};
+
 export async function initBoard(): Promise<void> {
   const source = document.getElementById('board-data');
   const canvas = document.querySelector<HTMLCanvasElement>('#board');
@@ -376,7 +401,7 @@ export async function initBoard(): Promise<void> {
         endIntro();
       }
     }
-    if (!reduced && !intro && now - last > interval && now - t0 > (entry === 'intro' ? INTRO_MS : START_DELAY)) {
+    if (shouldTick({ now, last, interval, t0, reduced, entry })) {
       last = now;
       tick();
     }
