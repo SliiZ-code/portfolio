@@ -81,10 +81,19 @@ describe('buildStructuredData', () => {
   });
 
   it('sameAs is the public profile links of the resume', () => {
-    const person = findEntity(buildStructuredData(fr, root), 'Person');
+    const resume = resumeWith('Ada Byron--Lovelace', {
+      profiles: {
+        title: 'Profiles',
+        hidden: false,
+        items: [
+          { id: 'a', hidden: false, network: 'GitHub', username: 'ada', website: { url: 'https://github.com/ada' } },
+          { id: 'b', hidden: false, network: 'LinkedIn', username: 'ada', website: { url: 'https://www.linkedin.com/in/ada' } },
+        ],
+      },
+    });
+    const person = findEntity(buildStructuredData(resume, root), 'Person');
 
-    expect(person.sameAs).toEqual(fr.profiles.map((profile) => profile.url));
-    expect(person.sameAs).toContain('https://github.com/SliiZ-code');
+    expect(person.sameAs).toEqual(['https://github.com/ada', 'https://www.linkedin.com/in/ada']);
   });
 
   it('sameAs keeps only http(s) links: no mailto, tel or relative link, and no hidden profile', () => {
