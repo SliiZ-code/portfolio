@@ -176,9 +176,9 @@ advances one generation. Without JavaScript the same projects are in the plain l
 
 **Opening.** On a fresh load (`data-entry="intro"` on the canvas) the board starts empty and a
 shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells, with the
-seeded soup (age 0) appearing behind it, the name as it passes it, and
-the note and project rows fading in once it has passed their position. The simulation starts when
-the ring has left. There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
+live soup appearing behind it, the name as it passes it, and
+the note and project rows fading in once it has passed their position. The simulation runs from the
+wave's first frame, so the cells behind the front are already evolving (`shouldTick`). There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
 (`direct`).
 
 **HUD.** Names and links are server-rendered. The bottom-right HUD reads GitHub · LinkedIn ·
