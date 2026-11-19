@@ -14,7 +14,30 @@
     "profiles": {
       "title": "Online profiles",
       "hidden": false,
-      "items": []
+      "items": [
+        {
+          "id": "01a1e51c-316d-71d5-ae2b-0848f3397f43",
+          "hidden": false,
+          "network": "GitHub",
+          "username": "",
+          "website": {
+            "url": "https://github.com/SliiZ-code",
+            "label": "GitHub",
+            "inlineLink": false
+          }
+        },
+        {
+          "id": "01a1f3cb-f608-7707-b90c-b07f9408d1ab",
+          "hidden": false,
+          "network": "LinkedIn",
+          "username": "",
+          "website": {
+            "url": "https://www.linkedin.com/in/julien-petit-colboc/",
+            "label": "LinkedIn",
+            "inlineLink": false
+          }
+        }
+      ]
     },
     "experience": {
       "title": "Experience",

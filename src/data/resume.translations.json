@@ -301,6 +301,10 @@
       "en": "Research intern",
       "model": "claude-haiku-5-5"
     },
+    "dd84425b72da12c6c828339ce814342daceac705b50d42e377e1acebf8f2320b": {
+      "en": "LinkedIn",
+      "model": "deepseek-v4.1-flash"
+    },
     "e495d53b967a7b049c8a2c25baa519fe124b49c1d0cf9cd8bdffa00d2f9d8ed6": {
       "en": "French",
       "model": "claude-haiku-5-5"
