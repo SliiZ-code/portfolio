@@ -134,8 +134,7 @@ export function sowWithin(
     const y = (i / world.w) | 0;
     // one chance per cell: a protected cell is never retried as the front grows
     if (isProtected(x, y) || !(rnd() < density)) continue;
-    world.cells[i] = 1;
-    world.age[i] = 0;
+    spawn(world, i);
     sown++;
   }
   plan.cursor = cursor;
