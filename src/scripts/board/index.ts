@@ -1,6 +1,19 @@
 import { GLIDERS } from './patterns';
 import { rasterize } from './rasterize';
-import { addFeedGlider, clearBoxes, countLive, createWorld, idx, seedWorld, spawn, stepWorld, type World } from './life';
+import {
+  addFeedGlider,
+  clearBoxes,
+  countLive,
+  createSowPlan,
+  createWorld,
+  idx,
+  seedWorld,
+  sowWithin,
+  spawn,
+  stepWorld,
+  type SowPlan,
+  type World,
+} from './life';
 import { addStructure, stepStructures, structurePopulation } from './structures';
 import {
   boxMinus,
@@ -28,6 +41,8 @@ const INTRO_MS = 1800;
 const START_DELAY = 500;
 /** Width of one band of the shockwave's ring, in pixels. */
 const BAND_PX = 11;
+/** About one free cell in twelve is soup: busier is noise, emptier dies out. */
+const SOUP_DENSITY = 0.08;
 /** Past this scroll the hero is scrolling away: the HUD counter and the scroll cue step back. */
 const SCROLLED_PX = 40;
 /** A phone's toolbar slides in and out as the page scrolls: a height change under this keeps the layout. */
@@ -105,6 +120,12 @@ export async function initBoard(): Promise<void> {
   motion.addEventListener('change', (event) => {
     reduced = event.matches;
   });
+
+  // the board's entry: the opening wave, or the soup at once (reduced motion)
+  const entry = reduced ? 'direct' : 'intro';
+  canvas.dataset.entry = entry;
+  // true until the wave's sowing is over: a layout while it runs must not seed the whole board
+  let opening = entry === 'intro';
 
   // ---- the hero scrolling away: one custom property per frame drives the CSS (global.css), the speed drives the loop ----
   // the loop's tick interval at the current progress: RATE at the top, Infinity once the board is frozen
@@ -184,6 +205,10 @@ export async function initBoard(): Promise<void> {
   let waveCentre = { x: 0, y: 0 };
   let waveBand = 3;
   let waveTotal = 1;
+  // the wave sows the soup as it passes: cells nearest the centre first, each one once
+  let sowPlan: SowPlan | null = null;
+  // the cells the soup must stay off, as the seeding sees them
+  let soupBoxes: Box[] = [];
   // keeps counting across resizes
   let gen = 0;
 
@@ -203,6 +228,8 @@ export async function initBoard(): Promise<void> {
   const protectedBoxes = () => [...keepClear, ...nameRing, ...structures.map((s) => coreBox(s))];
   // visitors may draw on the name, so only the note stays off limits
   const isFree = (x: number, y: number) => !isProtected(x, y, 0, keepClear);
+  // the soup's own keep-clear, with the same margin seedWorld has always used
+  const isSoupProtected = (x: number, y: number) => isProtected(x, y, 5, soupBoxes);
 
   /** Lays the board out for the current screen: the fine name sets the cell, then everything in screen fractions. */
   function layout(): void {
@@ -248,13 +275,14 @@ export async function initBoard(): Promise<void> {
       keepClear.push(rectToBox(note.getBoundingClientRect(), cell));
     }
 
-    // the board starts busy, but not noisy: about one free cell in twelve is seeded
-    const boxes = protectedBoxes();
-    seedWorld(world, (x, y) => isProtected(x, y, 5, boxes), 0.08);
-
     waveCentre = { x: at.x + at.w / 2, y: at.y + at.h / 2 };
     waveBand = Math.max(2, Math.round(BAND_PX / cell));
     waveTotal = waveTravel(waveCentre, grid, BUCKETS - 1, waveBand);
+    soupBoxes = protectedBoxes();
+    // the opening starts empty and lets the wave plant the soup at about one free cell in twelve; without one, the board is seeded at once
+    sowPlan = opening ? createSowPlan(world, waveCentre) : null;
+    if (!opening) seedWorld(world, isSoupProtected, SOUP_DENSITY);
+
     renderState.cell = cell;
     renderState.width = vw;
     renderState.height = vh;
@@ -305,10 +333,7 @@ export async function initBoard(): Promise<void> {
   readColors();
   layout();
 
-  const entry = reduced ? 'direct' : 'intro';
-  canvas.dataset.entry = entry;
-
-  // ---- the opening: a ring of newborn colours leaves the name, everything appears as it passes ----
+  // ---- the opening: a ring of newborn colours leaves the name, sowing the soup as it passes ----
   const wave: Shockwave = { cx: 0, cy: 0, front: 0, band: 3 };
   let intro: { el: HTMLElement; d: number; shown: boolean }[] | null = null;
   const startIntro = () => {
@@ -321,8 +346,17 @@ export async function initBoard(): Promise<void> {
     }
     stage.classList.add('intro');
   };
+  /** Sows whatever the wave has not reached: a resize or a cache restore must never leave the board half-empty. */
+  const finishSow = () => {
+    if (!sowPlan) return;
+    sowWithin(world, sowPlan, Infinity, isSoupProtected, SOUP_DENSITY);
+    sowPlan = null;
+    updateCounters(gen);
+  };
   const endIntro = () => {
     intro = null;
+    opening = false;
+    finishSow();
     renderState.wave = null;
     stage.classList.remove('intro');
     dirty = true;
@@ -344,6 +378,7 @@ export async function initBoard(): Promise<void> {
   // a language switch swaps the note's text (not the board): its keep-clear box is measured again, the soup stays off it
   document.addEventListener('languageswap', () => {
     if (note) keepClear = [rectToBox(note.getBoundingClientRect(), cell)];
+    soupBoxes = protectedBoxes();
     dirty = true;
   });
 
@@ -390,6 +425,8 @@ export async function initBoard(): Promise<void> {
       wave.cy = waveCentre.y;
       wave.band = waveBand;
       wave.front = waveFront(progress, waveTotal);
+      // the wave sows the soup as it grows: the cells it reaches now get their one chance
+      if (sowPlan) sowWithin(world, sowPlan, wave.front, isSoupProtected, SOUP_DENSITY);
       for (const item of intro) {
         if (item.shown || wave.front < item.d) continue;
         item.shown = true;

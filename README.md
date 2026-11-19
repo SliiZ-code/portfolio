@@ -175,11 +175,14 @@ it; one firing per row every 1.5 s. With reduced motion the seed is still stampe
 advances one generation. Without JavaScript the same projects are in the plain list (`BoardList`).
 
 **Opening.** On a fresh load (`data-entry="intro"` on the canvas) the board starts empty and a
-shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells, with the
-live soup appearing behind it, the name as it passes it, and
-the note and project rows fading in once it has passed their position. The simulation runs from the
-wave's first frame, so the cells behind the front are already evolving (`shouldTick`). There is no opening on the return zoom-out (`zoom-out`) or with reduced motion
-(`direct`).
+shockwave leaves the centre of the name in about 1.8 s: a ring of newborn-coloured cells that sows
+the live soup as it passes, the name as it reaches it, and the note fading in once it has passed
+its position. Each cell gets one chance, nearest the centre first, with the same
+density and keep-clear rules as the resting board; the simulation runs from the wave's first frame,
+so the cells behind the front are already evolving (`shouldTick`). When the wave reaches past the
+last corner the whole board has been sown. A resize or a back/forward-cache restore during the
+opening sows whatever the wave has not reached, so the board is never left half-empty. There is no
+opening with reduced motion (`direct`), where the soup is seeded at once.
 
 **HUD.** Names and links are server-rendered. The bottom-right HUD reads GitHub · LinkedIn ·
 Contact · CV: the first two come from the resume's profiles, Contact is a `mailto:` to the resume's
