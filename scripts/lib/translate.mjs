@@ -235,35 +235,34 @@ export const claudeProvider = ({ command = 'claude', args = [], env = process.en
 /**
  * OpenCode Go, OpenAI-compatible chat completions, JSON mode. The session id is random and fixed per
  * provider instance, so the chunks of one run share it; it carries nothing from the resume.
+ * `complete` is the generic call (one prompt, one JSON object back); `translate` is the
+ * translation prompt over it.
  */
 export const opencodeProvider = ({ apiKey, model = DEFAULT_MODELS.opencode, fetchImpl = fetch, timeoutMs = 120_000 } = {}) => {
   const session = randomUUID();
-  return {
-    name: 'opencode',
-    model,
-    translate: async (input) => {
-      const response = await fetchImpl('https://opencode.ai/inference/go/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${apiKey}`,
-          'user-agent': 'portfolio-resume-sync/1.0',
-          'x-opencode-session': session,
-        },
-        redirect: 'error',
-        signal: AbortSignal.timeout(timeoutMs),
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: buildPrompt(input) }],
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-        }),
-      });
-      if (!response.ok) throw new Error(`opencode: HTTP ${response.status}`);
-      const body = await response.json().catch(() => null);
-      return parseJsonObject(body?.choices?.[0]?.message?.content);
-    },
+  const complete = async (prompt) => {
+    const response = await fetchImpl('https://opencode.ai/inference/go/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey}`,
+        'user-agent': 'portfolio-resume-sync/1.0',
+        'x-opencode-session': session,
+      },
+      redirect: 'error',
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2,
+      }),
+    });
+    if (!response.ok) throw new Error(`opencode: HTTP ${response.status}`);
+    const body = await response.json().catch(() => null);
+    return parseJsonObject(body?.choices?.[0]?.message?.content);
   };
+  return { name: 'opencode', model, complete, translate: (input) => complete(buildPrompt(input)) };
 };
 
 /** Gemini REST generateContent, JSON mode. The key goes in a header, never in the URL. */

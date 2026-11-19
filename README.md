@@ -38,8 +38,8 @@ then validated by Zod:
 
 ```text
 RxResume API
-  -> scripts/sync-resume.mjs   (structural sanitiser, AI translation with a cache)
-  -> src/data/resume.fr.json / resume.en.json / resume.translations.json
+  -> scripts/sync-resume.mjs   (structural sanitiser, project tags, AI translation, both cached)
+  -> src/data/resume.fr.json / resume.en.json / resume.translations.json / project-tags.json
   -> src/lib/resume.ts         (Zod validation, HTML sanitiser, slugs)
   -> pages and components
 ```
@@ -57,7 +57,9 @@ Then run `npm run sync:resume`. It reads the French resume once (`GET /api/opena
 what the site renders: metadata, the picture, custom sections and hidden items stay private, and a hidden project
 is shown on the site but left off the PDF. The English is translated from the French by AI, and only the strings
 missing from `src/data/resume.translations.json` are sent. Without a provider the committed English is kept and a
-warning is printed. The CV PDFs come from temporary copies (see below).
+warning is printed. The CV PDFs come from temporary copies (see below). The same run picks one or two
+technologies per project from the French descriptions and caches them in `src/data/project-tags.json`: only the
+projects whose text changed are sent, and a missing key or a bad answer keeps the previous tags.
 
 ### CV PDF
 
@@ -80,10 +82,13 @@ build time; without it the HUD and the list link to the HTML CV page, which offe
 ### Project slugs
 
 Slugs are computed from the RxResume project names (`slugify`), for example
-`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. Seed, tag, page note and optional live
-experiment are a site-only overlay in `src/data/board.ts`, keyed by that slug. A project that
-exists in RxResume but not in the overlay is still rendered, in the board list, in the
-no-JavaScript list and as a page: it gets no tag and a methuselah picked from its slug
+`Jeu de la vie` becomes `/projets/jeu-de-la-vie/`. The tags come from the sync:
+`src/data/project-tags.json` holds one or two technologies per RxResume project id, chosen from
+the French description (see [docs/resume-sync.md](docs/resume-sync.md#project-tags)). The
+overlay in `src/data/board.ts` stays as a manual fallback tag, and for the seed and the optional
+live experiment, keyed by that slug. A project that exists in RxResume but not in the overlay is
+still rendered, in the board list, in the no-JavaScript list and as a page: it gets its generated
+tags (or the overlay's, or none) and a methuselah picked from its slug
 (`METHUSELAHS[hash(slug) % length]`, always the same one). An overlay entry without a matching
 RxResume project is ignored (RxResume stays the source of truth for projects).
 
@@ -95,8 +100,8 @@ on the board fires that seed (see Board).
 The FR and EN versions of a project are matched by the RxResume item `id` (a duplicated
 resume keeps the ids), then by overlay key, then by position.
 
-A project's meta line (project page, no-JavaScript list) is the overlay tag and the RxResume
-period joined by ` · `; an empty part is skipped.
+A project's meta line (project page, no-JavaScript list) is its generated tags, or the overlay
+tag, and the RxResume period joined by ` · `; an empty part is skipped.
 
 ## Routes
 
@@ -236,7 +241,9 @@ The project is deployed via Coolify on an ARM64 server at https://sliiz.com.
 - Multi-stage build: Node.js 24 builder → static site in Caddy 2 (Alpine)
 - The builder stage runs `npm run sync:resume` before `npm run build` when
   `RXRESUME_API_KEY` is set. If the sync fails it prints a warning and builds with the
-  committed JSON and PDFs, so a RxResume outage never breaks a deploy
+  committed JSON (including the tag cache, `src/data/project-tags.json`) and PDFs, so a RxResume
+  outage never breaks a deploy. Only `OPENCODE_API_KEY` generates the tags: without it the
+  committed ones are kept
 - The settings below exist only in the builder stage, never in the Caddy image. The API
   key is mounted as a build secret, so it stays out of the image history and build cache
 - Runs on port 80

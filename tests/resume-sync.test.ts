@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createApi } from '../scripts/lib/rxresume.mjs';
 import { parseCache } from '../scripts/lib/translate.mjs';
+import { parseTagCache, serializeTagCache, type TagCache } from '../scripts/lib/project-tags.mjs';
 import { sha } from '../scripts/lib/strings.mjs';
 import { fingerprintResume } from '../scripts/lib/fingerprint.mjs';
 import { buildApi, cvPdfFile, fingerprintToPublish, resumeIdFrom, runSync } from '../scripts/sync-resume.mjs';
@@ -77,7 +78,13 @@ const fakeTranslator = () => {
 
 const noWait = async () => {};
 
-const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], cache = parseCache(undefined), warnings: string[] = []) => {
+const runWith = (
+  fake: ReturnType<typeof fakeRxResume>,
+  translators: unknown[],
+  cache = parseCache(undefined),
+  warnings: string[] = [],
+  tags: { tagCache?: TagCache; tagComplete?: (prompt: string) => Promise<unknown>; tagModel?: string } = {},
+) => {
   const api = createApi({ sleep: noWait, baseUrl: 'https://rx.example', key: 'secret', fetchImpl: fake.fetchImpl, protectedId: fake.mainId });
   return runSync({
     mainId: fake.mainId,
@@ -88,6 +95,7 @@ const runWith = (fake: ReturnType<typeof fakeRxResume>, translators: unknown[], 
     stamp: 'T1',
     log: () => {},
     warn: (message: string) => warnings.push(message),
+    ...tags,
   });
 };
 
@@ -264,6 +272,74 @@ describe('runSync: no translation provider', () => {
     expect(result.cache.entries['f'.repeat(64)]).toBeUndefined();
     const kept = Object.values(result.cache.entries as Record<string, { en: string }>).map((entry) => entry.en);
     expect(kept).not.toContain('Gone');
+  });
+});
+
+describe('runSync: the project tags', () => {
+  const tagged = {
+    ...mainResume,
+    sections: {
+      ...mainResume.sections,
+      projects: {
+        ...mainResume.sections.projects,
+        items: [
+          { ...mainResume.sections.projects.items[0], description: '<p>Un jeu en C++ avec SFML</p>' },
+          { ...mainResume.sections.projects.items[1], description: '<p>Un script Python</p>' },
+        ],
+      },
+    },
+  };
+
+  it('returns the cache of tags generated from the French project descriptions', async () => {
+    const fake = fakeRxResume({ main: tagged });
+    const prompts: string[] = [];
+    const tagComplete = async (prompt: string) => {
+      prompts.push(prompt);
+      return { p1: ['C++', 'SFML'], p2: ['Python'] };
+    };
+    const result = await runWith(fake, [fakeTranslator().provider], parseCache(undefined), [], { tagComplete, tagModel: 'tag-model' });
+
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain('"p1"');
+    expect(prompts[0]).toContain('Un jeu en C++ avec SFML');
+    expect(result.tagCache.projects.p1).toEqual({
+      tags: ['C++', 'SFML'],
+      model: 'tag-model',
+      hash: sha('Blink\n<p>Un jeu en C++ avec SFML</p>'),
+    });
+    expect(result.tagStats).toEqual({ total: 2, reused: 0 });
+    // what the main writes is the deterministic cache file, read back the same
+    expect(parseTagCache(serializeTagCache(result.tagCache)).projects.p2.tags).toEqual(['Python']);
+  });
+
+  it('is not part of the fingerprint, and a failing tag provider adds no error', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const warnings: string[] = [];
+    const previous = { version: 1, projects: { p1: { tags: ['Python'], model: 'old', hash: 'stale' } } };
+    const result = await runWith(fake, [fakeTranslator().provider], parseCache(undefined), warnings, {
+      tagCache: previous,
+      tagComplete: async () => {
+        throw new Error(`the answer mentioned <p>Pipeline</p> and p1`);
+      },
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.fingerprint).toBe(fingerprintResume(mainResume, 'secret'));
+    expect(result.tagStats).toEqual({ total: 2, reused: 0 });
+    expect(result.tagCache.projects.p1).toEqual({ tags: ['Python'], model: 'old', hash: 'stale' });
+    expect(warnings.join('\n')).toMatch(/WARNING/);
+    expect(warnings.join('\n')).not.toContain('Pipeline');
+    expect(warnings.join('\n')).not.toContain('p1');
+  });
+
+  it('warns and writes an empty cache when no tag provider is configured', async () => {
+    const fake = fakeRxResume({ main: mainResume });
+    const warnings: string[] = [];
+    const result = await runWith(fake, [fakeTranslator().provider], parseCache(undefined), warnings);
+    expect(result.tagCache.projects).toEqual({});
+    expect(result.tagStats).toEqual({ total: 2, reused: 0 });
+    expect(result.errors).toEqual([]);
+    expect(warnings.join('\n')).toMatch(/project tags/);
   });
 });
 
